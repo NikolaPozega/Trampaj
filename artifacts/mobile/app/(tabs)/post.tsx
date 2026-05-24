@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CATEGORIES, useListings } from "@/context/ListingsContext";
+import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
 import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally, suggestTrades } from "@/services/openai";
 
@@ -36,6 +36,7 @@ export default function PostScreen() {
   const [location, setLocation] = useState("");
   const [priceText, setPriceText] = useState("");
   const [phone, setPhone] = useState("");
+  const [condition, setCondition] = useState<Condition | null>(null);
   const [showPhone, setShowPhone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
@@ -148,6 +149,7 @@ export default function PostScreen() {
       wantedFor: wantedFor.trim(),
       category,
       location,
+      condition,
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
       imageUri,
       phone: showPhone && phone.trim() ? phone.trim() : null,
@@ -171,6 +173,7 @@ export default function PostScreen() {
       setTitle(""); setDescription(""); setWantedFor("");
       setCategory(""); setLocation(""); setPriceText("");
       setPhone(""); setShowPhone(false); setImageUri(null);
+      setCondition(null);
       setSubmitted(false); setAiSuggestions([]);
       router.push("/(tabs)/");
     }, aiSuggestions.length > 0 ? 3000 : 1500);
@@ -286,6 +289,32 @@ export default function PostScreen() {
             keyboardType="decimal-pad"
             maxLength={10}
           />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Stanje predmeta</Text>
+          <View style={styles.conditionGrid}>
+            {CONDITIONS.map((cond) => {
+              const col = CONDITION_COLORS[cond];
+              const selected = condition === cond;
+              return (
+                <Pressable
+                  key={cond}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCondition(selected ? null : cond); }}
+                  style={[
+                    styles.conditionChip,
+                    {
+                      backgroundColor: selected ? `${col}22` : colors.muted,
+                      borderColor: selected ? col : colors.border,
+                    },
+                  ]}
+                >
+                  <View style={[styles.conditionDot, { backgroundColor: col }]} />
+                  <Text style={[styles.conditionChipText, { color: selected ? col : colors.mutedForeground }]}>{cond}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <Pressable
@@ -574,6 +603,10 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   locationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  conditionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  conditionChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5 },
+  conditionDot: { width: 8, height: 8, borderRadius: 4 },
+  conditionChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   suggestCard: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
   suggestHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   suggestTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

@@ -13,11 +13,27 @@ export const CATEGORIES = [
   "Ostalo",
 ];
 
+export const CONDITIONS = [
+  "Kao novo",
+  "Jako dobro",
+  "Dobro",
+  "Prihvatljivo",
+] as const;
+export type Condition = (typeof CONDITIONS)[number];
+
+export const CONDITION_COLORS: Record<Condition, string> = {
+  "Kao novo": "#38BDF8",
+  "Jako dobro": "#4ADE80",
+  "Dobro": "#FACC15",
+  "Prihvatljivo": "#FB923C",
+};
+
 export interface Listing {
   id: string;
   title: string;
   description: string;
   category: string;
+  condition: Condition | null;
   wantedFor: string;
   price: number | null;
   imageUri: string | null;
@@ -43,7 +59,7 @@ interface ListingsContextType {
   myName: string;
   setMyName: (name: string) => void;
   addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => void;
-  updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location">>) => void;
+  updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition">>) => void;
   markAsTraded: (id: string) => void;
   markAsActive: (id: string) => void;
   deleteListing: (id: string) => void;
@@ -69,6 +85,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Sony slušalice WH-1000XM4",
     description: "Odlične slušalice s redukcijom buke, malo korištene. U originalnoj kutiji, sve ispravno radi.",
     category: "Elektronika",
+    condition: "Jako dobro",
     wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
     price: 180,
     imageUri: null,
@@ -84,6 +101,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Zimska jakna XL, North Face",
     description: "Topla zimska jakna, nosio je jednu sezonu. Boja tamno plava, odlično stanje.",
     category: "Odjeća",
+    condition: "Jako dobro",
     wantedFor: "Ljetna jakna ili sportska oprema",
     price: null,
     imageUri: null,
@@ -99,6 +117,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Skup knjiga - fantazija (10 knjiga)",
     description: "Komplet knjiga Patricka Rothfussa i Brandona Sandersona. Sve u odličnom stanju.",
     category: "Knjige",
+    condition: "Kao novo",
     wantedFor: "Sci-fi knjige ili stripovi",
     price: 60,
     imageUri: null,
@@ -114,6 +133,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Bicikl - gradski, 26\"",
     description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.",
     category: "Sport",
+    condition: "Dobro",
     wantedFor: "Roleri ili električni romobil",
     price: 350,
     imageUri: null,
@@ -129,6 +149,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Stolna lampa - industrijski stil",
     description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol.",
     category: "Namještaj",
+    condition: "Dobro",
     wantedFor: "Polica za knjige ili mali stol",
     price: null,
     imageUri: null,
@@ -144,6 +165,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Roleri Rollerblade, vel. 42",
     description: "Inline roleri u odličnom stanju, korišteni svega par puta. Kaciga uključena.",
     category: "Sport",
+    condition: "Kao novo",
     wantedFor: "Bicikl gradski ili električni romobil",
     price: 120,
     imageUri: null,
@@ -159,6 +181,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Bežični miš Logitech MX Master 3",
     description: "Premium miš, ergonomski, savršen za dugotrajni rad. Baterija traje 70 dana.",
     category: "Elektronika",
+    condition: "Jako dobro",
     wantedFor: "Mehanička tipkovnica ili slušalice",
     price: 90,
     imageUri: null,
@@ -174,6 +197,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Ljetna jakna, H&M, M veličina",
     description: "Lagana ljetna jakna, nošena jednu sezonu. Boja krem/bijela, odlično stanje.",
     category: "Odjeća",
+    condition: "Prihvatljivo",
     wantedFor: "Zimska jakna ili kaput",
     price: null,
     imageUri: null,
@@ -189,6 +213,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Gaming tipkovnica mehanička Logitech G413",
     description: "Mehanička tipkovnica s RGB osvjetljenjem, odlična za gaming i tipkanje. Malo korištena.",
     category: "Elektronika",
+    condition: "Jako dobro",
     wantedFor: "Slušalice ili bežični miš",
     price: 150,
     imageUri: null,
@@ -204,6 +229,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Brdski bicikl 29\", 21 brzina",
     description: "Solid brdski bicikl za rekreativce, servisiran ove godine. Shimano mjenjač.",
     category: "Sport",
+    condition: "Dobro",
     wantedFor: "Roleri ili električni romobil",
     price: 280,
     imageUri: null,
@@ -219,6 +245,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Sci-fi knjige (5 komada)",
     description: "Asimov, Philip K. Dick i Arthur C. Clarke. Sve u odličnom stanju, bez oštećenja.",
     category: "Knjige",
+    condition: "Kao novo",
     wantedFor: "Fantazija ili kriminalistički romani",
     price: 40,
     imageUri: null,

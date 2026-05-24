@@ -79,7 +79,7 @@ export default function LoginScreen() {
           <View style={[styles.topTab, styles.topTabActive, { borderBottomColor: colors.primary }]}>
             <Text style={[styles.topTabText, { color: colors.primary }]}>Prijava</Text>
           </View>
-          <Pressable onPress={() => router.replace("/onboarding")} style={styles.topTab}>
+          <Pressable onPress={() => router.push("/onboarding")} style={styles.topTab}>
             <Text style={[styles.topTabText, { color: colors.mutedForeground }]}>Registracija</Text>
           </Pressable>
         </View>
@@ -95,7 +95,7 @@ export default function LoginScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>Prijava</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             Još nemaš profil na Trampaj.hr?{" "}
-            <Text style={[styles.link, { color: colors.secondary }]} onPress={() => router.replace("/onboarding")}>
+            <Text style={[styles.link, { color: colors.secondary }]} onPress={() => router.push("/onboarding")}>
               Registriraj se »
             </Text>
           </Text>

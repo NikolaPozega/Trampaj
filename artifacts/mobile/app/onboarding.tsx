@@ -25,7 +25,7 @@ import { useListings } from "@/context/ListingsContext";
 
 export const ONBOARDED_KEY = "@trampaj_onboarded_v1";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 export default function OnboardingScreen() {
   const colors = useColors();
@@ -156,9 +156,8 @@ export default function OnboardingScreen() {
   }
 
   const STEPS = [
-    { n: 1, label: "Vrsta računa" },
-    { n: 2, label: "Osobni podaci" },
-    { n: 3, label: "Kontakt podaci" },
+    { n: 1, label: "Osobni podaci" },
+    { n: 2, label: "Kontakt podaci" },
   ];
 
   // ── Post-registration screen ──────────────────────────────────────────────
@@ -274,48 +273,6 @@ export default function OnboardingScreen() {
         {/* ── STEP 1 ── */}
         {step === 1 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Registracija</Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              Odaberi vrstu računa koji ti najviše odgovara.
-            </Text>
-            <View style={styles.accountTypes}>
-              <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(2); }}
-                style={({ pressed }) => [styles.accountCard, { backgroundColor: colors.card, borderColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <View style={[styles.accountIcon, { backgroundColor: `${colors.primary}22` }]}>
-                  <Feather name="user" size={28} color={colors.primary} />
-                </View>
-                <Text style={[styles.accountTitle, { color: colors.foreground }]}>Privatni korisnik</Text>
-                <Text style={[styles.accountDesc, { color: colors.mutedForeground }]}>
-                  Trampi predmete koje više ne trebaš — jednostavno, brzo i bez novca
-                </Text>
-                <View style={[styles.accountBtn, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.accountBtnText, { color: colors.primaryForeground }]}>ODABERI</Text>
-                </View>
-              </Pressable>
-              <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(2); }}
-                style={({ pressed }) => [styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <View style={[styles.accountIcon, { backgroundColor: `${colors.secondary}22` }]}>
-                  <Feather name="briefcase" size={28} color={colors.secondary} />
-                </View>
-                <Text style={[styles.accountTitle, { color: colors.foreground }]}>Poslovni korisnik</Text>
-                <Text style={[styles.accountDesc, { color: colors.mutedForeground }]}>
-                  Proširi poslovanje — dosegni tisuće potencijalnih partnera svaki dan
-                </Text>
-                <View style={[styles.accountBtn, { backgroundColor: colors.secondary }]}>
-                  <Text style={[styles.accountBtnText, { color: "#fff" }]}>ODABERI</Text>
-                </View>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
-        {/* ── STEP 2 ── */}
-        {step === 2 && (
-          <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Osobni podaci</Text>
             <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Field label="Korisničko ime *" value={username} onChange={(v) => { setUsername(v); setErrors((e) => ({ ...e, username: "" })); }}
@@ -329,15 +286,15 @@ export default function OnboardingScreen() {
                 placeholder="Ponovi lozinku" secureTextEntry={!showConfirm} showToggle onToggleSecure={() => setShowConfirm((v) => !v)}
                 showingSecure={showConfirm} error={errors.confirmPassword} colors={colors} />
             </View>
-            <Pressable onPress={() => validateStep2() && (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), setStep(3))}
+            <Pressable onPress={() => validateStep2() && (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), setStep(2))}
               style={({ pressed }) => [styles.nextBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
               <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>DALJE →</Text>
             </Pressable>
           </View>
         )}
 
-        {/* ── STEP 3 ── */}
-        {step === 3 && (
+        {/* ── STEP 2 ── */}
+        {step === 2 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Kontakt podaci</Text>
 

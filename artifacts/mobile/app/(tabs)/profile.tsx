@@ -35,6 +35,7 @@ interface EditState {
   priceText: string;
   category: string;
   location: string;
+  condition: import("@/context/ListingsContext").Condition | null;
 }
 
 const LOCATION_OPTIONS = [
@@ -475,6 +476,7 @@ export default function ProfileScreen() {
       priceText: item.price != null ? String(item.price) : "",
       category: item.category,
       location: item.location,
+      condition: item.condition ?? null,
     });
   }
 
@@ -490,6 +492,7 @@ export default function ProfileScreen() {
       price: price && !isNaN(price) ? price : null,
       category: editState.category,
       location: editState.location,
+      condition: editState.condition,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setEditState(null);
@@ -1036,6 +1039,27 @@ export default function ProfileScreen() {
                     </Pressable>
                   ))}
                 </ScrollView>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Stanje predmeta</Text>
+                <View style={styles.conditionGrid}>
+                  {(["Kao novo", "Jako dobro", "Dobro", "Prihvatljivo"] as const).map((cond) => {
+                    const COL: Record<string, string> = { "Kao novo": "#38BDF8", "Jako dobro": "#4ADE80", "Dobro": "#FACC15", "Prihvatljivo": "#FB923C" };
+                    const col = COL[cond];
+                    const selected = editState.condition === cond;
+                    return (
+                      <Pressable
+                        key={cond}
+                        onPress={() => setEditState((s) => s ? { ...s, condition: selected ? null : cond } : s)}
+                        style={[
+                          styles.conditionChip,
+                          { backgroundColor: selected ? `${col}22` : colors.muted, borderColor: selected ? col : colors.border },
+                        ]}
+                      >
+                        <View style={[styles.conditionDot, { backgroundColor: col }]} />
+                        <Text style={[styles.conditionChipText, { color: selected ? col : colors.mutedForeground }]}>{cond}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
                 <View style={styles.locationGrid}>
                   {LOCATION_OPTIONS.map((loc) => (
@@ -1306,6 +1330,10 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   locationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  conditionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  conditionChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
+  conditionDot: { width: 8, height: 8, borderRadius: 4 },
+  conditionChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   modalBtns: { flexDirection: "row", gap: 10, marginTop: 4 },
   modalBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10 },
   modalBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

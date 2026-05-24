@@ -6,6 +6,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { Listing } from "@/context/ListingsContext";
+import { CONDITION_COLORS } from "@/context/ListingsContext";
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -36,6 +37,7 @@ export function ListingCard({ listing }: Props) {
   const colors = useColors();
   const hasPrice = listing.price != null && listing.price > 0;
   const iconName = CATEGORY_ICONS[listing.category] ?? "package";
+  const conditionColor = listing.condition ? CONDITION_COLORS[listing.condition] : null;
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -70,10 +72,14 @@ export function ListingCard({ listing }: Props) {
             <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
           </View>
         )}
+        {listing.condition && listing.status !== "traded" && (
+          <View style={[styles.conditionBadge, { backgroundColor: `${conditionColor}22`, borderColor: `${conditionColor}55` }]}>
+            <Text style={[styles.conditionText, { color: conditionColor! }]}>{listing.condition}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.body}>
-        {/* Title + price on same row */}
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
             {listing.title}
@@ -127,6 +133,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  conditionBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  conditionText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
   },
   body: {
     padding: 10,
