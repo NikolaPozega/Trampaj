@@ -19,7 +19,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
-import { analyzeImageForCategory, detectCategoryFromTitle, suggestTrades } from "@/services/openai";
+import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally, suggestTrades } from "@/services/openai";
 
 const LOCATION_OPTIONS = ["Zagreb", "Split", "Rijeka", "Osijek", "Sarajevo", "Beograd", "Ljubljana", "Ostalo"];
 
@@ -38,11 +38,13 @@ export default function PostScreen() {
   const [phone, setPhone] = useState("");
   const [showPhone, setShowPhone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [categoryManuallySet, setCategoryManuallySet] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wantedDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
@@ -56,7 +58,7 @@ export default function PostScreen() {
       setTitleSuggesting(true);
       try {
         const detected = await detectCategoryFromTitle(title);
-        if (detected && !category) {
+        if (detected && !categoryManuallySet) {
           setCategory(detected);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
@@ -257,11 +259,18 @@ export default function PostScreen() {
 
         <TextInput
           value={wantedFor}
-          onChangeText={setWantedFor}
-          placeholder="Što želiš zauzvrat"
+          onChangeText={(t) => { setWantedFor(t); }}
+          placeholder="Što želiš zauzvrat (npr. bicikl, laptop…)"
           placeholderTextColor={colors.mutedForeground}
           style={inputStyle}
           maxLength={120}
+        />
+
+        <WantedSuggestions
+          wantedFor={wantedFor}
+          priceText={priceText}
+          listings={listings}
+          colors={colors}
         />
 
         <View style={styles.priceRow}>
@@ -307,7 +316,7 @@ export default function PostScreen() {
             {CATEGORIES.filter((c) => c !== "Sve").map((cat) => (
               <Pressable
                 key={cat}
-                onPress={() => setCategory(cat)}
+                onPress={() => { setCategory(cat); setCategoryManuallySet(true); }}
                 style={[
                   styles.chip,
                   { backgroundColor: category === cat ? colors.primary : colors.muted, borderColor: category === cat ? colors.primary : colors.border },
@@ -392,6 +401,122 @@ export default function PostScreen() {
     </KeyboardAwareScrollView>
   );
 }
+
+// ─── Wanted Suggestions ────────────────────────────────────────────────────
+
+interface WantedSuggestionsProps {
+  wantedFor: string;
+  priceText: string;
+  listings: import("@/context/ListingsContext").Listing[];
+  colors: ReturnType<typeof useColors>;
+}
+
+function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSuggestionsProps) {
+  const [matches, setMatches] = React.useState<import("@/context/ListingsContext").Listing[]>([]);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const q = wantedFor.trim();
+      if (q.length < 2) { setMatches([]); return; }
+
+      const detectedCat = detectCategoryLocally(q);
+      const myPrice = priceText ? parseFloat(priceText.replace(",", ".")) : null;
+
+      let candidates = listings.filter((l) => l.status === "active" && !l.isMine);
+
+      if (detectedCat) {
+        candidates = candidates.filter((l) => l.category === detectedCat);
+      } else {
+        // fallback: text search in title + description + category
+        const lower = q.toLowerCase();
+        candidates = candidates.filter(
+          (l) =>
+            l.title.toLowerCase().includes(lower) ||
+            l.description.toLowerCase().includes(lower) ||
+            l.wantedFor.toLowerCase().includes(lower)
+        );
+      }
+
+      // Sort by price similarity
+      candidates.sort((a, b) => {
+        if (myPrice == null) return 0;
+        const aDiff = a.price != null ? Math.abs(a.price - myPrice) : Infinity;
+        const bDiff = b.price != null ? Math.abs(b.price - myPrice) : Infinity;
+        return aDiff - bDiff;
+      });
+
+      setMatches(candidates.slice(0, 8));
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [wantedFor, priceText, listings]);
+
+  if (matches.length === 0) return null;
+
+  return (
+    <View style={wStyles.container}>
+      <View style={wStyles.header}>
+        <Feather name="search" size={12} color={colors.secondary} />
+        <Text style={[wStyles.label, { color: colors.secondary }]}>
+          Dostupni oglasi koji odgovaraju
+        </Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={wStyles.scroll}
+      >
+        {matches.map((item) => (
+          <Pressable
+            key={item.id}
+            onPress={() => router.push(`/listing/${item.id}`)}
+            style={({ pressed }) => [
+              wStyles.card,
+              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <View style={[wStyles.catBadge, { backgroundColor: colors.muted }]}>
+              <Text style={[wStyles.catText, { color: colors.mutedForeground }]}>{item.category}</Text>
+            </View>
+            <Text style={[wStyles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+              {item.title}
+            </Text>
+            {item.price != null && (
+              <Text style={[wStyles.cardPrice, { color: colors.primary }]}>
+                {item.price} €
+              </Text>
+            )}
+            <Text style={[wStyles.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {item.location}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const wStyles = StyleSheet.create({
+  container: { gap: 8 },
+  header: { flexDirection: "row", alignItems: "center", gap: 5 },
+  label: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.3, textTransform: "uppercase" },
+  scroll: { gap: 8, paddingRight: 4 },
+  card: {
+    width: 130,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    gap: 5,
+  },
+  catBadge: { alignSelf: "flex-start", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  catText: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2, textTransform: "uppercase" },
+  cardTitle: { fontSize: 12, fontFamily: "Inter_500Medium", lineHeight: 16 },
+  cardPrice: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  cardSub: { fontSize: 10, fontFamily: "Inter_400Regular" },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

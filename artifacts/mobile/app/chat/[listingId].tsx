@@ -61,7 +61,13 @@ export default function ChatScreen() {
         >
           <Feather name="arrow-left" size={18} color={colors.foreground} />
         </Pressable>
-        <View style={styles.topBarCenter}>
+        <Pressable
+          style={({ pressed }) => [styles.topBarCenter, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(`/user/${encodeURIComponent(liveConversation.otherUserName)}`);
+          }}
+        >
           <View style={[styles.avatarSmall, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
             <Text style={[styles.avatarSmallText, { color: colors.primary }]}>
               {(liveConversation.otherUserName || "?").charAt(0).toUpperCase()}
@@ -72,10 +78,10 @@ export default function ChatScreen() {
               {liveConversation.otherUserName}
             </Text>
             <Text style={[styles.topBarSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {liveConversation.listingTitle}
+              Vidi sve oglase →
             </Text>
           </View>
-        </View>
+        </Pressable>
         <View style={{ width: 36 }} />
       </View>
 
