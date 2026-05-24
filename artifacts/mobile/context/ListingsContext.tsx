@@ -38,6 +38,9 @@ interface ListingsContextType {
   markAsTraded: (id: string) => void;
   markAsActive: (id: string) => void;
   deleteListing: (id: string) => void;
+  savedListingIds: string[];
+  saveListing: (id: string) => void;
+  unsaveListing: (id: string) => void;
   isLoaded: boolean;
 }
 
@@ -45,6 +48,7 @@ const ListingsContext = createContext<ListingsContextType | null>(null);
 
 const STORAGE_KEY = "@trampaj_listings_v2";
 const NAME_KEY = "@trampaj_name";
+const SAVED_KEY = "@trampaj_saved_v1";
 
 const SAMPLE_LISTINGS: Listing[] = [
   {
@@ -127,18 +131,21 @@ const SAMPLE_LISTINGS: Listing[] = [
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [myName, setMyNameState] = useState<string>("Korisnik");
+  const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [storedListings, storedName] = await Promise.all([
+        const [storedListings, storedName, storedSaved] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(NAME_KEY),
+          AsyncStorage.getItem(SAVED_KEY),
         ]);
         const parsed: Listing[] = storedListings ? JSON.parse(storedListings) : [];
         setListings([...parsed, ...SAMPLE_LISTINGS]);
         if (storedName) setMyNameState(storedName);
+        if (storedSaved) setSavedListingIds(JSON.parse(storedSaved));
       } catch {
         setListings(SAMPLE_LISTINGS);
       } finally {
@@ -229,9 +236,39 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     [saveUserListings]
   );
 
+  const saveListing = useCallback((id: string) => {
+    setSavedListingIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const updated = [...prev, id];
+      AsyncStorage.setItem(SAVED_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, []);
+
+  const unsaveListing = useCallback((id: string) => {
+    setSavedListingIds((prev) => {
+      const updated = prev.filter((s) => s !== id);
+      AsyncStorage.setItem(SAVED_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, []);
+
   return (
     <ListingsContext.Provider
-      value={{ listings, myName, setMyName, addListing, updateListing, markAsTraded, markAsActive, deleteListing, isLoaded }}
+      value={{
+        listings,
+        myName,
+        setMyName,
+        addListing,
+        updateListing,
+        markAsTraded,
+        markAsActive,
+        deleteListing,
+        savedListingIds,
+        saveListing,
+        unsaveListing,
+        isLoaded,
+      }}
     >
       {children}
     </ListingsContext.Provider>
