@@ -80,17 +80,28 @@ export default function OnboardingScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Dozvola odbijena", "Omogući pristup lokaciji u postavkama uređaja.");
-        setGpsLoading(false);
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const [result] = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-      if (result) {
-        const parts = [result.street, result.streetNumber, result.city].filter(Boolean);
-        setAddress(parts.join(", "));
+      try {
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.coords.latitude}&lon=${loc.coords.longitude}&accept-language=hr`,
+          { headers: { "User-Agent": "Trampaj/1.0" } }
+        );
+        const data = await resp.json();
+        const a = data.address ?? {};
+        const city = a.city || a.town || a.village || a.municipality || "";
+        const region = a.county || a.state_district || a.state || "";
+        setAddress(city && region && region !== city ? `${city}, ${region}` : city || (data.display_name ?? "").split(",")[0] || "");
+      } catch {
+        const [result] = await Location.reverseGeocodeAsync({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+        if (result) {
+          const city = result.city || result.district || result.subregion || result.name || "";
+          setAddress(city);
+        }
       }
     } catch {
       Alert.alert("Greška", "Nije moguće dohvatiti lokaciju.");
