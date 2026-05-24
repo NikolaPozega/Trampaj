@@ -79,9 +79,10 @@ function MatchCard({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dy) > Math.abs(g.dx) && Math.abs(g.dy) > 8,
+      // Capture immediately on touch — prevents parent FlatList from seeing it
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         onSwipeStart();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -134,79 +135,81 @@ function MatchCard({
           opacity,
         },
       ]}
-      {...panResponder.panHandlers}
     >
-      {/* Dismiss overlay (swipe up) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[mcStyles.actionOverlay, mcStyles.dismissOverlay, { opacity: dismissOverlayOpacity }]}
-      >
-        <Feather name="x-circle" size={22} color="#fff" />
-        <Text style={mcStyles.overlayText}>Odbaci</Text>
-      </Animated.View>
-
-      {/* Save overlay (swipe down) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[mcStyles.actionOverlay, mcStyles.saveOverlay, { opacity: saveOverlayOpacity }]}
-      >
-        <Feather name="bookmark" size={22} color="#fff" />
-        <Text style={mcStyles.overlayText}>Spremi</Text>
-      </Animated.View>
-
-      {/* Permanent swipe hints */}
-      <View style={mcStyles.hintsRow}>
-        <View style={[mcStyles.hintPill, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}30` }]}>
-          <Feather name="chevron-up" size={11} color={colors.destructive} />
-          <Text style={[mcStyles.hintText, { color: colors.destructive }]}>odbaci</Text>
-        </View>
-        <View style={[mcStyles.typeBadge, { backgroundColor: badgeBg, borderColor: badgeColor }]}>
-          <Text style={[mcStyles.typeBadgeText, { color: badgeColor }]}>
-            {MATCH_LABEL[match.matchType]}
-          </Text>
-        </View>
-        <View style={[mcStyles.hintPill, { backgroundColor: `#22c55e18`, borderColor: `#22c55e30` }]}>
-          <Text style={[mcStyles.hintText, { color: "#22c55e" }]}>spremi</Text>
-          <Feather name="chevron-down" size={11} color="#22c55e" />
-        </View>
-      </View>
-
-      {/* Exchange visual */}
-      <View style={mcStyles.exchangeRow}>
-        <View style={[mcStyles.itemBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-          <Text style={[mcStyles.itemLabel, { color: colors.mutedForeground }]}>Tvoj oglas</Text>
-          <Text style={[mcStyles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {match.myListing.title}
-          </Text>
-          {match.myListing.price != null && (
-            <Text style={[mcStyles.itemPrice, { color: colors.primary }]}>{match.myListing.price} €</Text>
-          )}
-        </View>
-
-        <View
-          style={[
-            mcStyles.arrowCircle,
-            {
-              backgroundColor: isBoth ? colors.primary : colors.muted,
-              borderColor: isBoth ? colors.primary : colors.border,
-            },
-          ]}
+      {/* Swipe area — captures ALL touches, page never scrolls */}
+      <View {...panResponder.panHandlers} style={mcStyles.swipeArea}>
+        {/* Dismiss overlay (swipe up) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[mcStyles.actionOverlay, mcStyles.dismissOverlay, { opacity: dismissOverlayOpacity }]}
         >
-          <Feather name="repeat" size={14} color={isBoth ? colors.primaryForeground : colors.mutedForeground} />
+          <Feather name="x-circle" size={22} color="#fff" />
+          <Text style={mcStyles.overlayText}>Odbaci</Text>
+        </Animated.View>
+
+        {/* Save overlay (swipe down) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[mcStyles.actionOverlay, mcStyles.saveOverlay, { opacity: saveOverlayOpacity }]}
+        >
+          <Feather name="bookmark" size={22} color="#fff" />
+          <Text style={mcStyles.overlayText}>Spremi</Text>
+        </Animated.View>
+
+        {/* Permanent swipe hints */}
+        <View style={mcStyles.hintsRow}>
+          <View style={[mcStyles.hintPill, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}30` }]}>
+            <Feather name="chevron-up" size={11} color={colors.destructive} />
+            <Text style={[mcStyles.hintText, { color: colors.destructive }]}>odbaci</Text>
+          </View>
+          <View style={[mcStyles.typeBadge, { backgroundColor: badgeBg, borderColor: badgeColor }]}>
+            <Text style={[mcStyles.typeBadgeText, { color: badgeColor }]}>
+              {MATCH_LABEL[match.matchType]}
+            </Text>
+          </View>
+          <View style={[mcStyles.hintPill, { backgroundColor: `#22c55e18`, borderColor: `#22c55e30` }]}>
+            <Text style={[mcStyles.hintText, { color: "#22c55e" }]}>spremi</Text>
+            <Feather name="chevron-down" size={11} color="#22c55e" />
+          </View>
         </View>
 
-        <View style={[mcStyles.itemBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-          <Text style={[mcStyles.itemLabel, { color: colors.mutedForeground }]}>Njihov oglas</Text>
-          <Text style={[mcStyles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {match.theirListing.title}
-          </Text>
-          {match.theirListing.price != null && (
-            <Text style={[mcStyles.itemPrice, { color: colors.primary }]}>{match.theirListing.price} €</Text>
-          )}
+        {/* Exchange visual */}
+        <View style={mcStyles.exchangeRow}>
+          <View style={[mcStyles.itemBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Text style={[mcStyles.itemLabel, { color: colors.mutedForeground }]}>Tvoj oglas</Text>
+            <Text style={[mcStyles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
+              {match.myListing.title}
+            </Text>
+            {match.myListing.price != null && (
+              <Text style={[mcStyles.itemPrice, { color: colors.primary }]}>{match.myListing.price} €</Text>
+            )}
+          </View>
+
+          <View
+            style={[
+              mcStyles.arrowCircle,
+              {
+                backgroundColor: isBoth ? colors.primary : colors.muted,
+                borderColor: isBoth ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <Feather name="repeat" size={14} color={isBoth ? colors.primaryForeground : colors.mutedForeground} />
+          </View>
+
+          <View style={[mcStyles.itemBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Text style={[mcStyles.itemLabel, { color: colors.mutedForeground }]}>Njihov oglas</Text>
+            <Text style={[mcStyles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
+              {match.theirListing.title}
+            </Text>
+            {match.theirListing.price != null && (
+              <Text style={[mcStyles.itemPrice, { color: colors.primary }]}>{match.theirListing.price} €</Text>
+            )}
+          </View>
         </View>
       </View>
 
-      {/* Footer */}
+      {/* Footer — outside PanResponder, freely pressable */}
       <Pressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -217,9 +220,15 @@ function MatchCard({
           { borderTopColor: colors.border, backgroundColor: pressed ? colors.muted : "transparent" },
         ]}
       >
-        <View style={mcStyles.footerLeft}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push(`/user/${encodeURIComponent(match.theirListing.userName)}`);
+          }}
+          style={mcStyles.footerLeft}
+        >
           <Feather name="user" size={11} color={colors.mutedForeground} />
-          <Text style={[mcStyles.footerUser, { color: colors.mutedForeground }]}>
+          <Text style={[mcStyles.footerUser, { color: colors.secondary }]}>
             {match.theirListing.userName}
           </Text>
           <Text style={[mcStyles.footerDot, { color: colors.mutedForeground }]}>·</Text>
@@ -227,7 +236,7 @@ function MatchCard({
           <Text style={[mcStyles.footerUser, { color: colors.mutedForeground }]}>
             {match.theirListing.location}
           </Text>
-        </View>
+        </Pressable>
         <View style={[mcStyles.viewBtn, { backgroundColor: colors.primary }]}>
           <Text style={[mcStyles.viewBtnText, { color: colors.primaryForeground }]}>Otvori →</Text>
         </View>
@@ -321,6 +330,7 @@ export default function ProfileScreen() {
     savedListingIds,
     saveListing,
     unsaveListing,
+    deleteAllData,
   } = useListings();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(myName);
@@ -522,6 +532,60 @@ export default function ProfileScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* GDPR / legal section */}
+      <View style={[styles.gdprSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.gdprTitleRow}>
+          <Feather name="shield" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.gdprTitle, { color: colors.mutedForeground }]}>Privatnost i podaci</Text>
+        </View>
+        <View style={styles.gdprLinks}>
+          <Pressable
+            onPress={() => router.push("/terms")}
+            style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="file-text" size={12} color={colors.secondary} />
+            <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Uvjeti korištenja</Text>
+          </Pressable>
+          <View style={[styles.gdprDivider, { backgroundColor: colors.border }]} />
+          <Pressable
+            onPress={() => router.push("/privacy")}
+            style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="lock" size={12} color={colors.secondary} />
+            <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Politika privatnosti</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              "Izbriši sve podatke",
+              "Ovo će trajno obrisati sve tvoje oglase, poruke, spremljene stavke i profil. Radnja se ne može poništiti.",
+              [
+                { text: "Odustani", style: "cancel" },
+                {
+                  text: "Izbriši sve",
+                  style: "destructive",
+                  onPress: async () => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    await deleteAllData();
+                    router.replace("/onboarding");
+                  },
+                },
+              ]
+            );
+          }}
+          style={({ pressed }) => [
+            styles.gdprDeleteBtn,
+            { borderColor: colors.destructive, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="trash-2" size={13} color={colors.destructive} />
+          <Text style={[styles.gdprDeleteText, { color: colors.destructive }]}>
+            Izbriši sve moje podatke (GDPR)
+          </Text>
+        </Pressable>
+      </View>
 
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Moji oglasi</Text>
     </View>
@@ -766,9 +830,11 @@ const mcStyles = StyleSheet.create({
     width: 296,
     borderRadius: 16,
     borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  swipeArea: {
     padding: 14,
     gap: 12,
-    overflow: "hidden",
   },
   hintsRow: {
     flexDirection: "row",
@@ -985,4 +1051,13 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: "row", gap: 10, marginTop: 4 },
   modalBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10 },
   modalBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  gdprSection: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12, marginBottom: 4 },
+  gdprTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  gdprTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
+  gdprLinks: { flexDirection: "row", alignItems: "center", gap: 0 },
+  gdprLink: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1, paddingVertical: 4 },
+  gdprLinkText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  gdprDivider: { width: 1, height: 14, marginHorizontal: 8 },
+  gdprDeleteBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
+  gdprDeleteText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 });

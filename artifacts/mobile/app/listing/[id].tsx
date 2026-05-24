@@ -38,17 +38,32 @@ function timeAgo(ts: number): string {
   return `prije ${days} dana`;
 }
 
-type ModalMode = "barter" | "buy";
+function StarRow({ value, onChange, size = 28 }: { value: number; onChange?: (v: number) => void; size?: number }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 6 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Pressable key={i} onPress={() => onChange?.(i)} disabled={!onChange} hitSlop={6}>
+          <Feather name="star" size={size} color={i <= value ? "#F5C100" : "#334155"} />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+type ModalMode = "barter" | "buy" | "review";
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings } = useListings();
+  const { listings, myName, reviews, addReview } = useListings();
   const [offerModal, setOfferModal] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("barter");
   const [offerText, setOfferText] = useState("");
   const [offerSent, setOfferSent] = useState(false);
+  const [reviewStars, setReviewStars] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSent, setReviewSent] = useState(false);
   const { getOrCreateConversation } = useChat();
 
   const listing = listings.find((l) => l.id === id);
@@ -68,14 +83,31 @@ export default function ListingDetailScreen() {
 
   const iconName = CATEGORY_ICONS[listing.category] ?? "package";
   const hasPrice = listing.price != null && listing.price > 0;
+  const sellerReviews = reviews.filter((r) => r.targetUserName === listing.userName);
+  const avgStars = sellerReviews.length
+    ? sellerReviews.reduce((s, r) => s + r.stars, 0) / sellerReviews.length
+    : 5;
+  const alreadyReviewed = sellerReviews.some((r) => r.authorName === myName);
 
   function openModal(mode: ModalMode) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setModalMode(mode);
+    setReviewStars(5);
+    setReviewComment("");
+    setReviewSent(false);
+    setOfferSent(false);
+    setOfferText("");
     setOfferModal(true);
   }
 
   function handleSend() {
+    if (modalMode === "review") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      addReview(listing.userName, reviewStars, reviewComment);
+      setReviewSent(true);
+      setTimeout(() => setOfferModal(false), 1600);
+      return;
+    }
     if (modalMode === "barter" && !offerText.trim()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setOfferSent(true);
@@ -86,6 +118,11 @@ export default function ListingDetailScreen() {
     if (listing.phone) {
       Linking.openURL(`tel:${listing.phone.replace(/\s/g, "")}`);
     }
+  }
+
+  function goToUser() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/user/${encodeURIComponent(listing.userName)}`);
   }
 
   return (
@@ -151,7 +188,11 @@ export default function ListingDetailScreen() {
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        <View style={styles.userRow}>
+        {/* Clickable user row */}
+        <Pressable
+          onPress={goToUser}
+          style={({ pressed }) => [styles.userRow, { opacity: pressed ? 0.75 : 1 }]}
+        >
           <View style={[styles.userAvatar, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
             <Text style={[styles.userAvatarText, { color: colors.primary }]}>
               {listing.userName.charAt(0).toUpperCase()}
@@ -159,16 +200,43 @@ export default function ListingDetailScreen() {
           </View>
           <View style={styles.userInfo}>
             <View style={styles.userNameRow}>
-              <Text style={[styles.userName, { color: colors.foreground }]}>{listing.userName}</Text>
+              <Text style={[styles.userName, { color: colors.secondary }]}>{listing.userName}</Text>
               <Feather name="check-circle" size={14} color={colors.secondary} />
+              <Feather name="chevron-right" size={13} color={colors.mutedForeground} style={{ marginLeft: "auto" }} />
             </View>
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map((i) => (
-                <Feather key={i} name="star" size={11} color={colors.primary} />
+                <Feather key={i} name="star" size={11} color={i <= Math.round(avgStars) ? colors.primary : colors.border} />
               ))}
+              <Text style={[styles.reviewCount, { color: colors.mutedForeground }]}>
+                {sellerReviews.length > 0 ? `${avgStars.toFixed(1)} (${sellerReviews.length})` : "Bez ocjena"}
+              </Text>
             </View>
           </View>
-        </View>
+        </Pressable>
+
+        {/* Reviews list */}
+        {sellerReviews.length > 0 && (
+          <View style={styles.reviewsList}>
+            {sellerReviews.slice(0, 3).map((r) => (
+              <View key={r.id} style={[styles.reviewItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.reviewHeader}>
+                  <Text style={[styles.reviewAuthor, { color: colors.foreground }]}>{r.authorName}</Text>
+                  <View style={{ flexDirection: "row", gap: 2 }}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Feather key={i} name="star" size={10} color={i <= r.stars ? "#F5C100" : colors.border} />
+                    ))}
+                  </View>
+                </View>
+                {r.comment.length > 0 && (
+                  <Text style={[styles.reviewComment, { color: colors.mutedForeground }]} numberOfLines={3}>
+                    {r.comment}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.metaList}>
           <View style={styles.metaItem}>
@@ -232,27 +300,68 @@ export default function ListingDetailScreen() {
               </Pressable>
             ) : null}
           </View>
-          <Pressable style={styles.reportBtn}>
-            <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi oglas</Text>
-          </Pressable>
+
+          <View style={styles.footerMeta}>
+            {!alreadyReviewed && (
+              <Pressable
+                onPress={() => openModal("review")}
+                style={({ pressed }) => [styles.reviewBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Feather name="star" size={13} color={colors.primary} />
+                <Text style={[styles.reviewBtnText, { color: colors.primary }]}>Ocijeni prodavatelja</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.reportBtn}>
+              <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi oglas</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
       <Modal visible={offerModal} transparent animationType="slide" onRequestClose={() => setOfferModal(false)}>
         <Pressable style={styles.overlay} onPress={() => setOfferModal(false)}>
           <Pressable style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
-            {offerSent ? (
+            {(offerSent || reviewSent) ? (
               <View style={styles.sentContainer}>
                 <View style={[styles.sentIcon, { backgroundColor: "#2E7D4F" }]}>
                   <Feather name="check" size={28} color="#fff" />
                 </View>
                 <Text style={[styles.sentTitle, { color: colors.foreground }]}>
-                  {modalMode === "buy" ? "Zahtjev poslan!" : "Poruka poslana!"}
+                  {reviewSent ? "Ocjena poslana!" : modalMode === "buy" ? "Zahtjev poslan!" : "Poruka poslana!"}
                 </Text>
                 <Text style={[styles.sentSub, { color: colors.mutedForeground }]}>
-                  {listing.userName} će te kontaktirati uskoro
+                  {reviewSent ? `Hvala na ocjeni za ${listing.userName}` : `${listing.userName} će te kontaktirati uskoro`}
                 </Text>
               </View>
+            ) : modalMode === "review" ? (
+              <>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Ocijeni prodavatelja</Text>
+                <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+                  {listing.userName} · {listing.title}
+                </Text>
+                <View style={{ alignItems: "center", paddingVertical: 8 }}>
+                  <StarRow value={reviewStars} onChange={setReviewStars} size={36} />
+                </View>
+                <TextInput
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Napiši komentar (opcionalno)..."
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+                  multiline
+                  maxLength={400}
+                  textAlignVertical="top"
+                />
+                <Pressable
+                  onPress={handleSend}
+                  style={({ pressed }) => [
+                    styles.modalBtn,
+                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Pošalji ocjenu</Text>
+                </Pressable>
+              </>
             ) : (
               <>
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>
@@ -308,25 +417,11 @@ const styles = StyleSheet.create({
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   notFoundText: { fontSize: 16, fontFamily: "Inter_400Regular" },
   backLink: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    justifyContent: "space-between",
-    borderBottomWidth: 1,
-  },
+  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, justifyContent: "space-between", borderBottomWidth: 1 },
   backCircle: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   topBarTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   content: { padding: 16, gap: 16 },
-  imageHero: {
-    height: 220,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
+  imageHero: { height: 220, borderRadius: 18, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   heroPrice: { position: "absolute", bottom: 12, right: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   heroPriceText: { fontSize: 16, fontFamily: "Inter_700Bold" },
   tradedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
@@ -346,7 +441,13 @@ const styles = StyleSheet.create({
   userInfo: { flex: 1, gap: 4 },
   userNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   userName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  starsRow: { flexDirection: "row", gap: 2 },
+  starsRow: { flexDirection: "row", gap: 2, alignItems: "center" },
+  reviewCount: { fontSize: 11, fontFamily: "Inter_400Regular", marginLeft: 4 },
+  reviewsList: { gap: 8 },
+  reviewItem: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 6 },
+  reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  reviewAuthor: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  reviewComment: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   metaList: { gap: 10 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 10 },
   metaText: { fontSize: 14, fontFamily: "Inter_400Regular" },
@@ -354,7 +455,10 @@ const styles = StyleSheet.create({
   footerButtons: { flexDirection: "row", gap: 10 },
   footerBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 14 },
   footerBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  reportBtn: { alignItems: "center", paddingVertical: 2 },
+  footerMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  reviewBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  reviewBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  reportBtn: { paddingVertical: 2 },
   reportText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
   modal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, padding: 20, gap: 14, paddingBottom: 40 },

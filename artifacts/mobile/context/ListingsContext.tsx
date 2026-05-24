@@ -29,6 +29,15 @@ export interface Listing {
   isMine: boolean;
 }
 
+export interface Review {
+  id: string;
+  targetUserName: string;
+  authorName: string;
+  stars: number;
+  comment: string;
+  createdAt: number;
+}
+
 interface ListingsContextType {
   listings: Listing[];
   myName: string;
@@ -41,6 +50,9 @@ interface ListingsContextType {
   savedListingIds: string[];
   saveListing: (id: string) => void;
   unsaveListing: (id: string) => void;
+  reviews: Review[];
+  addReview: (targetUserName: string, stars: number, comment: string) => void;
+  deleteAllData: () => Promise<void>;
   isLoaded: boolean;
 }
 
@@ -49,6 +61,7 @@ const ListingsContext = createContext<ListingsContextType | null>(null);
 const STORAGE_KEY = "@trampaj_listings_v2";
 const NAME_KEY = "@trampaj_name";
 const SAVED_KEY = "@trampaj_saved_v1";
+const REVIEWS_KEY = "@trampaj_reviews_v1";
 
 const SAMPLE_LISTINGS: Listing[] = [
   {
@@ -222,20 +235,28 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [myName, setMyNameState] = useState<string>("Korisnik");
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [storedListings, storedName, storedSaved] = await Promise.all([
+        const [storedListings, storedName, storedSaved, storedReviews] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(NAME_KEY),
           AsyncStorage.getItem(SAVED_KEY),
+          AsyncStorage.getItem(REVIEWS_KEY),
         ]);
         const parsed: Listing[] = storedListings ? JSON.parse(storedListings) : [];
-        setListings([...parsed, ...SAMPLE_LISTINGS]);
+        // Merge user listings with samples, replace sample_mine_* with user's actual name
+        const storedName_ = storedName || "Korisnik";
+        const mergedSamples = SAMPLE_LISTINGS.map((s) =>
+          s.isMine ? { ...s, userName: storedName_ } : s
+        );
+        setListings([...parsed, ...mergedSamples]);
         if (storedName) setMyNameState(storedName);
         if (storedSaved) setSavedListingIds(JSON.parse(storedSaved));
+        if (storedReviews) setReviews(JSON.parse(storedReviews));
       } catch {
         setListings(SAMPLE_LISTINGS);
       } finally {
@@ -253,6 +274,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const setMyName = useCallback(async (name: string) => {
     setMyNameState(name);
+    // Also update isMine listings with new name
+    setListings((prev) =>
+      prev.map((l) => (l.isMine ? { ...l, userName: name } : l))
+    );
     try {
       await AsyncStorage.setItem(NAME_KEY, name);
     } catch {}
@@ -270,7 +295,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       };
       setListings((prev) => {
         const updated = [newListing, ...prev];
-        const userListings = updated.filter((l) => l.isMine);
+        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
         saveUserListings(userListings);
         return updated;
       });
@@ -282,7 +307,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       setListings((prev) => {
         const updated = prev.map((l) => (l.id === id ? { ...l, status: "traded" as const } : l));
-        const userListings = updated.filter((l) => l.isMine);
+        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
         saveUserListings(userListings);
         return updated;
       });
@@ -294,7 +319,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location">>) => {
       setListings((prev) => {
         const updated = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
-        const userListings = updated.filter((l) => l.isMine);
+        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
         saveUserListings(userListings);
         return updated;
       });
@@ -306,7 +331,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       setListings((prev) => {
         const updated = prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l));
-        const userListings = updated.filter((l) => l.isMine);
+        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
         saveUserListings(userListings);
         return updated;
       });
@@ -318,7 +343,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       setListings((prev) => {
         const updated = prev.filter((l) => l.id !== id);
-        const userListings = updated.filter((l) => l.isMine);
+        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
         saveUserListings(userListings);
         return updated;
       });
@@ -343,6 +368,40 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addReview = useCallback(
+    (targetUserName: string, stars: number, comment: string) => {
+      const review: Review = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
+        targetUserName,
+        authorName: myName,
+        stars,
+        comment: comment.trim(),
+        createdAt: Date.now(),
+      };
+      setReviews((prev) => {
+        const updated = [review, ...prev];
+        AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    },
+    [myName]
+  );
+
+  const deleteAllData = useCallback(async () => {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY,
+      NAME_KEY,
+      SAVED_KEY,
+      REVIEWS_KEY,
+      "@trampaj_onboarded_v1",
+      "@trampaj_chat_v1",
+    ]);
+    setListings(SAMPLE_LISTINGS.filter((s) => !s.isMine));
+    setMyNameState("Korisnik");
+    setSavedListingIds([]);
+    setReviews([]);
+  }, []);
+
   return (
     <ListingsContext.Provider
       value={{
@@ -357,6 +416,9 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         savedListingIds,
         saveListing,
         unsaveListing,
+        reviews,
+        addReview,
+        deleteAllData,
         isLoaded,
       }}
     >
