@@ -308,18 +308,29 @@ function StatPill({
   color,
   textColor,
   bg,
+  onPress,
+  active,
 }: {
   label: string;
   value: number;
   color: string;
   textColor: string;
   bg: string;
+  onPress?: () => void;
+  active?: boolean;
 }) {
   return (
-    <View style={[statStyles.pill, { backgroundColor: bg }]}>
+    <Pressable
+      style={({ pressed }) => [
+        statStyles.pill,
+        { backgroundColor: bg, opacity: pressed ? 0.75 : 1 },
+        active && { borderWidth: 1.5, borderColor: color },
+      ]}
+      onPress={onPress}
+    >
       <Text style={[statStyles.value, { color }]}>{value}</Text>
       <Text style={[statStyles.label, { color: textColor }]}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -374,6 +385,8 @@ export default function ProfileScreen() {
   const myListings = listings.filter((l) => l.isMine);
   const activeCount = myListings.filter((l) => l.status === "active").length;
   const tradedCount = myListings.filter((l) => l.status === "traded").length;
+  const [statusFilter, setStatusFilter] = useState<"active" | "traded" | null>(null);
+  const filteredMyListings = statusFilter ? myListings.filter((l) => l.status === statusFilter) : myListings;
 
   const allMatches = useMemo(
     () => findTradeMatches(myListings, listings),
@@ -539,6 +552,32 @@ export default function ProfileScreen() {
         </View>
         <Text style={[styles.name, { color: colors.foreground }]}>{displayName}</Text>
 
+        {user && (
+          <View style={styles.userInfoRows}>
+            <View style={styles.userInfoRow}>
+              <Feather name="mail" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.email}</Text>
+              {user.isVerified && (
+                <View style={[styles.verifiedBadge, { backgroundColor: "#1A3A2A" }]}>
+                  <Feather name="check" size={9} color="#4ADE80" />
+                  <Text style={styles.verifiedText}>Potvrđen</Text>
+                </View>
+              )}
+            </View>
+            {user.phone ? (
+              <View style={styles.userInfoRow}>
+                <Feather name="phone" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.phone}</Text>
+              </View>
+            ) : null}
+            {user.address ? (
+              <View style={styles.userInfoRow}>
+                <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.address}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((i) => (
@@ -579,9 +618,18 @@ export default function ProfileScreen() {
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stats}>
-          <StatPill label="Aktivni" value={activeCount} color={colors.primary} textColor={colors.primaryForeground} bg={colors.muted} />
-          <StatPill label="Zamijenjeni" value={tradedCount} color={colors.secondary} textColor={colors.secondaryForeground} bg={colors.muted} />
-          <StatPill label="Ukupno" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted} />
+          <StatPill label="Aktivni" value={activeCount} color={colors.primary} textColor={colors.foreground} bg={colors.muted}
+            active={statusFilter === "active"}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(statusFilter === "active" ? null : "active"); }}
+          />
+          <StatPill label="Zamijenjeni" value={tradedCount} color={colors.secondary} textColor={colors.foreground} bg={colors.muted}
+            active={statusFilter === "traded"}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(statusFilter === "traded" ? null : "traded"); }}
+          />
+          <StatPill label="Ukupno" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted}
+            active={statusFilter === null}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(null); }}
+          />
         </View>
       </View>
 
@@ -660,61 +708,9 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* GDPR / legal section */}
-      <View style={[styles.gdprSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.gdprTitleRow}>
-          <Feather name="shield" size={13} color={colors.mutedForeground} />
-          <Text style={[styles.gdprTitle, { color: colors.mutedForeground }]}>Privatnost i podaci</Text>
-        </View>
-        <View style={styles.gdprLinks}>
-          <Pressable
-            onPress={() => router.push("/terms")}
-            style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Feather name="file-text" size={12} color={colors.secondary} />
-            <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Uvjeti korištenja</Text>
-          </Pressable>
-          <View style={[styles.gdprDivider, { backgroundColor: colors.border }]} />
-          <Pressable
-            onPress={() => router.push("/privacy")}
-            style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Feather name="lock" size={12} color={colors.secondary} />
-            <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Politika privatnosti</Text>
-          </Pressable>
-        </View>
-        <Pressable
-          onPress={() => {
-            Alert.alert(
-              "Izbriši sve podatke",
-              "Ovo će trajno obrisati sve tvoje oglase, poruke, spremljene stavke i profil. Radnja se ne može poništiti.",
-              [
-                { text: "Odustani", style: "cancel" },
-                {
-                  text: "Izbriši sve",
-                  style: "destructive",
-                  onPress: async () => {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                    await deleteAllData();
-                    router.replace("/onboarding");
-                  },
-                },
-              ]
-            );
-          }}
-          style={({ pressed }) => [
-            styles.gdprDeleteBtn,
-            { borderColor: colors.destructive, opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <Feather name="trash-2" size={13} color={colors.destructive} />
-          <Text style={[styles.gdprDeleteText, { color: colors.destructive }]}>
-            Izbriši sve moje podatke (GDPR)
-          </Text>
-        </Pressable>
-      </View>
-
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Moji oglasi</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+        Moji oglasi{statusFilter === "active" ? " · Aktivni" : statusFilter === "traded" ? " · Zamijenjeni" : ""}
+      </Text>
     </View>
   );
 
@@ -722,7 +718,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         ref={flatListRef}
-        data={myListings}
+        data={filteredMyListings}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
@@ -801,35 +797,62 @@ export default function ProfileScreen() {
             subtitle="Postavi oglas i počni trampati!"
           />
         }
-        ListFooterComponent={user ? (
+        ListFooterComponent={
           <View style={[styles.accountFooter, { borderTopColor: colors.border }]}>
-            <Text style={[styles.accountFooterTitle, { color: colors.mutedForeground }]}>Podaci računa</Text>
-            <View style={styles.userInfoRows}>
-              <View style={styles.userInfoRow}>
-                <Feather name="mail" size={11} color={colors.mutedForeground} />
-                <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.email}</Text>
-                {user.isVerified && (
-                  <View style={[styles.verifiedBadge, { backgroundColor: "#1A3A2A" }]}>
-                    <Feather name="check" size={9} color="#4ADE80" />
-                    <Text style={styles.verifiedText}>Potvrđen</Text>
-                  </View>
-                )}
-              </View>
-              {user.phone ? (
-                <View style={styles.userInfoRow}>
-                  <Feather name="phone" size={11} color={colors.mutedForeground} />
-                  <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.phone}</Text>
-                </View>
-              ) : null}
-              {user.address ? (
-                <View style={styles.userInfoRow}>
-                  <Feather name="map-pin" size={11} color={colors.mutedForeground} />
-                  <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.address}</Text>
-                </View>
-              ) : null}
+            <View style={styles.gdprTitleRow}>
+              <Feather name="shield" size={11} color={colors.mutedForeground} />
+              <Text style={[styles.accountFooterTitle, { color: colors.mutedForeground }]}>Privatnost i podaci</Text>
             </View>
+            <View style={styles.gdprLinks}>
+              <Pressable
+                onPress={() => router.push("/terms")}
+                style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Feather name="file-text" size={11} color={colors.secondary} />
+                <Text style={[styles.accountFooterText, { color: colors.secondary }]}>Uvjeti korištenja</Text>
+              </Pressable>
+              <View style={[styles.gdprDivider, { backgroundColor: colors.border }]} />
+              <Pressable
+                onPress={() => router.push("/privacy")}
+                style={({ pressed }) => [styles.gdprLink, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Feather name="lock" size={11} color={colors.secondary} />
+                <Text style={[styles.accountFooterText, { color: colors.secondary }]}>Politika privatnosti</Text>
+              </Pressable>
+            </View>
+            {user && (
+              <Pressable
+                onPress={() => {
+                  Alert.alert(
+                    "Izbriši sve podatke",
+                    "Ovo će trajno obrisati sve tvoje oglase, poruke, spremljene stavke i profil. Radnja se ne može poništiti.",
+                    [
+                      { text: "Odustani", style: "cancel" },
+                      {
+                        text: "Izbriši sve",
+                        style: "destructive",
+                        onPress: async () => {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                          await deleteAllData();
+                          router.replace("/onboarding");
+                        },
+                      },
+                    ]
+                  );
+                }}
+                style={({ pressed }) => [
+                  styles.gdprDeleteBtn,
+                  { borderColor: colors.destructive, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name="trash-2" size={11} color={colors.destructive} />
+                <Text style={[styles.gdprDeleteText, { color: colors.destructive }]}>
+                  Izbriši sve moje podatke (GDPR)
+                </Text>
+              </Pressable>
+            )}
           </View>
-        ) : null}
+        }
       />
 
       {/* Name modal (guest / no-auth) */}
