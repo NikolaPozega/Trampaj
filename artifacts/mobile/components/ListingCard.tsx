@@ -29,19 +29,17 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 interface Props {
   listing: Listing;
-  compact?: boolean;
 }
 
-export function ListingCard({ listing, compact }: Props) {
+export function ListingCard({ listing }: Props) {
   const colors = useColors();
+  const hasPrice = listing.price != null && listing.price > 0;
+  const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/listing/${listing.id}`);
   }
-
-  const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
-  const hasPrice = listing.price != null && listing.price > 0;
 
   return (
     <Pressable
@@ -51,109 +49,101 @@ export function ListingCard({ listing, compact }: Props) {
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
-          opacity: pressed ? 0.92 : 1,
-          transform: [{ scale: pressed ? 0.985 : 1 }],
+          opacity: pressed ? 0.88 : listing.status === "traded" ? 0.5 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
         },
-        listing.status === "traded" && { opacity: 0.55 },
       ]}
     >
-      <View style={[styles.iconBox, { backgroundColor: colors.accent }]}>
-        <Feather name={iconName} size={compact ? 20 : 24} color={colors.primary} />
+      <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
+        <Feather name={iconName} size={28} color={colors.secondary} />
+        {listing.status === "traded" && (
+          <View style={styles.tradedOverlay}>
+            <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
+          </View>
+        )}
+        {hasPrice && (
+          <View style={[styles.priceBadge, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.priceBadgeText, { color: colors.primaryForeground }]}>
+              {listing.price} {listing.currency}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text
-            style={[styles.title, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {listing.title}
-          </Text>
-          {listing.status === "traded" ? (
-            <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.badgeText, { color: colors.secondaryForeground }]}>Zamijenjeno</Text>
-            </View>
-          ) : hasPrice ? (
-            <View style={[styles.badge, { backgroundColor: "#E8F5EC" }]}>
-              <Text style={[styles.badgeText, { color: "#2E7D4F" }]}>
-                {listing.price} {listing.currency}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+          {listing.title}
+        </Text>
 
-        <View style={styles.wantsRow}>
+        <View style={styles.tradeRow}>
           <Feather name="refresh-cw" size={11} color={colors.primary} />
-          <Text style={[styles.wantsText, { color: colors.primary }]} numberOfLines={1}>
+          <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
             {listing.wantedFor}
           </Text>
         </View>
 
         <View style={styles.meta}>
-          <View style={styles.metaItem}>
-            <Feather name="map-pin" size={11} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
-          </View>
-          <View style={styles.metaDot} />
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.userName}</Text>
-          <View style={styles.metaDot} />
+          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
+          <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
           <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
         </View>
       </View>
-
-      <Feather name="chevron-right" size={16} color={colors.border} style={styles.arrow} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 10,
-    gap: 12,
+    marginBottom: 12,
+    overflow: "hidden",
   },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  imageArea: {
+    height: 140,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    position: "relative",
   },
-  content: {
-    flex: 1,
-    gap: 3,
-  },
-  topRow: {
-    flexDirection: "row",
+  tradedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+  },
+  tradedOverlayText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  priceBadge: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  priceBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  body: {
+    padding: 12,
+    gap: 5,
   },
   title: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    flex: 1,
+    lineHeight: 20,
   },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    flexShrink: 0,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-  wantsRow: {
+  tradeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
-  wantsText: {
+  tradeText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     flex: 1,
@@ -162,24 +152,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 1,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
+    marginTop: 2,
   },
   metaText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
-  metaDot: {
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "#ccc",
-  },
-  arrow: {
-    flexShrink: 0,
+  dot: {
+    fontSize: 11,
   },
 });

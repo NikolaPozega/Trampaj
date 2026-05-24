@@ -23,6 +23,7 @@ export interface Listing {
   wantedFor: string;
   price: number | null;
   currency: string;
+  phone: string | null;
   userName: string;
   location: string;
   createdAt: number;
@@ -42,8 +43,8 @@ interface ListingsContextType {
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
 
-const STORAGE_KEY = "@trampa_listings";
-const NAME_KEY = "@trampa_name";
+const STORAGE_KEY = "@trampaj_listings";
+const NAME_KEY = "@trampaj_name";
 
 const SAMPLE_LISTINGS: Listing[] = [
   {
@@ -54,6 +55,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
     price: 180,
     currency: "EUR",
+    phone: "091 123 4567",
     userName: "Marko K.",
     location: "Zagreb",
     createdAt: Date.now() - 86400000 * 2,
@@ -68,6 +70,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     wantedFor: "Ljetna jakna ili sportska oprema",
     price: null,
     currency: "KM",
+    phone: null,
     userName: "Ana P.",
     location: "Split",
     createdAt: Date.now() - 86400000 * 5,
@@ -82,6 +85,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     wantedFor: "Sci-fi knjige ili stripovi",
     price: 60,
     currency: "KM",
+    phone: "095 765 4321",
     userName: "Luka B.",
     location: "Rijeka",
     createdAt: Date.now() - 86400000 * 1,
@@ -96,6 +100,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     wantedFor: "Roleri ili skejtbord, ili električni romobil",
     price: 350,
     currency: "KM",
+    phone: "098 111 2233",
     userName: "Petra M.",
     location: "Osijek",
     createdAt: Date.now() - 86400000 * 3,
@@ -110,6 +115,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     wantedFor: "Polica za knjige ili mali stol",
     price: null,
     currency: "KM",
+    phone: null,
     userName: "Tomislav R.",
     location: "Zagreb",
     createdAt: Date.now() - 86400000 * 7,

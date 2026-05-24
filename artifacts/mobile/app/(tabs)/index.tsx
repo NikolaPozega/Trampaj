@@ -1,8 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,11 +13,22 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CategoryPill } from "@/components/CategoryPill";
 import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
+
+const FILTER_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
+  Sve: "grid",
+  Elektronika: "cpu",
+  Odjeća: "shopping-bag",
+  Knjige: "book",
+  Sport: "activity",
+  Nakit: "star",
+  Namještaj: "home",
+  Igračke: "gift",
+  Ostalo: "package",
+};
 
 export default function BrowseScreen() {
   const colors = useColors();
@@ -37,17 +51,21 @@ export default function BrowseScreen() {
     });
   }, [listings, selectedCategory, search]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background }]}>
-        <Text style={[styles.heading, { color: colors.foreground }]}>Trampa</Text>
-        <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
-          Zamijeni što imaš za ono što trebaš
-        </Text>
+      <View style={[styles.header, { paddingTop: topPad, backgroundColor: colors.background }]}>
+        <View style={styles.logoRow}>
+          <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="refresh-cw" size={22} color={colors.primary} />
+          </View>
+          <Text style={[styles.logoText, { color: colors.foreground }]}>
+            Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
+          </Text>
+        </View>
 
-        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             value={search}
@@ -58,12 +76,9 @@ export default function BrowseScreen() {
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <Feather
-              name="x"
-              size={16}
-              color={colors.mutedForeground}
-              onPress={() => setSearch("")}
-            />
+            <Pressable onPress={() => setSearch("")}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </Pressable>
           )}
         </View>
 
@@ -72,14 +87,38 @@ export default function BrowseScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categories}
         >
-          {CATEGORIES.map((cat) => (
-            <CategoryPill
-              key={cat}
-              label={cat}
-              selected={selectedCategory === cat}
-              onPress={() => setSelectedCategory(cat)}
-            />
-          ))}
+          {CATEGORIES.map((cat) => {
+            const selected = selectedCategory === cat;
+            const icon = FILTER_ICONS[cat] ?? "package";
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={({ pressed }) => [
+                  styles.categoryChip,
+                  {
+                    backgroundColor: selected ? colors.primary : colors.muted,
+                    borderColor: selected ? colors.primary : colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Feather
+                  name={icon}
+                  size={13}
+                  color={selected ? colors.primaryForeground : colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.categoryText,
+                    { color: selected ? colors.primaryForeground : colors.mutedForeground },
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -92,12 +131,13 @@ export default function BrowseScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ListingCard listing={item} />}
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={[
             styles.list,
             filtered.length === 0 && styles.listEmpty,
-            { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 90) },
+            { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) },
           ]}
-          scrollEnabled={!!filtered.length}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <EmptyState
@@ -112,6 +152,25 @@ export default function BrowseScreen() {
           }
         />
       )}
+
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/(tabs)/post");
+        }}
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.85 : 1,
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+            bottom: insets.bottom + (Platform.OS === "web" ? 70 : 100),
+          },
+        ]}
+      >
+        <Feather name="plus" size={22} color={colors.primaryForeground} />
+        <Text style={[styles.fabText, { color: colors.primaryForeground }]}>Objavi oglas</Text>
+      </Pressable>
     </View>
   );
 }
@@ -120,33 +179,37 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingBottom: 10,
+    gap: 10,
     zIndex: 1,
   },
-  heading: {
-    fontSize: 28,
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 4,
+  },
+  logoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
-  },
-  subheading: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 4,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
   },
   searchInput: {
     flex: 1,
@@ -154,15 +217,31 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categories: {
-    paddingVertical: 8,
+    gap: 8,
     paddingRight: 8,
+    paddingBottom: 4,
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   list: {
-    padding: 16,
-    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
-  listEmpty: {
-    flex: 1,
+  listEmpty: { flex: 1 },
+  columnWrapper: {
+    gap: 10,
+    paddingHorizontal: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -172,5 +251,24 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  fab: {
+    position: "absolute",
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    borderRadius: 30,
+    shadowColor: "#F5C100",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
 });

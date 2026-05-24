@@ -13,8 +13,8 @@ export function EmptyState({ icon = "inbox", title, subtitle }: Props) {
   const colors = useColors();
   return (
     <View style={styles.container}>
-      <View style={[styles.iconBox, { backgroundColor: colors.accent }]}>
-        <Feather name={icon} size={32} color={colors.primary} />
+      <View style={[styles.iconBox, { backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1 }]}>
+        <Feather name={icon} size={32} color={colors.secondary} />
       </View>
       <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
       {subtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>}
