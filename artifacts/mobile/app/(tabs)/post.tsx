@@ -280,7 +280,7 @@ export default function PostScreen() {
           <TextInput
             value={priceText}
             onChangeText={(t) => setPriceText(t.replace(/[^0-9.,]/g, ""))}
-            placeholder="Cijena (opcionalno)"
+            placeholder="Vrijednost u € (opcionalno)"
             placeholderTextColor={colors.mutedForeground}
             style={[inputStyle, { flex: 1 }]}
             keyboardType="decimal-pad"

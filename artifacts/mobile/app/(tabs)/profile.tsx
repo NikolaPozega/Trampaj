@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,15 +16,28 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
-import { useListings } from "@/context/ListingsContext";
+import { CATEGORIES, type Listing, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
+
+interface EditState {
+  id: string;
+  title: string;
+  description: string;
+  wantedFor: string;
+  priceText: string;
+  category: string;
+  location: string;
+}
+
+const LOCATION_OPTIONS = ["Zagreb", "Split", "Rijeka", "Osijek", "Sarajevo", "Beograd", "Ljubljana", "Ostalo"];
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings, myName, setMyName, markAsTraded, deleteListing } = useListings();
+  const { listings, myName, setMyName, markAsTraded, markAsActive, deleteListing, updateListing } = useListings();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(myName);
+  const [editState, setEditState] = useState<EditState | null>(null);
 
   const myListings = listings.filter((l) => l.isMine);
   const activeCount = myListings.filter((l) => l.status === "active").length;
@@ -57,6 +71,43 @@ export default function ProfileScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     markAsTraded(id);
   }
+
+  function handleMarkActive(id: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    markAsActive(id);
+  }
+
+  function openEdit(item: Listing) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditState({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      wantedFor: item.wantedFor,
+      priceText: item.price != null ? String(item.price) : "",
+      category: item.category,
+      location: item.location,
+    });
+  }
+
+  function handleSaveEdit() {
+    if (!editState) return;
+    const price = editState.priceText.trim()
+      ? parseFloat(editState.priceText.replace(",", "."))
+      : null;
+    updateListing(editState.id, {
+      title: editState.title.trim(),
+      description: editState.description.trim(),
+      wantedFor: editState.wantedFor.trim(),
+      price: price && !isNaN(price) ? price : null,
+      category: editState.category,
+      location: editState.location,
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setEditState(null);
+  }
+
+  const inputStyle = [styles.modalInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -109,18 +160,34 @@ export default function ProfileScreen() {
             <ListingCard listing={item} />
             {item.isMine && (
               <View style={styles.actions}>
-                {item.status === "active" && (
+                <Pressable
+                  onPress={() => openEdit(item)}
+                  style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Feather name="edit-2" size={12} color={colors.mutedForeground} />
+                </Pressable>
+
+                {item.status === "active" ? (
                   <Pressable
                     onPress={() => handleMarkTraded(item.id)}
-                    style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#2E7D4F", opacity: pressed ? 0.8 : 1 }]}
+                    style={({ pressed }) => [styles.actionBtn, styles.actionBtnFlex, { backgroundColor: "#2E7D4F", opacity: pressed ? 0.8 : 1 }]}
                   >
                     <Feather name="check" size={12} color="#fff" />
                     <Text style={styles.actionBtnText}>Zamijenjeno</Text>
                   </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => handleMarkActive(item.id)}
+                    style={({ pressed }) => [styles.actionBtn, styles.actionBtnFlex, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <Feather name="rotate-ccw" size={12} color={colors.secondary} />
+                    <Text style={[styles.actionBtnText, { color: colors.secondary }]}>Aktiviraj</Text>
+                  </Pressable>
                 )}
+
                 <Pressable
                   onPress={() => handleDelete(item.id)}
-                  style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.muted, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Feather name="trash-2" size={12} color={colors.destructive} />
                 </Pressable>
@@ -143,6 +210,7 @@ export default function ProfileScreen() {
         }
       />
 
+      {/* Name edit modal */}
       <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
         <Pressable style={styles.overlay} onPress={() => setEditingName(false)}>
           <Pressable style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
@@ -150,26 +218,126 @@ export default function ProfileScreen() {
             <TextInput
               value={nameInput}
               onChangeText={setNameInput}
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+              style={inputStyle}
               autoFocus
               maxLength={40}
               onSubmitEditing={handleSaveName}
               returnKeyType="done"
             />
             <View style={styles.modalBtns}>
-              <Pressable
-                onPress={() => setEditingName(false)}
-                style={[styles.modalBtn, { backgroundColor: colors.muted }]}
-              >
+              <Pressable onPress={() => setEditingName(false)} style={[styles.modalBtn, { backgroundColor: colors.muted }]}>
                 <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
               </Pressable>
-              <Pressable
-                onPress={handleSaveName}
-                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
-              >
+              <Pressable onPress={handleSaveName} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
                 <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi</Text>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Listing edit modal */}
+      <Modal visible={!!editState} transparent animationType="slide" onRequestClose={() => setEditState(null)}>
+        <Pressable style={styles.overlay} onPress={() => setEditState(null)}>
+          <Pressable style={[styles.editModal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
+            <View style={styles.editModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Uredi oglas</Text>
+              <Pressable onPress={() => setEditState(null)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            {editState && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editModalBody}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Naslov</Text>
+                <TextInput
+                  value={editState.title}
+                  onChangeText={(v) => setEditState((s) => s ? { ...s, title: v } : s)}
+                  style={inputStyle}
+                  maxLength={80}
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Opis</Text>
+                <TextInput
+                  value={editState.description}
+                  onChangeText={(v) => setEditState((s) => s ? { ...s, description: v } : s)}
+                  style={[inputStyle, styles.multilineInput]}
+                  multiline
+                  maxLength={500}
+                  textAlignVertical="top"
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Što želiš zauzvrat</Text>
+                <TextInput
+                  value={editState.wantedFor}
+                  onChangeText={(v) => setEditState((s) => s ? { ...s, wantedFor: v } : s)}
+                  style={inputStyle}
+                  maxLength={120}
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Vrijednost u €</Text>
+                <TextInput
+                  value={editState.priceText}
+                  onChangeText={(v) => setEditState((s) => s ? { ...s, priceText: v.replace(/[^0-9.,]/g, "") } : s)}
+                  style={inputStyle}
+                  keyboardType="decimal-pad"
+                  maxLength={10}
+                  placeholder="Opcionalno"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Kategorija</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+                  {CATEGORIES.filter((c) => c !== "Sve").map((cat) => (
+                    <Pressable
+                      key={cat}
+                      onPress={() => setEditState((s) => s ? { ...s, category: cat } : s)}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: editState.category === cat ? colors.primary : colors.muted,
+                          borderColor: editState.category === cat ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.chipText, { color: editState.category === cat ? colors.primaryForeground : colors.mutedForeground }]}>
+                        {cat}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
+                <View style={styles.locationGrid}>
+                  {LOCATION_OPTIONS.map((loc) => (
+                    <Pressable
+                      key={loc}
+                      onPress={() => setEditState((s) => s ? { ...s, location: loc } : s)}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: editState.location === loc ? colors.primary : colors.muted,
+                          borderColor: editState.location === loc ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.chipText, { color: editState.location === loc ? colors.primaryForeground : colors.mutedForeground }]}>
+                        {loc}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.modalBtns}>
+                  <Pressable onPress={() => setEditState(null)} style={[styles.modalBtn, { backgroundColor: colors.muted }]}>
+                    <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
+                  </Pressable>
+                  <Pressable onPress={handleSaveEdit} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -187,13 +355,7 @@ function StatPill({ label, value, color, textColor, bg }: { label: string; value
 }
 
 const statStyles = StyleSheet.create({
-  pill: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 2,
-  },
+  pill: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, gap: 2 },
   value: { fontSize: 20, fontFamily: "Inter_700Bold" },
   label: { fontSize: 10, fontFamily: "Inter_400Regular" },
 });
@@ -201,41 +363,14 @@ const statStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, gap: 14 },
-  profileCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 20,
-    alignItems: "center",
-    gap: 10,
-  },
-  avatarRing: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    borderWidth: 2.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  profileCard: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: "center", gap: 10 },
+  avatarRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 2.5, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 28, fontFamily: "Inter_700Bold" },
   name: { fontSize: 20, fontFamily: "Inter_700Bold" },
   starsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   ratingText: { fontSize: 13, fontFamily: "Inter_400Regular", marginLeft: 4 },
-  editBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
+  editBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   editBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   divider: { width: "100%", height: 1, marginVertical: 4 },
   stats: { flexDirection: "row", gap: 8, width: "100%" },
@@ -244,27 +379,24 @@ const styles = StyleSheet.create({
   listEmpty: { flex: 1 },
   columnWrapper: { gap: 10, paddingHorizontal: 4, marginBottom: 0 },
   cardWrapper: { flex: 1 },
-  actions: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: -8,
-    marginBottom: 12,
-    paddingHorizontal: 2,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  actions: { flexDirection: "row", gap: 5, marginTop: -8, marginBottom: 12, paddingHorizontal: 2 },
+  actionBtn: { alignItems: "center", justifyContent: "center", paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8 },
+  actionBtnFlex: { flex: 1, flexDirection: "row", gap: 4 },
   actionBtnText: { color: "#fff", fontSize: 11, fontFamily: "Inter_500Medium" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 24 },
   modal: { width: "100%", borderRadius: 16, borderWidth: 1, padding: 20, gap: 14 },
+  editModal: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, maxHeight: "88%" },
+  editModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  editModalBody: { gap: 10, paddingBottom: 8 },
   modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, fontFamily: "Inter_400Regular" },
-  modalBtns: { flexDirection: "row", gap: 10 },
+  multilineInput: { minHeight: 80, textAlignVertical: "top", paddingTop: 11 },
+  fieldLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, textTransform: "uppercase" },
+  chips: { gap: 8, paddingRight: 4 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  locationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  modalBtns: { flexDirection: "row", gap: 10, marginTop: 4 },
   modalBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10 },
   modalBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

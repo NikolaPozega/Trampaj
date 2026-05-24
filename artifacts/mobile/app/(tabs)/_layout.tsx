@@ -46,6 +46,7 @@ export default function TabLayout() {
         name="post"
         options={{
           title: "Objavi",
+          tabBarLabel: () => null,
           tabBarIcon: () => (
             <View style={[styles.postIcon, { backgroundColor: colors.primary }]}>
               <Feather name="plus" size={22} color={colors.primaryForeground} />

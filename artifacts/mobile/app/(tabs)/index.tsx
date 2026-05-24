@@ -35,12 +35,22 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const { listings, isLoaded } = useListings();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Sve");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  function toggleCategory(cat: string) {
+    if (cat === "Sve") {
+      setSelectedCategories([]);
+      return;
+    }
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  }
 
   const filtered = useMemo(() => {
     return listings.filter((l) => {
       const matchesCategory =
-        selectedCategory === "Sve" || l.category === selectedCategory;
+        selectedCategories.length === 0 || selectedCategories.includes(l.category);
       const q = search.toLowerCase();
       const matchesSearch =
         !q ||
@@ -49,7 +59,7 @@ export default function BrowseScreen() {
         l.wantedFor.toLowerCase().includes(q);
       return matchesCategory && matchesSearch && l.status === "active";
     });
-  }, [listings, selectedCategory, search]);
+  }, [listings, selectedCategories, search]);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
@@ -88,12 +98,13 @@ export default function BrowseScreen() {
           contentContainerStyle={styles.categories}
         >
           {CATEGORIES.map((cat) => {
-            const selected = selectedCategory === cat;
+            const isAll = cat === "Sve";
+            const selected = isAll ? selectedCategories.length === 0 : selectedCategories.includes(cat);
             const icon = FILTER_ICONS[cat] ?? "package";
             return (
               <Pressable
                 key={cat}
-                onPress={() => setSelectedCategory(cat)}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleCategory(cat); }}
                 style={({ pressed }) => [
                   styles.categoryChip,
                   {

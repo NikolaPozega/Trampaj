@@ -34,7 +34,9 @@ interface ListingsContextType {
   myName: string;
   setMyName: (name: string) => void;
   addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => void;
+  updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location">>) => void;
   markAsTraded: (id: string) => void;
+  markAsActive: (id: string) => void;
   deleteListing: (id: string) => void;
   isLoaded: boolean;
 }
@@ -191,6 +193,30 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     [saveUserListings]
   );
 
+  const updateListing = useCallback(
+    (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location">>) => {
+      setListings((prev) => {
+        const updated = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
+        const userListings = updated.filter((l) => l.isMine);
+        saveUserListings(userListings);
+        return updated;
+      });
+    },
+    [saveUserListings]
+  );
+
+  const markAsActive = useCallback(
+    (id: string) => {
+      setListings((prev) => {
+        const updated = prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l));
+        const userListings = updated.filter((l) => l.isMine);
+        saveUserListings(userListings);
+        return updated;
+      });
+    },
+    [saveUserListings]
+  );
+
   const deleteListing = useCallback(
     (id: string) => {
       setListings((prev) => {
@@ -205,7 +231,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ListingsContext.Provider
-      value={{ listings, myName, setMyName, addListing, markAsTraded, deleteListing, isLoaded }}
+      value={{ listings, myName, setMyName, addListing, updateListing, markAsTraded, markAsActive, deleteListing, isLoaded }}
     >
       {children}
     </ListingsContext.Provider>
