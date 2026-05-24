@@ -13,8 +13,6 @@ export const CATEGORIES = [
   "Ostalo",
 ];
 
-export const CURRENCIES = ["KM", "EUR", "HRK", "RSD"];
-
 export interface Listing {
   id: string;
   title: string;
@@ -22,7 +20,7 @@ export interface Listing {
   category: string;
   wantedFor: string;
   price: number | null;
-  currency: string;
+  imageUri: string | null;
   phone: string | null;
   userName: string;
   location: string;
@@ -43,7 +41,7 @@ interface ListingsContextType {
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
 
-const STORAGE_KEY = "@trampaj_listings";
+const STORAGE_KEY = "@trampaj_listings_v2";
 const NAME_KEY = "@trampaj_name";
 
 const SAMPLE_LISTINGS: Listing[] = [
@@ -54,7 +52,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     category: "Elektronika",
     wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
     price: 180,
-    currency: "EUR",
+    imageUri: null,
     phone: "091 123 4567",
     userName: "Marko K.",
     location: "Zagreb",
@@ -69,7 +67,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     category: "Odjeća",
     wantedFor: "Ljetna jakna ili sportska oprema",
     price: null,
-    currency: "KM",
+    imageUri: null,
     phone: null,
     userName: "Ana P.",
     location: "Split",
@@ -84,7 +82,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     category: "Knjige",
     wantedFor: "Sci-fi knjige ili stripovi",
     price: 60,
-    currency: "KM",
+    imageUri: null,
     phone: "095 765 4321",
     userName: "Luka B.",
     location: "Rijeka",
@@ -97,9 +95,9 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Bicikl - gradski, 26\"",
     description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.",
     category: "Sport",
-    wantedFor: "Roleri ili skejtbord, ili električni romobil",
+    wantedFor: "Roleri ili električni romobil",
     price: 350,
-    currency: "KM",
+    imageUri: null,
     phone: "098 111 2233",
     userName: "Petra M.",
     location: "Osijek",
@@ -110,11 +108,11 @@ const SAMPLE_LISTINGS: Listing[] = [
   {
     id: "sample_5",
     title: "Stolna lampa - industrijski stil",
-    description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol ili dnevnu sobu.",
+    description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol.",
     category: "Namještaj",
     wantedFor: "Polica za knjige ili mali stol",
     price: null,
-    currency: "KM",
+    imageUri: null,
     phone: null,
     userName: "Tomislav R.",
     location: "Zagreb",

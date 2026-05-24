@@ -10,24 +10,26 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: "#F5C100",
+        tabBarInactiveTintColor: "#8CA4BE",
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.card,
+          backgroundColor: "#0D2045",
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: "rgba(56,189,248,0.22)",
           elevation: 0,
-          height: Platform.OS === "web" ? 60 : 84,
-          paddingBottom: Platform.OS === "web" ? 8 : 28,
-          paddingTop: 8,
+          shadowOpacity: 0,
+          height: Platform.OS === "web" ? 62 : 86,
+          paddingBottom: Platform.OS === "web" ? 8 : 30,
+          paddingTop: 6,
         },
-        tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border }]} />
-        ),
         tabBarLabelStyle: {
-          fontFamily: "Inter_500Medium",
           fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingBottom: 0,
         },
       }}
     >
@@ -44,7 +46,7 @@ export default function TabLayout() {
         name="post"
         options={{
           title: "Objavi",
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: () => (
             <View style={[styles.postIcon, { backgroundColor: colors.primary }]}>
               <Feather name="plus" size={22} color={colors.primaryForeground} />
             </View>
@@ -66,11 +68,11 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   postIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 2,
   },
 });

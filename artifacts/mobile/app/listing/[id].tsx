@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -17,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
 
-const CATEGORY_ICONS: Record<string, string> = {
+const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Elektronika: "cpu",
   Odjeća: "shopping-bag",
   Knjige: "book",
@@ -63,7 +64,7 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
+  const iconName = CATEGORY_ICONS[listing.category] ?? "package";
   const hasPrice = listing.price != null && listing.price > 0;
 
   function openModal(mode: ModalMode) {
@@ -100,16 +101,17 @@ export default function ListingDetailScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]} showsVerticalScrollIndicator={false}>
         <View style={[styles.imageHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name={iconName} size={64} color={colors.secondary} />
+          {listing.imageUri ? (
+            <Image source={{ uri: listing.imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : (
+            <Feather name={iconName} size={64} color={colors.secondary} />
+          )}
           {hasPrice && (
             <View style={[styles.heroPrice, { backgroundColor: colors.primary }]}>
               <Text style={[styles.heroPriceText, { color: colors.primaryForeground }]}>
-                {listing.price} {listing.currency}
+                {listing.price} €
               </Text>
             </View>
           )}
@@ -126,7 +128,7 @@ export default function ListingDetailScreen() {
           </Text>
           {hasPrice && (
             <Text style={[styles.priceLabel, { color: colors.primary }]}>
-              {listing.price} {listing.currency}
+              {listing.price} €
             </Text>
           )}
         </View>
@@ -147,7 +149,7 @@ export default function ListingDetailScreen() {
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        <View style={[styles.userRow]}>
+        <View style={styles.userRow}>
           <View style={[styles.userAvatar, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
             <Text style={[styles.userAvatarText, { color: colors.primary }]}>
               {listing.userName.charAt(0).toUpperCase()}
@@ -172,10 +174,10 @@ export default function ListingDetailScreen() {
             <Text style={[styles.metaText, { color: colors.foreground }]}>{listing.location}</Text>
           </View>
           {listing.phone && (
-            <View style={styles.metaItem}>
+            <Pressable style={styles.metaItem} onPress={handleCall}>
               <Feather name="phone" size={14} color={colors.mutedForeground} />
-              <Text style={[styles.metaText, { color: colors.foreground }]}>{listing.phone}</Text>
-            </View>
+              <Text style={[styles.metaText, { color: colors.secondary }]}>{listing.phone}</Text>
+            </Pressable>
           )}
           <View style={styles.metaItem}>
             <Feather name="clock" size={14} color={colors.mutedForeground} />
@@ -219,12 +221,12 @@ export default function ListingDetailScreen() {
               >
                 <Feather name="tag" size={16} color={colors.primaryForeground} />
                 <Text style={[styles.footerBtnText, { color: colors.primaryForeground }]}>
-                  Kupi · {listing.price} {listing.currency}
+                  Kupi · {listing.price} €
                 </Text>
               </Pressable>
             ) : null}
           </View>
-          <Pressable onPress={() => {}} style={styles.reportBtn}>
+          <Pressable style={styles.reportBtn}>
             <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi oglas</Text>
           </Pressable>
         </View>
@@ -235,7 +237,7 @@ export default function ListingDetailScreen() {
           <Pressable style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
             {offerSent ? (
               <View style={styles.sentContainer}>
-                <View style={[styles.sentIcon, { backgroundColor: modalMode === "buy" ? "#2E7D4F" : colors.secondary }]}>
+                <View style={[styles.sentIcon, { backgroundColor: "#2E7D4F" }]}>
                   <Feather name="check" size={28} color="#fff" />
                 </View>
                 <Text style={[styles.sentTitle, { color: colors.foreground }]}>
@@ -257,7 +259,7 @@ export default function ListingDetailScreen() {
                   <View style={[styles.buyBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                     <Text style={[styles.buyBoxLabel, { color: colors.mutedForeground }]}>Iznos</Text>
                     <Text style={[styles.buyBoxAmount, { color: colors.primary }]}>
-                      {listing.price} {listing.currency}
+                      {listing.price} €
                     </Text>
                   </View>
                 )}
@@ -312,28 +314,16 @@ const styles = StyleSheet.create({
   topBarTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   content: { padding: 16, gap: 16 },
   imageHero: {
-    height: 200,
+    height: 220,
     borderRadius: 18,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  heroPrice: {
-    position: "absolute",
-    bottom: 12,
-    right: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  heroPriceText: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  tradedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  heroPrice: { position: "absolute", bottom: 12, right: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  heroPriceText: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  tradedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
   tradedOverlayText: { color: "#fff", fontSize: 18, fontFamily: "Inter_700Bold" },
   titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", flex: 1, lineHeight: 28 },
@@ -345,14 +335,7 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   sectionText: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
   userRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  userAvatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   userAvatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   userInfo: { flex: 1, gap: 4 },
   userNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -363,35 +346,18 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   footer: { padding: 16, borderTopWidth: 1, gap: 10 },
   footerButtons: { flexDirection: "row", gap: 10 },
-  footerBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
+  footerBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 14 },
   footerBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   reportBtn: { alignItems: "center", paddingVertical: 2 },
   reportText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  modal: {
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
-    padding: 20, gap: 14, paddingBottom: 40,
-  },
+  modal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, padding: 20, gap: 14, paddingBottom: 40 },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -6 },
   buyBox: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 4 },
   buyBoxLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
   buyBoxAmount: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  modalInput: {
-    borderWidth: 1, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, fontFamily: "Inter_400Regular",
-    height: 90, paddingTop: 12,
-  },
+  modalInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular", height: 90, paddingTop: 12 },
   modalBtn: { alignItems: "center", paddingVertical: 14, borderRadius: 12 },
   modalBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   sentContainer: { alignItems: "center", paddingVertical: 20, gap: 12 },

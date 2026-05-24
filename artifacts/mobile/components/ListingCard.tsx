@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -16,7 +17,7 @@ function timeAgo(ts: number): string {
   return `${days}d`;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
+const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Elektronika: "cpu",
   Odjeća: "shopping-bag",
   Knjige: "book",
@@ -34,7 +35,7 @@ interface Props {
 export function ListingCard({ listing }: Props) {
   const colors = useColors();
   const hasPrice = listing.price != null && listing.price > 0;
-  const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
+  const iconName = CATEGORY_ICONS[listing.category] ?? "package";
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -50,12 +51,20 @@ export function ListingCard({ listing }: Props) {
           backgroundColor: colors.card,
           borderColor: colors.border,
           opacity: pressed ? 0.88 : listing.status === "traded" ? 0.5 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
+          transform: [{ scale: pressed ? 0.97 : 1 }],
         },
       ]}
     >
       <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
-        <Feather name={iconName} size={28} color={colors.secondary} />
+        {listing.imageUri ? (
+          <Image
+            source={{ uri: listing.imageUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+        ) : (
+          <Feather name={iconName} size={30} color={colors.secondary} />
+        )}
         {listing.status === "traded" && (
           <View style={styles.tradedOverlay}>
             <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
@@ -64,7 +73,7 @@ export function ListingCard({ listing }: Props) {
         {hasPrice && (
           <View style={[styles.priceBadge, { backgroundColor: colors.primary }]}>
             <Text style={[styles.priceBadgeText, { color: colors.primaryForeground }]}>
-              {listing.price} {listing.currency}
+              {listing.price} €
             </Text>
           </View>
         )}
@@ -74,14 +83,12 @@ export function ListingCard({ listing }: Props) {
         <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
           {listing.title}
         </Text>
-
         <View style={styles.tradeRow}>
           <Feather name="refresh-cw" size={11} color={colors.primary} />
           <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
             {listing.wantedFor}
           </Text>
         </View>
-
         <View style={styles.meta}>
           <Feather name="map-pin" size={10} color={colors.mutedForeground} />
           <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
@@ -97,14 +104,16 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 12,
     overflow: "hidden",
+    flex: 1,
+    marginBottom: 10,
   },
   imageArea: {
-    height: 140,
+    height: 130,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
   },
   tradedOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -114,15 +123,15 @@ const styles = StyleSheet.create({
   },
   tradedOverlayText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
   priceBadge: {
     position: "absolute",
-    bottom: 10,
-    right: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    bottom: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 8,
   },
   priceBadgeText: {
@@ -130,35 +139,33 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   body: {
-    padding: 12,
-    gap: 5,
+    padding: 10,
+    gap: 4,
   },
   title: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    lineHeight: 20,
+    lineHeight: 18,
   },
   tradeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
   tradeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
     flex: 1,
   },
   meta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 2,
+    gap: 3,
+    marginTop: 1,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
   },
-  dot: {
-    fontSize: 11,
-  },
+  dot: { fontSize: 10 },
 });
