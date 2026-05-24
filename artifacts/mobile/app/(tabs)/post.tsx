@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { compressImage } from "@/utils/compressImage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -105,8 +106,6 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
-        quality: 0.7,
-        base64: true,
         allowsEditing: true,
         aspect: [4, 3],
       });
@@ -120,20 +119,18 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
-        quality: 0.7,
-        base64: true,
         allowsEditing: true,
         aspect: [4, 3],
       });
     }
 
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setImageUri(asset.uri);
-      if (asset.base64) {
+      const compressed = await compressImage(result.assets[0].uri, 1024, 0.6);
+      setImageUri(compressed.uri);
+      if (compressed.base64) {
         setAnalyzing(true);
         try {
-          const ai = await analyzeImageForCategory(asset.base64);
+          const ai = await analyzeImageForCategory(compressed.base64);
           if (ai.category) setCategory(ai.category);
           if (ai.title && !title) setTitle(ai.title);
           if (ai.description && !description) setDescription(ai.description);
@@ -146,6 +143,7 @@ export default function PostScreen() {
       }
     }
   }
+
 
   function showImagePicker() {
     if (Platform.OS === "web") {

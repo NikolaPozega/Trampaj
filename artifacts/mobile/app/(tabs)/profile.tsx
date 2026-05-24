@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import { compressImage } from "@/utils/compressImage";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -425,14 +426,11 @@ export default function ProfileScreen() {
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setProfileAvatarUri(result.assets[0].uri);
-      if (result.assets[0].base64) {
-        setProfileAvatarBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
-      }
+      const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
+      setProfileAvatarUri(compressed.uri);
+      setProfileAvatarBase64(`data:image/jpeg;base64,${compressed.base64}`);
     }
   }
 

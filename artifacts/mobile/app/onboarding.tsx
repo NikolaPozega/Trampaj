@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { compressImage } from "@/utils/compressImage";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -120,14 +121,11 @@ export default function OnboardingScreen() {
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
-      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setAvatarUri(result.assets[0].uri);
-      if (result.assets[0].base64) {
-        setAvatarBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
-      }
+      const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
+      setAvatarUri(compressed.uri);
+      setAvatarBase64(`data:image/jpeg;base64,${compressed.base64}`);
     }
   }
 
