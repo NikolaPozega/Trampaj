@@ -4,7 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { compressImage } from "@/utils/compressImage";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -387,6 +387,14 @@ export default function ProfileScreen() {
   const tradedCount = myListings.filter((l) => l.status === "traded").length;
   const [statusFilter, setStatusFilter] = useState<"active" | "traded" | null>(null);
   const filteredMyListings = statusFilter ? myListings.filter((l) => l.status === statusFilter) : myListings;
+
+  useEffect(() => {
+    if (filteredMyListings.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: 0, animated: true, viewOffset: 0 });
+      }, 150);
+    }
+  }, [statusFilter]);
 
   const allMatches = useMemo(
     () => findTradeMatches(myListings, listings),

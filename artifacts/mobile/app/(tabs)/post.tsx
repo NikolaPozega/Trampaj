@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -22,20 +23,27 @@ import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings }
 import { useColors } from "@/hooks/useColors";
 import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally, suggestTrades } from "@/services/openai";
 
-async function searchLocations(query: string): Promise<string[]> {
+interface LocationResult { label: string; lat: number; lon: number; }
+
+async function searchLocations(query: string): Promise<LocationResult[]> {
   if (query.trim().length < 2) return [];
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&countrycodes=hr,ba,rs,si,me,mk`;
     const res = await fetch(url, { headers: { "Accept-Language": "hr,en" } });
-    const data: Array<{ display_name: string; address: Record<string, string> }> = await res.json();
-    const suggestions = data.map((item) => {
+    const data: Array<{ display_name: string; address: Record<string, string>; lat: string; lon: string }> = await res.json();
+    const seen = new Set<string>();
+    const results: LocationResult[] = [];
+    for (const item of data) {
       const a = item.address;
       const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
       const country = a.country ?? "";
-      if (city && country) return `${city}, ${country}`;
-      return item.display_name.split(",").slice(0, 2).join(",").trim();
-    });
-    return [...new Set(suggestions.filter(Boolean))];
+      const label = city && country ? `${city}, ${country}` : item.display_name.split(",").slice(0, 2).join(",").trim();
+      if (label && !seen.has(label)) {
+        seen.add(label);
+        results.push({ label, lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
+      }
+    }
+    return results;
   } catch {
     return [];
   }
@@ -55,7 +63,8 @@ export default function PostScreen() {
   const [priceText, setPriceText] = useState("");
   const [phone, setPhone] = useState("");
   const [condition, setCondition] = useState<Condition | null>(null);
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationResult[]>([]);
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationFocused, setLocationFocused] = useState(false);
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -417,7 +426,7 @@ export default function PostScreen() {
               {locationLoading
                 ? <ActivityIndicator size="small" color={colors.primary} />
                 : location
-                  ? <Pressable hitSlop={8} onPress={() => { setLocation(""); setLocationSuggestions([]); }}>
+                  ? <Pressable hitSlop={8} onPress={() => { setLocation(""); setLocationSuggestions([]); setLocationCoords(null); }}>
                       <Feather name="x" size={15} color={colors.mutedForeground} />
                     </Pressable>
                   : null}
@@ -428,7 +437,8 @@ export default function PostScreen() {
                   <Pressable
                     key={i}
                     onPress={() => {
-                      setLocation(s);
+                      setLocation(s.label);
+                      setLocationCoords({ lat: s.lat, lon: s.lon });
                       setLocationSuggestions([]);
                       setLocationFocused(false);
                     }}
@@ -439,10 +449,27 @@ export default function PostScreen() {
                     ]}
                   >
                     <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.locationSuggText, { color: colors.foreground }]} numberOfLines={1}>{s}</Text>
+                    <Text style={[styles.locationSuggText, { color: colors.foreground }]} numberOfLines={1}>{s.label}</Text>
                   </Pressable>
                 ))}
               </View>
+            )}
+
+            {locationCoords && !locationFocused && (
+              <Pressable
+                onPress={() => Linking.openURL(`https://www.google.com/maps?q=${locationCoords.lat},${locationCoords.lon}`)}
+                style={({ pressed }) => [styles.mapPreview, { opacity: pressed ? 0.85 : 1, borderColor: colors.border }]}
+              >
+                <Image
+                  source={{ uri: `https://staticmap.openstreetmap.de/staticmap.php?center=${locationCoords.lat},${locationCoords.lon}&zoom=13&size=600x180&markers=${locationCoords.lat},${locationCoords.lon},red-marker` }}
+                  style={styles.mapImage}
+                  contentFit="cover"
+                />
+                <View style={[styles.mapOverlay, { backgroundColor: colors.card + "CC" }]}>
+                  <Feather name="map" size={13} color={colors.secondary} />
+                  <Text style={[styles.mapOverlayText, { color: colors.secondary }]}>Otvori u Google Maps</Text>
+                </View>
+              </Pressable>
             )}
           </View>
         </View>
@@ -677,6 +704,10 @@ const styles = StyleSheet.create({
   locationDropdown: { borderWidth: 1, borderRadius: 10, marginTop: 4, overflow: "hidden" },
   locationSuggItem: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12 },
   locationSuggText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  mapPreview: { marginTop: 8, borderRadius: 10, overflow: "hidden", borderWidth: 1, height: 140 },
+  mapImage: { width: "100%", height: "100%" },
+  mapOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+  mapOverlayText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   conditionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   conditionChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5 },
   conditionDot: { width: 8, height: 8, borderRadius: 4 },
