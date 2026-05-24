@@ -73,7 +73,7 @@ export function ListingCard({ listing }: Props) {
         {hasPrice && (
           <View style={[styles.priceBadge, { backgroundColor: colors.primary }]}>
             <Text style={[styles.priceBadgeText, { color: colors.primaryForeground }]}>
-              {listing.price} €
+              Vrijednost: {listing.price} €
             </Text>
           </View>
         )}
