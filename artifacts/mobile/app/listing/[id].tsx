@@ -37,12 +37,15 @@ function timeAgo(ts: number): string {
   return `prije ${days} dana`;
 }
 
+type ModalMode = "barter" | "buy";
+
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings, myName } = useListings();
+  const { listings } = useListings();
   const [offerModal, setOfferModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("barter");
   const [offerText, setOfferText] = useState("");
   const [offerSent, setOfferSent] = useState(false);
 
@@ -63,8 +66,16 @@ export default function ListingDetailScreen() {
   }
 
   const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
+  const hasPrice = listing.price != null && listing.price > 0;
 
-  function handleOffer() {
+  function openModal(mode: ModalMode) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setModalMode(mode);
+    setOfferModal(true);
+  }
+
+  function handleSend() {
+    if (modalMode === "barter" && !offerText.trim()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setOfferSent(true);
     setTimeout(() => {
@@ -90,11 +101,18 @@ export default function ListingDetailScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 100 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.iconHero, { backgroundColor: colors.accent }]}>
           <Feather name={iconName} size={52} color={colors.primary} />
+          {hasPrice && (
+            <View style={styles.priceBadgeHero}>
+              <Text style={styles.priceBadgeText}>
+                {listing.price} {listing.currency}
+              </Text>
+            </View>
+          )}
         </View>
 
         {listing.status === "traded" && (
@@ -133,17 +151,50 @@ export default function ListingDetailScreen() {
           </View>
           <Text style={[styles.wantsText, { color: colors.foreground }]}>{listing.wantedFor}</Text>
         </View>
+
+        {hasPrice && (
+          <View style={[styles.priceSection, { backgroundColor: "#E8F5EC", borderColor: "#A8D5B5" }]}>
+            <View style={styles.wantsHeader}>
+              <Feather name="tag" size={14} color="#2E7D4F" />
+              <Text style={[styles.wantsLabel, { color: "#2E7D4F" }]}>Ili kupi direktno</Text>
+            </View>
+            <Text style={styles.priceAmount}>
+              {listing.price} {listing.currency}
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {!listing.isMine && listing.status === "active" && (
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>
-          <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setOfferModal(true); }}
-            style={({ pressed }) => [styles.offerBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-          >
-            <Feather name="refresh-cw" size={18} color="#fff" />
-            <Text style={styles.offerBtnText}>Ponudi zamjenu</Text>
-          </Pressable>
+          {hasPrice ? (
+            <View style={styles.footerButtons}>
+              <Pressable
+                onPress={() => openModal("barter")}
+                style={({ pressed }) => [styles.footerBtn, styles.footerBtnOutline, { borderColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Feather name="refresh-cw" size={16} color={colors.primary} />
+                <Text style={[styles.footerBtnText, { color: colors.primary }]}>Trampa</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => openModal("buy")}
+                style={({ pressed }) => [styles.footerBtn, styles.footerBtnFill, { backgroundColor: "#2E7D4F", opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Feather name="tag" size={16} color="#fff" />
+                <Text style={[styles.footerBtnText, { color: "#fff" }]}>
+                  Kupi · {listing.price} {listing.currency}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => openModal("barter")}
+              style={({ pressed }) => [styles.offerBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+            >
+              <Feather name="refresh-cw" size={18} color="#fff" />
+              <Text style={styles.offerBtnText}>Ponudi zamjenu</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -155,17 +206,44 @@ export default function ListingDetailScreen() {
           >
             {offerSent ? (
               <View style={styles.sentContainer}>
-                <View style={[styles.sentIcon, { backgroundColor: colors.secondary }]}>
+                <View style={[styles.sentIcon, { backgroundColor: modalMode === "buy" ? "#2E7D4F" : colors.secondary }]}>
                   <Feather name="check" size={28} color="#fff" />
                 </View>
-                <Text style={[styles.sentTitle, { color: colors.foreground }]}>Ponuda poslana!</Text>
+                <Text style={[styles.sentTitle, { color: colors.foreground }]}>
+                  {modalMode === "buy" ? "Zahtjev poslan!" : "Ponuda poslana!"}
+                </Text>
                 <Text style={[styles.sentSub, { color: colors.mutedForeground }]}>
-                  {listing.userName} će primiti tvoju ponudu
+                  {listing.userName} će primiti tvoj {modalMode === "buy" ? "zahtjev za kupnju" : "prijedlog zamjene"}
                 </Text>
               </View>
+            ) : modalMode === "buy" ? (
+              <>
+                <View style={styles.modalTitleRow}>
+                  <Feather name="tag" size={18} color="#2E7D4F" />
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Kupnja</Text>
+                </View>
+                <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+                  Šalješ zahtjev za: {listing.title}
+                </Text>
+                <View style={[styles.buyAmountBox, { backgroundColor: "#E8F5EC", borderColor: "#A8D5B5" }]}>
+                  <Text style={styles.buyAmountLabel}>Iznos koji plaćaš</Text>
+                  <Text style={styles.buyAmount}>
+                    {listing.price} {listing.currency}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={handleSend}
+                  style={({ pressed }) => [styles.modalBtn, { backgroundColor: "#2E7D4F", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={[styles.modalBtnText, { color: "#fff" }]}>Pošalji zahtjev za kupnju</Text>
+                </Pressable>
+              </>
             ) : (
               <>
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Ponudi zamjenu</Text>
+                <View style={styles.modalTitleRow}>
+                  <Feather name="refresh-cw" size={18} color={colors.primary} />
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Ponudi zamjenu</Text>
+                </View>
                 <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
                   Šalješ ponudu za: {listing.title}
                 </Text>
@@ -180,7 +258,7 @@ export default function ListingDetailScreen() {
                   textAlignVertical="top"
                 />
                 <Pressable
-                  onPress={handleOffer}
+                  onPress={handleSend}
                   disabled={!offerText.trim()}
                   style={({ pressed }) => [
                     styles.modalBtn,
@@ -232,6 +310,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  priceBadgeHero: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "#2E7D4F",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  priceBadgeText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
   tradedBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,6 +367,12 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 6,
   },
+  priceSection: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 6,
+  },
   wantsHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   wantsLabel: {
     fontSize: 12,
@@ -286,9 +384,35 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     lineHeight: 22,
   },
+  priceAmount: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#2E7D4F",
+  },
   footer: {
     padding: 16,
     borderTopWidth: 1,
+  },
+  footerButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  footerBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  footerBtnOutline: {
+    borderWidth: 1.5,
+  },
+  footerBtnFill: {},
+  footerBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
   offerBtn: {
     flexDirection: "row",
@@ -318,6 +442,11 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 40,
   },
+  modalTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   modalTitle: {
     fontSize: 18,
     fontFamily: "Inter_700Bold",
@@ -326,6 +455,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     marginTop: -6,
+  },
+  buyAmountBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 4,
+  },
+  buyAmountLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#2E7D4F",
+    letterSpacing: 0.5,
+  },
+  buyAmount: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#2E7D4F",
   },
   modalInput: {
     borderWidth: 1,

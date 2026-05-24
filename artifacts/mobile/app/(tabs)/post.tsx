@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CATEGORIES, useListings } from "@/context/ListingsContext";
+import { CATEGORIES, CURRENCIES, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
 
 const LOCATION_OPTIONS = ["Zagreb", "Split", "Rijeka", "Osijek", "Sarajevo", "Beograd", "Ljubljana", "Ostalo"];
@@ -28,6 +28,8 @@ export default function PostScreen() {
   const [wantedFor, setWantedFor] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
+  const [priceText, setPriceText] = useState("");
+  const [currency, setCurrency] = useState("KM");
   const [submitted, setSubmitted] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -38,7 +40,16 @@ export default function PostScreen() {
   function handleSubmit() {
     if (!isValid) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addListing({ title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), category, location });
+    const priceNum = priceText.trim() ? parseFloat(priceText.replace(",", ".")) : null;
+    addListing({
+      title: title.trim(),
+      description: description.trim(),
+      wantedFor: wantedFor.trim(),
+      category,
+      location,
+      price: priceNum && !isNaN(priceNum) ? priceNum : null,
+      currency,
+    });
     setSubmitted(true);
     setTimeout(() => {
       setTitle("");
@@ -46,6 +57,8 @@ export default function PostScreen() {
       setWantedFor("");
       setCategory("");
       setLocation("");
+      setPriceText("");
+      setCurrency("KM");
       setSubmitted(false);
       router.push("/(tabs)/");
     }, 1200);
@@ -100,6 +113,47 @@ export default function PostScreen() {
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
           maxLength={120}
         />
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.labelRow}>
+          <Label colors={colors}>Cijena</Label>
+          <Text style={[styles.optionalTag, { color: colors.mutedForeground }]}>neobavezno</Text>
+        </View>
+        <Text style={[styles.priceHint, { color: colors.mutedForeground }]}>
+          Ako prihvaćaš i novčanu kupnju, unesi traženi iznos
+        </Text>
+        <View style={styles.priceRow}>
+          <TextInput
+            value={priceText}
+            onChangeText={(t) => setPriceText(t.replace(/[^0-9.,]/g, ""))}
+            placeholder="0"
+            placeholderTextColor={colors.mutedForeground}
+            style={[styles.input, styles.priceInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+            keyboardType="decimal-pad"
+            maxLength={10}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.currencyRow}>
+            {CURRENCIES.map((cur) => (
+              <Pressable
+                key={cur}
+                onPress={() => setCurrency(cur)}
+                style={({ pressed }) => [
+                  styles.currencyChip,
+                  {
+                    backgroundColor: currency === cur ? colors.secondary : colors.card,
+                    borderColor: currency === cur ? colors.secondary : colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.currencyText, { color: currency === cur ? "#fff" : colors.mutedForeground }]}>
+                  {cur}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -190,7 +244,6 @@ const labelStyles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    marginBottom: 6,
   },
 });
 
@@ -208,6 +261,45 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   section: { gap: 6 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  optionalTag: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    fontStyle: "italic",
+  },
+  priceHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: -2,
+    marginBottom: 2,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  priceInput: {
+    width: 110,
+    flexShrink: 0,
+  },
+  currencyRow: {
+    gap: 8,
+    alignItems: "center",
+  },
+  currencyChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  currencyText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
   input: {
     borderWidth: 1,
     borderRadius: 12,

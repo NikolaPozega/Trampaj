@@ -41,6 +41,7 @@ export function ListingCard({ listing, compact }: Props) {
   }
 
   const iconName = (CATEGORY_ICONS[listing.category] ?? "package") as keyof typeof Feather.glyphMap;
+  const hasPrice = listing.price != null && listing.price > 0;
 
   return (
     <Pressable
@@ -68,11 +69,17 @@ export function ListingCard({ listing, compact }: Props) {
           >
             {listing.title}
           </Text>
-          {listing.status === "traded" && (
-            <View style={[styles.tradedBadge, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.tradedText, { color: colors.secondaryForeground }]}>Zamijenjeno</Text>
+          {listing.status === "traded" ? (
+            <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.badgeText, { color: colors.secondaryForeground }]}>Zamijenjeno</Text>
             </View>
-          )}
+          ) : hasPrice ? (
+            <View style={[styles.badge, { backgroundColor: "#E8F5EC" }]}>
+              <Text style={[styles.badgeText, { color: "#2E7D4F" }]}>
+                {listing.price} {listing.currency}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.wantsRow}>
@@ -131,6 +138,16 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     flex: 1,
   },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+  },
   wantsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -161,15 +178,6 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
     backgroundColor: "#ccc",
-  },
-  tradedBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  tradedText: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
   },
   arrow: {
     flexShrink: 0,

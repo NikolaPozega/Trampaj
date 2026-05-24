@@ -13,12 +13,16 @@ export const CATEGORIES = [
   "Ostalo",
 ];
 
+export const CURRENCIES = ["KM", "EUR", "HRK", "RSD"];
+
 export interface Listing {
   id: string;
   title: string;
   description: string;
   category: string;
   wantedFor: string;
+  price: number | null;
+  currency: string;
   userName: string;
   location: string;
   createdAt: number;
@@ -48,6 +52,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     description: "Odlične slušalice s redukcijom buke, malo korištene. U originalnoj kutiji, sve ispravno radi.",
     category: "Elektronika",
     wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
+    price: 180,
+    currency: "EUR",
     userName: "Marko K.",
     location: "Zagreb",
     createdAt: Date.now() - 86400000 * 2,
@@ -60,6 +66,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     description: "Topla zimska jakna, nosio je jednu sezonu. Boja tamno plava, odlično stanje.",
     category: "Odjeća",
     wantedFor: "Ljetna jakna ili sportska oprema",
+    price: null,
+    currency: "KM",
     userName: "Ana P.",
     location: "Split",
     createdAt: Date.now() - 86400000 * 5,
@@ -72,6 +80,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     description: "Komplet knjiga Patricka Rothfussa i Brandona Sandersona. Sve u odličnom stanju.",
     category: "Knjige",
     wantedFor: "Sci-fi knjige ili stripovi",
+    price: 60,
+    currency: "KM",
     userName: "Luka B.",
     location: "Rijeka",
     createdAt: Date.now() - 86400000 * 1,
@@ -83,7 +93,9 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Bicikl - gradski, 26\"",
     description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.",
     category: "Sport",
-    wantedFor: "Roleri ili skejtbord, ili neka električna romobil",
+    wantedFor: "Roleri ili skejtbord, ili električni romobil",
+    price: 350,
+    currency: "KM",
     userName: "Petra M.",
     location: "Osijek",
     createdAt: Date.now() - 86400000 * 3,
@@ -95,7 +107,9 @@ const SAMPLE_LISTINGS: Listing[] = [
     title: "Stolna lampa - industrijski stil",
     description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol ili dnevnu sobu.",
     category: "Namještaj",
-    wantedFor: "Polica za knjige ili mali sto",
+    wantedFor: "Polica za knjige ili mali stol",
+    price: null,
+    currency: "KM",
     userName: "Tomislav R.",
     location: "Zagreb",
     createdAt: Date.now() - 86400000 * 7,
