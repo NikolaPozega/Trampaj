@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -86,12 +87,11 @@ export default function BrowseScreen() {
           {user ? (
             <View style={styles.authLinks}>
               {user.avatarBase64 ? (
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                <View style={[styles.userAvatar, { borderColor: colors.primary }]}>
-                  <Text style={[styles.userAvatarText, { color: colors.primary }]}>
-                    {user.username.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <Image
+                  source={{ uri: user.avatarBase64 }}
+                  style={[styles.userAvatar, { borderColor: colors.primary }]}
+                  contentFit="cover"
+                />
               ) : (
                 <View style={[styles.userAvatar, { borderColor: colors.primary, backgroundColor: `${colors.primary}22` }]}>
                   <Text style={[styles.userAvatarText, { color: colors.primary }]}>
@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1.5,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },

@@ -539,33 +539,6 @@ export default function ProfileScreen() {
         </View>
         <Text style={[styles.name, { color: colors.foreground }]}>{displayName}</Text>
 
-        {/* Auth user extra info */}
-        {user && (
-          <View style={styles.userInfoRows}>
-            <View style={styles.userInfoRow}>
-              <Feather name="mail" size={12} color={colors.mutedForeground} />
-              <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.email}</Text>
-              {user.isVerified && (
-                <View style={[styles.verifiedBadge, { backgroundColor: "#1A3A2A" }]}>
-                  <Feather name="check" size={9} color="#4ADE80" />
-                  <Text style={styles.verifiedText}>Potvrđen</Text>
-                </View>
-              )}
-            </View>
-            {user.phone ? (
-              <View style={styles.userInfoRow}>
-                <Feather name="phone" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.phone}</Text>
-              </View>
-            ) : null}
-            {user.address ? (
-              <View style={styles.userInfoRow}>
-                <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.address}</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
 
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((i) => (
@@ -828,6 +801,35 @@ export default function ProfileScreen() {
             subtitle="Postavi oglas i počni trampati!"
           />
         }
+        ListFooterComponent={user ? (
+          <View style={[styles.accountFooter, { borderTopColor: colors.border }]}>
+            <Text style={[styles.accountFooterTitle, { color: colors.mutedForeground }]}>Podaci računa</Text>
+            <View style={styles.userInfoRows}>
+              <View style={styles.userInfoRow}>
+                <Feather name="mail" size={11} color={colors.mutedForeground} />
+                <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.email}</Text>
+                {user.isVerified && (
+                  <View style={[styles.verifiedBadge, { backgroundColor: "#1A3A2A" }]}>
+                    <Feather name="check" size={9} color="#4ADE80" />
+                    <Text style={styles.verifiedText}>Potvrđen</Text>
+                  </View>
+                )}
+              </View>
+              {user.phone ? (
+                <View style={styles.userInfoRow}>
+                  <Feather name="phone" size={11} color={colors.mutedForeground} />
+                  <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.phone}</Text>
+                </View>
+              ) : null}
+              {user.address ? (
+                <View style={styles.userInfoRow}>
+                  <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+                  <Text style={[styles.accountFooterText, { color: colors.mutedForeground }]}>{user.address}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       />
 
       {/* Name modal (guest / no-auth) */}
@@ -1372,6 +1374,9 @@ const styles = StyleSheet.create({
   userInfoRows: { gap: 5, alignSelf: "stretch" },
   userInfoRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   userInfoText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  accountFooter: { marginTop: 24, borderTopWidth: 1, paddingTop: 16, paddingHorizontal: 12, paddingBottom: 8, gap: 10 },
+  accountFooterTitle: { fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.5, textTransform: "uppercase" },
+  accountFooterText: { fontSize: 11, fontFamily: "Inter_400Regular", flex: 1 },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
   verifiedText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#4ADE80" },
   profileBtns: { flexDirection: "row", gap: 8, alignSelf: "stretch" },
