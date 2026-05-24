@@ -628,6 +628,9 @@ export default function ProfileScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.suggestScroll}
             decelerationRate="fast"
+            snapToInterval={306}
+            snapToAlignment="center"
+            disableIntervalMomentum
           >
             {visibleMatches.map((match, idx) => (
               <MatchCard

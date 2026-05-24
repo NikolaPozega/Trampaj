@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -57,9 +58,9 @@ export default function LoginScreen() {
     }
   }
 
-  function handleSocial() {
+  function handleSocial(name: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace("/(tabs)");
+    Alert.alert("Uskoro dostupno", `Prijava putem ${name} stiže uskoro.`);
   }
 
   return (
@@ -93,12 +94,12 @@ export default function LoginScreen() {
       >
         <View style={styles.titleSection}>
           <Text style={[styles.title, { color: colors.foreground }]}>Prijava</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Još nemaš profil na Trampaj.hr?{" "}
-            <Text style={[styles.link, { color: colors.secondary }]} onPress={() => router.push("/onboarding")}>
-              Registriraj se »
-            </Text>
-          </Text>
+          <View style={styles.subtitleRow}>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Još nemaš profil na Trampaj.hr? </Text>
+            <Pressable onPress={() => router.push("/onboarding")} hitSlop={8}>
+              <Text style={[styles.link, { color: colors.secondary }]}>Registriraj se »</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Not-verified notice */}
@@ -148,7 +149,25 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>Lozinka</Text>
-              <Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Alert.alert(
+                    "Reset lozinke",
+                    "Upiši svoju email adresu i poslaćemo ti link za postavljanje nove lozinke.",
+                    [
+                      { text: "Odustani", style: "cancel" },
+                      {
+                        text: "Pošalji",
+                        onPress: () => {
+                          Alert.alert("Email poslan", "Ako postoji račun s tim emailom, dobit ćeš link za reset lozinke.");
+                        },
+                      },
+                    ]
+                  );
+                }}
+                hitSlop={8}
+              >
                 <Text style={[styles.forgotLink, { color: colors.secondary }]}>Zaboravio lozinku?</Text>
               </Pressable>
             </View>
@@ -209,21 +228,21 @@ export default function LoginScreen() {
         {/* Social buttons */}
         <View style={styles.socialButtons}>
           <Pressable
-            onPress={handleSocial}
+            onPress={() => handleSocial("Google")}
             style={({ pressed }) => [styles.socialBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             <Text style={styles.googleG}>G</Text>
             <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Nastavi s Google računom</Text>
           </Pressable>
           <Pressable
-            onPress={handleSocial}
+            onPress={() => handleSocial("Apple")}
             style={({ pressed }) => [styles.socialBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             <Feather name="smartphone" size={18} color={colors.foreground} />
             <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Nastavi s Apple računom</Text>
           </Pressable>
           <Pressable
-            onPress={handleSocial}
+            onPress={() => handleSocial("Facebook")}
             style={({ pressed }) => [styles.socialBtn, { backgroundColor: "#1877F2", borderColor: "#1877F2", opacity: pressed ? 0.8 : 1 }]}
           >
             <Text style={styles.fbF}>f</Text>
@@ -253,8 +272,9 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 20 },
   titleSection: { gap: 6 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  subtitleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  link: { fontFamily: "Inter_600SemiBold" },
+  link: { fontSize: 13, fontFamily: "Inter_600SemiBold", lineHeight: 18 },
   noticeBox: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 12, padding: 14 },
   noticeTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   noticeText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
