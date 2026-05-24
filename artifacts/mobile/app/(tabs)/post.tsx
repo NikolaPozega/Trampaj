@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
-import { analyzeImageForCategory, suggestTrades } from "@/services/openai";
+import { analyzeImageForCategory, detectCategoryFromTitle, suggestTrades } from "@/services/openai";
 
 const LOCATION_OPTIONS = ["Zagreb", "Split", "Rijeka", "Osijek", "Sarajevo", "Beograd", "Ljubljana", "Ostalo"];
 
@@ -41,11 +41,33 @@ export default function PostScreen() {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [titleSuggesting, setTitleSuggesting] = useState(false);
+  const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
 
   const isValid = title.trim() && description.trim() && wantedFor.trim() && category && location;
+
+  useEffect(() => {
+    if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
+    if (title.trim().length < 3) return;
+    titleDebounceRef.current = setTimeout(async () => {
+      setTitleSuggesting(true);
+      try {
+        const detected = await detectCategoryFromTitle(title);
+        if (detected && !category) {
+          setCategory(detected);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      } catch {
+        // silent
+      } finally {
+        setTitleSuggesting(false);
+      }
+    }, 800);
+    return () => { if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current); };
+  }, [title]);
 
   async function pickImage(fromCamera: boolean) {
     let result;
@@ -198,14 +220,21 @@ export default function PostScreen() {
           </Pressable>
 
           <View style={styles.titleDescCol}>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Unesi naslov"
-              placeholderTextColor={colors.mutedForeground}
-              style={[inputStyle, styles.titleInput]}
-              maxLength={80}
-            />
+            <View style={styles.titleWrapper}>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Unesi naslov"
+                placeholderTextColor={colors.mutedForeground}
+                style={[inputStyle, styles.titleInput]}
+                maxLength={80}
+              />
+              {titleSuggesting && (
+                <View style={styles.titleAiDot}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              )}
+            </View>
             <TextInput
               value={description}
               onChangeText={setDescription}
@@ -404,6 +433,8 @@ const styles = StyleSheet.create({
   aiText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   titleDescCol: { flex: 1, gap: 8 },
   titleInput: { flex: 0 },
+  titleWrapper: { position: "relative" },
+  titleAiDot: { position: "absolute", right: 10, top: 0, bottom: 0, justifyContent: "center" },
   descInput: { flex: 1, minHeight: 52, paddingTop: 10, textAlignVertical: "top" },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },

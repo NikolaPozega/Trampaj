@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useChat } from "@/context/ChatContext";
 import { useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -48,6 +49,7 @@ export default function ListingDetailScreen() {
   const [modalMode, setModalMode] = useState<ModalMode>("barter");
   const [offerText, setOfferText] = useState("");
   const [offerSent, setOfferSent] = useState(false);
+  const { getOrCreateConversation } = useChat();
 
   const listing = listings.find((l) => l.id === id);
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
@@ -190,7 +192,11 @@ export default function ListingDetailScreen() {
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>
           <View style={styles.footerButtons}>
             <Pressable
-              onPress={() => openModal("barter")}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                getOrCreateConversation(listing.id, listing.title, listing.userName);
+                router.push(`/chat/${listing.id}?listingTitle=${encodeURIComponent(listing.title)}&otherUser=${encodeURIComponent(listing.userName)}`);
+              }}
               style={({ pressed }) => [
                 styles.footerBtn,
                 { borderColor: colors.primary, borderWidth: 1.5, opacity: pressed ? 0.8 : 1 },

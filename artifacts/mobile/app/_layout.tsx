@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ChatProvider } from "@/context/ChatContext";
 import { ListingsProvider } from "@/context/ListingsContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -24,10 +25,8 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Natrag" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="listing/[id]"
-        options={{ headerShown: false, presentation: "card" }}
-      />
+      <Stack.Screen name="listing/[id]" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="chat/[listingId]" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }
@@ -53,11 +52,13 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <ListingsProvider>
-            <GestureHandlerRootView>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <ChatProvider>
+              <GestureHandlerRootView>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </ChatProvider>
           </ListingsProvider>
         </QueryClientProvider>
       </ErrorBoundary>
