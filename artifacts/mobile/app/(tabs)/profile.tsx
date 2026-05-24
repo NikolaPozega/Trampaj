@@ -53,15 +53,18 @@ function MatchCard({
   colors,
   onDismiss,
   onSave,
+  onSwipeStart,
+  onSwipeEnd,
 }: {
   match: TradeMatch;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   onDismiss: () => void;
   onSave: () => void;
+  onSwipeStart: () => void;
+  onSwipeEnd: () => void;
 }) {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
-  const gestureActive = useRef(false);
 
   const dismissOverlayOpacity = translateY.interpolate({
     inputRange: [-SWIPE_THRESHOLD, -10, 0],
@@ -80,14 +83,14 @@ function MatchCard({
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dy) > Math.abs(g.dx) && Math.abs(g.dy) > 8,
       onPanResponderGrant: () => {
-        gestureActive.current = true;
+        onSwipeStart();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       },
       onPanResponderMove: (_, g) => {
         translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
-        gestureActive.current = false;
+        onSwipeEnd();
         if (g.dy < -SWIPE_THRESHOLD) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           Animated.parallel([
@@ -110,7 +113,7 @@ function MatchCard({
         }
       },
       onPanResponderTerminate: () => {
-        gestureActive.current = false;
+        onSwipeEnd();
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
       },
     })
@@ -323,6 +326,8 @@ export default function ProfileScreen() {
   const [nameInput, setNameInput] = useState(myName);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [listScrollEnabled, setListScrollEnabled] = useState(true);
+  const flatListRef = useRef<FlatList>(null);
 
   const myListings = listings.filter((l) => l.isMine);
   const activeCount = myListings.filter((l) => l.status === "active").length;
@@ -480,6 +485,8 @@ export default function ProfileScreen() {
                 colors={colors}
                 onDismiss={() => handleDismiss(match.theirListing.id)}
                 onSave={() => handleSaveMatch(match.theirListing.id)}
+                onSwipeStart={() => setListScrollEnabled(false)}
+                onSwipeEnd={() => setListScrollEnabled(true)}
               />
             ))}
           </ScrollView>
@@ -523,11 +530,13 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
+        ref={flatListRef}
         data={myListings}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         ListHeaderComponent={ListHeader}
+        scrollEnabled={listScrollEnabled}
         renderItem={({ item }) => (
           <View style={styles.cardWrapper}>
             <ListingCard listing={item} />

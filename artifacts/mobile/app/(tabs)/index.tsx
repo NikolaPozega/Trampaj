@@ -164,24 +164,6 @@ export default function BrowseScreen() {
         />
       )}
 
-      <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push("/(tabs)/post");
-        }}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            backgroundColor: colors.primary,
-            opacity: pressed ? 0.85 : 1,
-            transform: [{ scale: pressed ? 0.95 : 1 }],
-            bottom: insets.bottom + (Platform.OS === "web" ? 70 : 100),
-          },
-        ]}
-      >
-        <Feather name="plus" size={22} color={colors.primaryForeground} />
-        <Text style={[styles.fabText, { color: colors.primaryForeground }]}>Objavi oglas</Text>
-      </Pressable>
     </View>
   );
 }
@@ -262,24 +244,5 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-  },
-  fab: {
-    position: "absolute",
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-    borderRadius: 30,
-    shadowColor: "#F5C100",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabText: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
   },
 });
