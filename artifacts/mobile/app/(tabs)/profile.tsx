@@ -18,6 +18,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -355,6 +356,8 @@ export default function ProfileScreen() {
 
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const { width: screenWidth } = useWindowDimensions();
+  const snapPad = Math.max(0, (screenWidth - 32 - 296) / 2);
   const [listScrollEnabled, setListScrollEnabled] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -635,10 +638,10 @@ export default function ProfileScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.suggestScroll}
+            contentContainerStyle={{ paddingHorizontal: snapPad, gap: 10 }}
             decelerationRate="fast"
             snapToInterval={306}
-            snapToAlignment="center"
+            snapToAlignment="start"
             disableIntervalMomentum
           >
             {visibleMatches.map((match, idx) => (

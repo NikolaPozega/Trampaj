@@ -15,7 +15,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: "#F5C100",
         tabBarInactiveTintColor: "#8CA4BE",
         headerShown: false,
-        tabBarStyle: {
+        tabBarStyle: user ? {
           backgroundColor: "#0D2045",
           borderTopWidth: 1,
           borderTopColor: "rgba(56,189,248,0.22)",
@@ -24,7 +24,7 @@ export default function TabLayout() {
           height: Platform.OS === "web" ? 62 : 86,
           paddingBottom: Platform.OS === "web" ? 8 : 30,
           paddingTop: 6,
-        },
+        } : { display: "none" },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",

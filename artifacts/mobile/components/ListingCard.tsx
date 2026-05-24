@@ -65,7 +65,7 @@ export function ListingCard({ listing }: Props) {
             contentFit="cover"
           />
         ) : (
-          <Feather name={iconName} size={30} color={colors.secondary} />
+          <Feather name={iconName} size={22} color={colors.secondary} />
         )}
         {listing.status === "traded" && (
           <View style={styles.tradedOverlay}>
@@ -110,14 +110,14 @@ export function ListingCard({ listing }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
     flex: 1,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   imageArea: {
-    height: 130,
+    height: 90,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -149,22 +149,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   body: {
-    padding: 10,
-    gap: 4,
+    padding: 8,
+    gap: 3,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 4,
+    gap: 3,
   },
   title: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    lineHeight: 18,
+    lineHeight: 15,
     flex: 1,
   },
   price: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_700Bold",
     flexShrink: 0,
     marginTop: 1,
@@ -172,10 +172,10 @@ const styles = StyleSheet.create({
   tradeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
   tradeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_500Medium",
     flex: 1,
   },
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   metaText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Inter_400Regular",
   },
-  dot: { fontSize: 10 },
+  dot: { fontSize: 9 },
 });

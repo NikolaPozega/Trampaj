@@ -199,7 +199,7 @@ export default function BrowseScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ListingCard listing={item} />}
-          numColumns={2}
+          numColumns={3}
           columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={[
             styles.list,
@@ -313,13 +313,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
   },
   list: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   listEmpty: { flex: 1 },
   columnWrapper: {
-    gap: 10,
-    paddingHorizontal: 4,
+    gap: 6,
+    paddingHorizontal: 2,
   },
   loadingContainer: {
     flex: 1,
