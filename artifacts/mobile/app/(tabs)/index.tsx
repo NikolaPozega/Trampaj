@@ -246,7 +246,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 4,
-    flex: 1,
   },
   authLinks: {
     marginLeft: "auto",
