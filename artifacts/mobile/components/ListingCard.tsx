@@ -70,19 +70,21 @@ export function ListingCard({ listing }: Props) {
             <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
           </View>
         )}
-        {hasPrice && (
-          <View style={[styles.priceBadge, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.priceBadgeText, { color: colors.primaryForeground }]}>
-              Vrijednost: {listing.price} €
-            </Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
-          {listing.title}
-        </Text>
+        {/* Title + price on same row */}
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+            {listing.title}
+          </Text>
+          {hasPrice && (
+            <Text style={[styles.price, { color: colors.primary }]}>
+              {listing.price} €
+            </Text>
+          )}
+        </View>
+
         <View style={styles.tradeRow}>
           <Feather name="refresh-cw" size={11} color={colors.primary} />
           <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
@@ -126,26 +128,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
-  priceBadge: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  priceBadgeText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
   body: {
     padding: 10,
+    gap: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 4,
   },
   title: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     lineHeight: 18,
+    flex: 1,
+  },
+  price: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    flexShrink: 0,
+    marginTop: 1,
   },
   tradeRow: {
     flexDirection: "row",

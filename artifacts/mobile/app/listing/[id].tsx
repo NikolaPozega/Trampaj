@@ -147,14 +147,7 @@ export default function ListingDetailScreen() {
           ) : (
             <Feather name={iconName} size={64} color={colors.secondary} />
           )}
-          {hasPrice && (
-            <View style={[styles.heroPrice, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.heroPriceText, { color: colors.primaryForeground }]}>
-                {listing.price} €
-              </Text>
-            </View>
-          )}
-          {listing.status === "traded" && (
+            {listing.status === "traded" && (
             <View style={styles.tradedOverlay}>
               <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
             </View>

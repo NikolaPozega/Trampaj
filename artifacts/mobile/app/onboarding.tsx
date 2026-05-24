@@ -92,47 +92,23 @@ export default function OnboardingScreen() {
 
           {/* Checkboxes */}
           <View style={styles.checkboxSection}>
-            <CheckRow
-              checked={acceptedTerms}
-              onToggle={() => setAcceptedTerms((v) => !v)}
-              colors={colors}
-            >
-              <Text style={[styles.checkText, { color: colors.foreground }]}>
-                Prihvaćam{" "}
-                <Text
-                  style={[styles.checkLink, { color: colors.primary }]}
-                  onPress={() => router.push("/terms")}
-                >
-                  Uvjete korištenja
-                </Text>
-              </Text>
+            <CheckRow checked={acceptedTerms} onToggle={() => setAcceptedTerms((v) => !v)} colors={colors}>
+              <Text style={[styles.checkText, { color: colors.foreground }]}>Prihvaćam </Text>
+              <Pressable onPress={() => router.push("/terms")} hitSlop={6}>
+                <Text style={[styles.checkLink, { color: colors.primary }]}>Uvjete korištenja</Text>
+              </Pressable>
             </CheckRow>
 
-            <CheckRow
-              checked={acceptedPrivacy}
-              onToggle={() => setAcceptedPrivacy((v) => !v)}
-              colors={colors}
-            >
-              <Text style={[styles.checkText, { color: colors.foreground }]}>
-                Prihvaćam{" "}
-                <Text
-                  style={[styles.checkLink, { color: colors.primary }]}
-                  onPress={() => router.push("/privacy")}
-                >
-                  Politiku privatnosti
-                </Text>{" "}
-                i obradu podataka sukladno GDPR-u
-              </Text>
+            <CheckRow checked={acceptedPrivacy} onToggle={() => setAcceptedPrivacy((v) => !v)} colors={colors}>
+              <Text style={[styles.checkText, { color: colors.foreground }]}>Prihvaćam </Text>
+              <Pressable onPress={() => router.push("/privacy")} hitSlop={6}>
+                <Text style={[styles.checkLink, { color: colors.primary }]}>Politiku privatnosti</Text>
+              </Pressable>
+              <Text style={[styles.checkText, { color: colors.foreground }]}> (GDPR)</Text>
             </CheckRow>
 
-            <CheckRow
-              checked={acceptedAge}
-              onToggle={() => setAcceptedAge((v) => !v)}
-              colors={colors}
-            >
-              <Text style={[styles.checkText, { color: colors.foreground }]}>
-                Potvrđujem da imam najmanje 18 godina
-              </Text>
+            <CheckRow checked={acceptedAge} onToggle={() => setAcceptedAge((v) => !v)} colors={colors}>
+              <Text style={[styles.checkText, { color: colors.foreground }]}>Imam najmanje 18 godina</Text>
             </CheckRow>
           </View>
 
@@ -175,20 +151,22 @@ function CheckRow({
   children: React.ReactNode;
 }) {
   return (
-    <Pressable onPress={onToggle} style={styles.checkRow}>
-      <View
-        style={[
-          styles.checkbox,
-          {
-            backgroundColor: checked ? colors.primary : colors.muted,
-            borderColor: checked ? colors.primary : colors.border,
-          },
-        ]}
-      >
-        {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
-      </View>
+    <View style={styles.checkRow}>
+      <Pressable onPress={onToggle} hitSlop={8}>
+        <View
+          style={[
+            styles.checkbox,
+            {
+              backgroundColor: checked ? colors.primary : colors.muted,
+              borderColor: checked ? colors.primary : colors.border,
+            },
+          ]}
+        >
+          {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
+        </View>
+      </Pressable>
       <View style={styles.checkContent}>{children}</View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -208,7 +186,7 @@ const styles = StyleSheet.create({
   checkboxSection: { gap: 12 },
   checkRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0 },
-  checkContent: { flex: 1 },
+  checkContent: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 2 },
   checkText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
   checkLink: { fontFamily: "Inter_600SemiBold" },
   registerBtn: { paddingVertical: 15, borderRadius: 14, alignItems: "center" },

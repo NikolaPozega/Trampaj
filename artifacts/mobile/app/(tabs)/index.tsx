@@ -73,6 +73,21 @@ export default function BrowseScreen() {
           <Text style={[styles.logoText, { color: colors.foreground }]}>
             Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
           </Text>
+          <View style={styles.authLinks}>
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/onboarding"); }}
+              style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={[styles.authLinkText, { color: colors.mutedForeground }]}>Prijava</Text>
+            </Pressable>
+            <Text style={[styles.authDot, { color: colors.border }]}>|</Text>
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/onboarding"); }}
+              style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={[styles.authLinkText, { color: colors.secondary }]}>Registracija</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -181,7 +196,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 4,
+    flex: 1,
   },
+  authLinks: {
+    marginLeft: "auto",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  authLink: { paddingVertical: 4, paddingHorizontal: 2 },
+  authLinkText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  authDot: { fontSize: 11 },
   logoIcon: {
     width: 40,
     height: 40,
