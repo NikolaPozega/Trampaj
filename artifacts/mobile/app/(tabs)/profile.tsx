@@ -13,6 +13,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -338,7 +339,7 @@ export default function ProfileScreen() {
     unsaveListing,
     deleteAllData,
   } = useListings();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, refreshUser } = useAuth();
 
   // Local-only edit (no auth)
   const [editingName, setEditingName] = useState(false);
@@ -355,6 +356,13 @@ export default function ProfileScreen() {
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [listScrollEnabled, setListScrollEnabled] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await refreshUser();
+    setRefreshing(false);
+  }
   const flatListRef = useRef<FlatList>(null);
 
   const displayName = user?.username ?? myName;
@@ -746,6 +754,14 @@ export default function ProfileScreen() {
         columnWrapperStyle={styles.columnWrapper}
         ListHeaderComponent={ListHeader}
         scrollEnabled={listScrollEnabled}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#F5C100"
+            colors={["#F5C100"]}
+          />
+        }
         renderItem={({ item }) => (
           <View style={styles.cardWrapper}>
             <ListingCard listing={item} />

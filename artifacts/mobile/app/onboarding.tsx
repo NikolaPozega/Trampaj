@@ -216,10 +216,15 @@ export default function OnboardingScreen() {
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: topPad, borderBottomColor: colors.border }]}>
         <Pressable
-          onPress={() => (step > 1 ? setStep((s) => (s - 1) as Step) : router.back())}
-          style={({ pressed }) => [styles.back, { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => router.replace("/(tabs)")}
+          style={({ pressed }) => [styles.logoBtn, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <Feather name="arrow-left" size={18} color={colors.foreground} />
+          <View style={[styles.logoMini, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="refresh-cw" size={16} color={colors.primary} />
+          </View>
+          <Text style={[styles.logoText, { color: colors.foreground }]}>
+            Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
+          </Text>
         </Pressable>
         <View style={styles.topTabs}>
           <Pressable onPress={() => router.replace("/login")} style={styles.topTab}>
@@ -229,7 +234,16 @@ export default function OnboardingScreen() {
             <Text style={[styles.topTabText, { color: colors.primary }]}>Registracija</Text>
           </View>
         </View>
-        <View style={{ width: 36 }} />
+        {step > 1 ? (
+          <Pressable
+            onPress={() => setStep((s) => (s - 1) as Step)}
+            style={({ pressed }) => [styles.back, { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="arrow-left" size={18} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
       </View>
 
       {/* Step bar */}
@@ -460,6 +474,9 @@ const cStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 0, justifyContent: "space-between", borderBottomWidth: 1 },
+  logoBtn: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 10 },
+  logoMini: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  logoText: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
   back: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   topTabs: { flexDirection: "row", flex: 1, justifyContent: "center" },
   topTab: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 2, borderBottomColor: "transparent" },

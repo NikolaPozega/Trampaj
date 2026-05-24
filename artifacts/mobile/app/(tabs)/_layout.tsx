@@ -3,9 +3,11 @@ import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 export default function TabLayout() {
   const colors = useColors();
+  const { user } = useAuth();
 
   return (
     <Tabs
@@ -47,6 +49,7 @@ export default function TabLayout() {
         options={{
           title: "Objavi",
           tabBarLabel: () => null,
+          tabBarButton: user ? undefined : () => null,
           tabBarIcon: () => (
             <View style={[styles.postIcon, { backgroundColor: colors.primary }]}>
               <Feather name="plus" size={22} color={colors.primaryForeground} />
@@ -58,6 +61,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profil",
+          tabBarButton: user ? undefined : () => null,
           tabBarIcon: ({ color, size }) => (
             <Feather name="user" size={size} color={color} />
           ),

@@ -1,7 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import * as LocalAuthentication from "expo-local-authentication";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,11 +20,15 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useListings } from "@/context/ListingsContext";
 
+const BIO_ASKED_KEY = "@trampaj_bio_asked_v1";
+const BIO_ENABLED_KEY = "@trampaj_bio_enabled_v1";
+
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, tryAutoLogin } = useAuth();
   const { setMyName } = useListings();
+  const [bioEnabled, setBioEnabled] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +39,56 @@ export default function LoginScreen() {
   const [notVerifiedEmail, setNotVerifiedEmail] = useState("");
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
+
+  useEffect(() => {
+    AsyncStorage.getItem(BIO_ENABLED_KEY).then((v) => setBioEnabled(v === "yes"));
+  }, []);
+
+  async function checkBiometricAfterLogin() {
+    const asked = await AsyncStorage.getItem(BIO_ASKED_KEY);
+    if (asked) return;
+    await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
+    const hasHw = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!hasHw || !enrolled) return;
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    const hasFace = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
+    const method = hasFace ? "skeniranje lica" : "otisak prsta";
+    Alert.alert(
+      "Brža prijava 🔒",
+      `Koristiš li ${method} umjesto lozinke za sljedeće prijave? Možeš promijeniti u Profilu.`,
+      [
+        { text: "Ne, hvala", style: "cancel" },
+        {
+          text: "Da, aktiviraj",
+          onPress: async () => {
+            await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
+            setBioEnabled(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleBioLogin() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Prijavi se biometricom",
+      fallbackLabel: "Koristi lozinku",
+      disableDeviceFallback: false,
+    });
+    if (!result.success) return;
+    setLoading(true);
+    const r = await tryAutoLogin();
+    setLoading(false);
+    if (r.ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(tabs)");
+    } else {
+      Alert.alert("Sesija istekla", "Prijavi se korisničkim imenom i lozinkom.");
+    }
+  }
 
   async function handleLogin() {
     if (!username.trim()) { setError("Upiši korisničko ime"); return; }
@@ -46,10 +102,10 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (result.ok) {
-      // Sync name to ListingsContext so sample listings show correct name
       await setMyName(username.trim());
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
+      setTimeout(() => checkBiometricAfterLogin(), 800);
     } else if (result.notVerified) {
       setNotVerified(true);
       setNotVerifiedEmail(result.email ?? "");
@@ -71,10 +127,15 @@ export default function LoginScreen() {
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: topPad, borderBottomColor: colors.border }]}>
         <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.back, { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => router.replace("/(tabs)")}
+          style={({ pressed }) => [styles.logoBtn, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <Feather name="arrow-left" size={18} color={colors.foreground} />
+          <View style={[styles.logoMini, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="refresh-cw" size={16} color={colors.primary} />
+          </View>
+          <Text style={[styles.logoText, { color: colors.foreground }]}>
+            Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
+          </Text>
         </Pressable>
         <View style={styles.topTabs}>
           <View style={[styles.topTab, styles.topTabActive, { borderBottomColor: colors.primary }]}>
@@ -218,6 +279,19 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        {/* Biometric button */}
+        {bioEnabled && (
+          <Pressable
+            onPress={handleBioLogin}
+            disabled={loading}
+            style={({ pressed }) => [styles.bioBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Feather name="lock" size={18} color={colors.secondary} />
+            <Text style={[styles.bioBtnText, { color: colors.foreground }]}>Prijava otiskom / licem</Text>
+            <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
+          </Pressable>
+        )}
+
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
@@ -264,7 +338,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 0, justifyContent: "space-between", borderBottomWidth: 1 },
+  logoBtn: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 10 },
+  logoMini: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  logoText: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
   back: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  bioBtn: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  bioBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
   topTabs: { flexDirection: "row", flex: 1, justifyContent: "center" },
   topTab: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 2, borderBottomColor: "transparent" },
   topTabActive: {},

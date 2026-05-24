@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,6 +39,13 @@ export default function BrowseScreen() {
   const { user, logout } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await new Promise((r) => setTimeout(r, 700));
+    setRefreshing(false);
+  }
 
   function toggleCategory(cat: string) {
     if (cat === "Sve") {
@@ -199,6 +207,14 @@ export default function BrowseScreen() {
             { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) },
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
           ListEmptyComponent={
             <EmptyState
               icon="search"
