@@ -21,7 +21,24 @@ import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings }
 import { useColors } from "@/hooks/useColors";
 import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally, suggestTrades } from "@/services/openai";
 
-const LOCATION_OPTIONS = ["Zagreb", "Split", "Rijeka", "Osijek", "Sarajevo", "Beograd", "Ljubljana", "Ostalo"];
+async function searchLocations(query: string): Promise<string[]> {
+  if (query.trim().length < 2) return [];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&countrycodes=hr,ba,rs,si,me,mk`;
+    const res = await fetch(url, { headers: { "Accept-Language": "hr,en" } });
+    const data: Array<{ display_name: string; address: Record<string, string> }> = await res.json();
+    const suggestions = data.map((item) => {
+      const a = item.address;
+      const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
+      const country = a.country ?? "";
+      if (city && country) return `${city}, ${country}`;
+      return item.display_name.split(",").slice(0, 2).join(",").trim();
+    });
+    return [...new Set(suggestions.filter(Boolean))];
+  } catch {
+    return [];
+  }
+}
 
 export default function PostScreen() {
   const colors = useColors();
@@ -37,6 +54,10 @@ export default function PostScreen() {
   const [priceText, setPriceText] = useState("");
   const [phone, setPhone] = useState("");
   const [condition, setCondition] = useState<Condition | null>(null);
+  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationFocused, setLocationFocused] = useState(false);
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showPhone, setShowPhone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
@@ -173,7 +194,7 @@ export default function PostScreen() {
       setTitle(""); setDescription(""); setWantedFor("");
       setCategory(""); setLocation(""); setPriceText("");
       setPhone(""); setShowPhone(false); setImageUri(null);
-      setCondition(null);
+      setCondition(null); setLocationSuggestions([]);
       setSubmitted(false); setAiSuggestions([]);
       router.push("/(tabs)/");
     }, aiSuggestions.length > 0 ? 3000 : 1500);
@@ -361,21 +382,70 @@ export default function PostScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
-          <View style={styles.locationGrid}>
-            {LOCATION_OPTIONS.map((loc) => (
-              <Pressable
-                key={loc}
-                onPress={() => setLocation(loc)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: location === loc ? colors.primary : colors.muted, borderColor: location === loc ? colors.primary : colors.border },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: location === loc ? colors.primaryForeground : colors.mutedForeground }]}>
-                  {loc}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.locationWrap}>
+            <View style={[
+              styles.locationInputRow,
+              {
+                backgroundColor: colors.muted,
+                borderColor: location ? colors.primary : locationFocused ? colors.secondary : colors.border,
+              },
+            ]}>
+              <Feather name="map-pin" size={16} color={location ? colors.primary : colors.mutedForeground} />
+              <TextInput
+                value={location}
+                onChangeText={(v) => {
+                  setLocation(v);
+                  if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+                  if (v.trim().length >= 2) {
+                    setLocationLoading(true);
+                    locationDebounceRef.current = setTimeout(async () => {
+                      const results = await searchLocations(v);
+                      setLocationSuggestions(results);
+                      setLocationLoading(false);
+                    }, 420);
+                  } else {
+                    setLocationSuggestions([]);
+                    setLocationLoading(false);
+                  }
+                }}
+                onFocus={() => setLocationFocused(true)}
+                onBlur={() => setTimeout(() => { setLocationFocused(false); }, 180)}
+                placeholder="Upiši grad ili adresu…"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.locationInput, { color: colors.foreground }]}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {locationLoading
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : location
+                  ? <Pressable hitSlop={8} onPress={() => { setLocation(""); setLocationSuggestions([]); }}>
+                      <Feather name="x" size={15} color={colors.mutedForeground} />
+                    </Pressable>
+                  : null}
+            </View>
+            {locationFocused && locationSuggestions.length > 0 && (
+              <View style={[styles.locationDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {locationSuggestions.map((s, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => {
+                      setLocation(s);
+                      setLocationSuggestions([]);
+                      setLocationFocused(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.locationSuggItem,
+                      i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
+                      { backgroundColor: pressed ? colors.muted : "transparent" },
+                    ]}
+                  >
+                    <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.locationSuggText, { color: colors.foreground }]} numberOfLines={1}>{s}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -603,6 +673,12 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   locationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  locationWrap: { position: "relative" },
+  locationInputRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  locationInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  locationDropdown: { borderWidth: 1, borderRadius: 10, marginTop: 4, overflow: "hidden" },
+  locationSuggItem: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12 },
+  locationSuggText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
   conditionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   conditionChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5 },
   conditionDot: { width: 8, height: 8, borderRadius: 4 },

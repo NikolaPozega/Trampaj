@@ -84,10 +84,11 @@ function MatchCard({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Capture immediately on touch — prevents parent FlatList from seeing it
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      // Only claim vertical gestures so the parent horizontal ScrollView can still scroll
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
       onPanResponderGrant: () => {
         onSwipeStart();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
