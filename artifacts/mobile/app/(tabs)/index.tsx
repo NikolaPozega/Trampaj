@@ -75,7 +75,7 @@ export default function BrowseScreen() {
           </Text>
           <View style={styles.authLinks}>
             <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/onboarding"); }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/login"); }}
               style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={[styles.authLinkText, { color: colors.mutedForeground }]}>Prijava</Text>
