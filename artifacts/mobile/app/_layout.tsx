@@ -16,7 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChatProvider } from "@/context/ChatContext";
 import { ListingsProvider } from "@/context/ListingsContext";
-import { ONBOARDED_KEY } from "@/app/onboarding";
+import { AuthProvider } from "@/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,6 +28,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="login" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="verify-email" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="listing/[id]" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="chat/[listingId]" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="user/[name]" options={{ headerShown: false, presentation: "card" }} />
@@ -44,6 +45,7 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
@@ -56,15 +58,17 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <ListingsProvider>
-            <ChatProvider>
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </ChatProvider>
-          </ListingsProvider>
+          <AuthProvider>
+            <ListingsProvider>
+              <ChatProvider>
+                <GestureHandlerRootView>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </ChatProvider>
+            </ListingsProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

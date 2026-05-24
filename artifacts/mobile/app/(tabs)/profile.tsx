@@ -1,8 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   FlatList,
@@ -20,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
 import { CATEGORIES, type Listing, useListings } from "@/context/ListingsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { findTradeMatches, type TradeMatch } from "@/services/tradeMatches";
 
@@ -332,12 +336,26 @@ export default function ProfileScreen() {
     unsaveListing,
     deleteAllData,
   } = useListings();
+  const { user, logout, updateProfile } = useAuth();
+
+  // Local-only edit (no auth)
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(myName);
+
+  // Full profile edit modal (auth required)
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ username: "", phone: "", address: "" });
+  const [profileAvatarUri, setProfileAvatarUri] = useState<string | null>(null);
+  const [profileAvatarBase64, setProfileAvatarBase64] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [listScrollEnabled, setListScrollEnabled] = useState(true);
   const flatListRef = useRef<FlatList>(null);
+
+  const displayName = user?.username ?? myName;
 
   const myListings = listings.filter((l) => l.isMine);
   const activeCount = myListings.filter((l) => l.status === "active").length;
@@ -365,6 +383,72 @@ export default function ProfileScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setEditingName(false);
+  }
+
+  function openProfileEdit() {
+    if (!user) {
+      setNameInput(myName);
+      setEditingName(true);
+      return;
+    }
+    setProfileForm({
+      username: user.username ?? "",
+      phone: user.phone ?? "",
+      address: user.address ?? "",
+    });
+    setProfileAvatarUri(user.avatarBase64 ?? null);
+    setProfileAvatarBase64(null);
+    setProfileError("");
+    setEditingProfile(true);
+  }
+
+  async function handlePickProfilePhoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Dozvola odbijena", "Omogući pristup galeriji u postavkama.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setProfileAvatarUri(result.assets[0].uri);
+      if (result.assets[0].base64) {
+        setProfileAvatarBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      }
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!user) return;
+    if (!profileForm.username.trim()) { setProfileError("Korisničko ime je obavezno"); return; }
+    setProfileSaving(true);
+    setProfileError("");
+    const data: Parameters<typeof updateProfile>[0] = {
+      username: profileForm.username.trim(),
+      phone: profileForm.phone,
+      address: profileForm.address,
+    };
+    if (profileAvatarBase64) {
+      data.avatarBase64 = profileAvatarBase64;
+    } else if (profileAvatarUri === null && user.avatarBase64) {
+      // Removed avatar
+      data.avatarBase64 = "";
+    }
+    const result = await updateProfile(data);
+    setProfileSaving(false);
+    if (result.ok) {
+      // Sync name to ListingsContext too
+      await setMyName(profileForm.username.trim());
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setEditingProfile(false);
+    } else {
+      setProfileError(result.error ?? "Greška pri snimanju");
+    }
   }
 
   function handleDelete(id: string) {
@@ -430,29 +514,83 @@ export default function ProfileScreen() {
       {/* Profile card */}
       <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={[styles.avatarRing, { borderColor: colors.secondary }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {myName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          {user?.avatarBase64 ? (
+            <Image source={{ uri: user.avatarBase64 }} style={styles.avatarImg} contentFit="cover" />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
+              <Text style={[styles.avatarText, { color: colors.primary }]}>
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
         </View>
-        <Text style={[styles.name, { color: colors.foreground }]}>{myName}</Text>
+        <Text style={[styles.name, { color: colors.foreground }]}>{displayName}</Text>
+
+        {/* Auth user extra info */}
+        {user && (
+          <View style={styles.userInfoRows}>
+            <View style={styles.userInfoRow}>
+              <Feather name="mail" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.email}</Text>
+              {user.isVerified && (
+                <View style={[styles.verifiedBadge, { backgroundColor: "#1A3A2A" }]}>
+                  <Feather name="check" size={9} color="#4ADE80" />
+                  <Text style={styles.verifiedText}>Potvrđen</Text>
+                </View>
+              )}
+            </View>
+            {user.phone ? (
+              <View style={styles.userInfoRow}>
+                <Feather name="phone" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.phone}</Text>
+              </View>
+            ) : null}
+            {user.address ? (
+              <View style={styles.userInfoRow}>
+                <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.userInfoText, { color: colors.mutedForeground }]}>{user.address}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((i) => (
             <Feather key={i} name="star" size={14} color={colors.primary} />
           ))}
           <Text style={[styles.ratingText, { color: colors.mutedForeground }]}>5,0</Text>
         </View>
-        <Pressable
-          onPress={() => { setNameInput(myName); setEditingName(true); }}
-          style={({ pressed }) => [
-            styles.editBtn,
-            { borderColor: colors.border, backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <Feather name="edit-2" size={13} color={colors.mutedForeground} />
-          <Text style={[styles.editBtnText, { color: colors.mutedForeground }]}>Uredi profil</Text>
-        </Pressable>
+
+        <View style={styles.profileBtns}>
+          <Pressable
+            onPress={openProfileEdit}
+            style={({ pressed }) => [
+              styles.editBtn,
+              { borderColor: colors.border, backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1, flex: 1 },
+            ]}
+          >
+            <Feather name="edit-2" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.editBtnText, { color: colors.mutedForeground }]}>Uredi profil</Text>
+          </Pressable>
+          {user && (
+            <Pressable
+              onPress={async () => {
+                Alert.alert("Odjava", "Odjaviš se s profila?", [
+                  { text: "Odustani", style: "cancel" },
+                  { text: "Odjava", style: "destructive", onPress: () => logout() },
+                ]);
+              }}
+              style={({ pressed }) => [
+                styles.editBtn,
+                { borderColor: `${colors.destructive}40`, backgroundColor: `${colors.destructive}10`, opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Feather name="log-out" size={13} color={colors.destructive} />
+              <Text style={[styles.editBtnText, { color: colors.destructive }]}>Odjava</Text>
+            </Pressable>
+          )}
+        </View>
+
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stats}>
           <StatPill label="Aktivni" value={activeCount} color={colors.primary} textColor={colors.primaryForeground} bg={colors.muted} />
@@ -668,7 +806,7 @@ export default function ProfileScreen() {
         }
       />
 
-      {/* Name modal */}
+      {/* Name modal (guest / no-auth) */}
       <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
         <Pressable style={styles.overlay} onPress={() => setEditingName(false)}>
           <Pressable
@@ -694,6 +832,126 @@ export default function ProfileScreen() {
               </Pressable>
               <Pressable onPress={handleSaveName} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
                 <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Full profile edit modal (auth) */}
+      <Modal visible={editingProfile} transparent animationType="slide" onRequestClose={() => setEditingProfile(false)}>
+        <Pressable style={styles.overlay} onPress={() => setEditingProfile(false)}>
+          <Pressable
+            style={[styles.editModal, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => {}}
+          >
+            <View style={styles.editModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Uredi profil</Text>
+              <Pressable onPress={() => setEditingProfile(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editModalBody}>
+              {/* Avatar */}
+              <View style={styles.editAvatarRow}>
+                <Pressable onPress={handlePickProfilePhoto} style={[styles.editAvatarBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  {profileAvatarUri ? (
+                    <Image source={{ uri: profileAvatarUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  ) : (
+                    <Feather name="user" size={28} color={colors.mutedForeground} />
+                  )}
+                  <View style={[styles.editAvatarOverlay, { backgroundColor: "rgba(0,0,0,0.4)" }]}>
+                    <Feather name="camera" size={14} color="#fff" />
+                  </View>
+                </Pressable>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Pressable
+                    onPress={handlePickProfilePhoto}
+                    style={({ pressed }) => [styles.photoBtn, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <Feather name="image" size={13} color={colors.primary} />
+                    <Text style={[styles.photoBtnText, { color: colors.primary }]}>
+                      {profileAvatarUri ? "Promijeni sliku" : "Dodaj profilnu sliku"}
+                    </Text>
+                  </Pressable>
+                  {profileAvatarUri && (
+                    <Pressable onPress={() => { setProfileAvatarUri(null); setProfileAvatarBase64(null); }}>
+                      <Text style={[styles.removePhotoText, { color: colors.destructive }]}>Ukloni sliku</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+
+              {/* Email (read-only) */}
+              {user && (
+                <View style={styles.editFieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Email adresa</Text>
+                  <View style={[styles.editInputReadonly, { backgroundColor: `${colors.muted}88`, borderColor: colors.border }]}>
+                    <Text style={[styles.editInputReadonlyText, { color: colors.mutedForeground }]}>{user.email}</Text>
+                    {user.isVerified && <Feather name="check-circle" size={14} color="#4ADE80" />}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Korisničko ime *</Text>
+                <TextInput
+                  value={profileForm.username}
+                  onChangeText={(v) => setProfileForm((f) => ({ ...f, username: v }))}
+                  style={inputStyle}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={40}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Adresa</Text>
+                <TextInput
+                  value={profileForm.address}
+                  onChangeText={(v) => setProfileForm((f) => ({ ...f, address: v }))}
+                  style={inputStyle}
+                  placeholder="npr. Ilica 10, Zagreb"
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Broj mobitela</Text>
+                <TextInput
+                  value={profileForm.phone}
+                  onChangeText={(v) => setProfileForm((f) => ({ ...f, phone: v }))}
+                  style={inputStyle}
+                  placeholder="npr. 091 123 4567"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              {profileError ? (
+                <View style={[styles.profileErrorBox, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}40` }]}>
+                  <Feather name="alert-circle" size={13} color={colors.destructive} />
+                  <Text style={[styles.profileErrorText, { color: colors.destructive }]}>{profileError}</Text>
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <View style={styles.modalBtns}>
+              <Pressable
+                onPress={() => setEditingProfile(false)}
+                style={[styles.modalBtn, { backgroundColor: colors.muted }]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveProfile}
+                disabled={profileSaving}
+                style={[styles.modalBtn, { backgroundColor: colors.primary, flex: 1 }]}
+              >
+                {profileSaving
+                  ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  : <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi promjene</Text>}
               </Pressable>
             </View>
           </Pressable>
@@ -1060,4 +1318,23 @@ const styles = StyleSheet.create({
   gdprDivider: { width: 1, height: 14, marginHorizontal: 8 },
   gdprDeleteBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   gdprDeleteText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  // Auth profile styles
+  avatarImg: { width: 72, height: 72, borderRadius: 36 },
+  userInfoRows: { gap: 5, alignSelf: "stretch" },
+  userInfoRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  userInfoText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+  verifiedText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#4ADE80" },
+  profileBtns: { flexDirection: "row", gap: 8, alignSelf: "stretch" },
+  editAvatarRow: { flexDirection: "row", gap: 14, alignItems: "center", marginBottom: 4 },
+  editAvatarBox: { width: 72, height: 72, borderRadius: 36, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  editAvatarOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, height: 24, alignItems: "center", justifyContent: "center" },
+  photoBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5 },
+  photoBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  removePhotoText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  editFieldGroup: { gap: 5 },
+  editInputReadonly: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, gap: 8 },
+  editInputReadonlyText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+  profileErrorBox: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 8, padding: 10 },
+  profileErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
 });

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 const FILTER_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
@@ -34,6 +35,7 @@ export default function BrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { listings, isLoaded } = useListings();
+  const { user, logout } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
@@ -73,21 +75,53 @@ export default function BrowseScreen() {
           <Text style={[styles.logoText, { color: colors.foreground }]}>
             Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
           </Text>
-          <View style={styles.authLinks}>
-            <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/login"); }}
-              style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={[styles.authLinkText, { color: colors.mutedForeground }]}>Prijava</Text>
-            </Pressable>
-            <Text style={[styles.authDot, { color: colors.border }]}>|</Text>
-            <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/onboarding"); }}
-              style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={[styles.authLinkText, { color: colors.secondary }]}>Registracija</Text>
-            </Pressable>
-          </View>
+          {user ? (
+            <View style={styles.authLinks}>
+              {user.avatarBase64 ? (
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                <View style={[styles.userAvatar, { borderColor: colors.primary }]}>
+                  <Text style={[styles.userAvatarText, { color: colors.primary }]}>
+                    {user.username.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              ) : (
+                <View style={[styles.userAvatar, { borderColor: colors.primary, backgroundColor: `${colors.primary}22` }]}>
+                  <Text style={[styles.userAvatarText, { color: colors.primary }]}>
+                    {user.username.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.authLinkText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]} numberOfLines={1}>
+                {user.username}
+              </Text>
+              <Text style={[styles.authDot, { color: colors.border }]}>|</Text>
+              <Pressable
+                onPress={async () => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  await logout();
+                }}
+                style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.authLinkText, { color: colors.destructive }]}>Odjava</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.authLinks}>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/login"); }}
+                style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.authLinkText, { color: colors.mutedForeground }]}>Prijava</Text>
+              </Pressable>
+              <Text style={[styles.authDot, { color: colors.border }]}>|</Text>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/onboarding"); }}
+                style={({ pressed }) => [styles.authLink, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.authLinkText, { color: colors.secondary }]}>Registracija</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -203,10 +237,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flexShrink: 1,
   },
   authLink: { paddingVertical: 4, paddingHorizontal: 2 },
   authLinkText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   authDot: { fontSize: 11 },
+  userAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userAvatarText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   logoIcon: {
     width: 40,
     height: 40,
