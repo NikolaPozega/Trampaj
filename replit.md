@@ -1,6 +1,6 @@
-# [Project name]
+# Trampa
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Mobilna aplikacija za trampu — korisnici postavljaju predmete koje nude i traže što žele u zamjenu.
 
 ## Run & Operate
 
@@ -14,23 +14,35 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Mobile: Expo + React Native (Expo Router)
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: PostgreSQL + Drizzle ORM (not yet used)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mobile/` — Expo mobile app
+- `artifacts/mobile/app/(tabs)/` — Browse, Post, Profile tabs
+- `artifacts/mobile/app/listing/[id].tsx` — Listing detail screen
+- `artifacts/mobile/context/ListingsContext.tsx` — state management (AsyncStorage)
+- `artifacts/mobile/components/` — ListingCard, CategoryPill, EmptyState
+- `artifacts/mobile/constants/colors.ts` — design tokens (terracotta #E85D25)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Frontend-only: uses AsyncStorage for persistence, no backend needed for first build
+- Sample listings pre-loaded on first run to show the UI populated
+- CI=1 + NODE_OPTIONS=--dns-result-order=ipv4first in dev script to fix Replit workflow port detection
+- 3-tab navigation: Oglasi (browse), Objavi (post), Profil (my listings)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Browse all active barter listings with category filters and search
+- Post new items with description and what you want in return
+- View listing detail and send a trade offer
+- Manage your own listings (mark as traded, delete)
 
 ## User preferences
 
@@ -38,7 +50,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Always use `NODE_OPTIONS=--dns-result-order=ipv4first` in the mobile dev script — Metro defaults to IPv6 binding on NixOS, which breaks the Replit port health check
+- CI=1 is required to keep Metro alive in non-interactive mode in the Replit workflow runner
 
 ## Pointers
 
