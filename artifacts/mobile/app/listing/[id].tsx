@@ -119,9 +119,18 @@ function MatchSection({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={mStyles.scroll}>
         {matches.map(({ listing: item, matchType }) => {
           const imgs = (item.imageUris?.length ?? 0) > 0 ? item.imageUris : item.imageUri ? [item.imageUri] : [];
-          const isBoth = matchType === "both";
-          const badgeColor = isBoth ? colors.primary : colors.secondary;
-          const badgeBg = isBoth ? colors.primary + "22" : colors.secondary + "22";
+          const badgeColor =
+            matchType === "both"
+              ? colors.primary
+              : matchType === "i_want"
+              ? "#22c55e"
+              : colors.secondary;
+          const badgeBg =
+            matchType === "both"
+              ? colors.primary + "22"
+              : matchType === "i_want"
+              ? "#22c55e22"
+              : colors.secondary + "22";
           return (
             <Pressable
               key={item.id}
