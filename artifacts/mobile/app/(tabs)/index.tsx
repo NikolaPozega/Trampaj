@@ -139,12 +139,13 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const { listings, isLoaded } = useListings();
   const { user, logout } = useAuth();
-  const [search, setSearch] = useState("");
+  const [searchTrazim, setSearchTrazim] = useState("");
+  const [searchNudim, setSearchNudim] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   React.useEffect(() => {
-    searchBus.clearSearch = () => setSearch("");
+    searchBus.clearSearch = () => { setSearchTrazim(""); setSearchNudim(""); };
     return () => { searchBus.clearSearch = null; };
   }, []);
 
@@ -168,39 +169,47 @@ export default function BrowseScreen() {
     return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
+  // Provjeri sadrži li polje tekstualne tokene iz upita (min 2 slova)
+  function matchesQuery(q: string, fields: string[]): boolean {
+    const nq = normSearch(q.trim());
+    if (!nq) return true;
+    const words = nq.split(/[\s,+]+/).filter((w) => w.length >= 2);
+    if (!words.length) return true;
+    const fullMatch = fields.some((f) => f.includes(nq));
+    const wordMatch = words.every((w) => fields.some((f) => f.includes(w)));
+    return fullMatch || wordMatch;
+  }
+
   const filtered = useMemo(() => {
+    const hasTrazim = searchTrazim.trim().length > 0;
+    const hasNudim  = searchNudim.trim().length > 0;
+
     return listings.filter((l) => {
-      const matchesCategory =
-        selectedCategories.length === 0 || selectedCategories.includes(l.category);
+      if (l.status !== "active") return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(l.category)) return false;
 
-      const q = normSearch(search.trim());
-      if (!q) return matchesCategory && l.status === "active";
+      if (!hasTrazim && !hasNudim) return true;
 
-      // Tokenizacija upita — svaka riječ >= 3 slova se provjerava zasebno
-      const words = q.split(/[\s,+]+/).filter((w) => w.length >= 3);
-
-      const allTags = [
-        ...(l.nudimTags ?? []),
-        ...(l.trazimTags ?? []),
-      ].map(normSearch);
-      const tagText = allTags.join(" ");
-
-      const fields = [
+      const nudimText = [
         normSearch(l.title),
         normSearch(l.description),
+        ...(l.nudimTags ?? []).map(normSearch),
+      ];
+      const trazimText = [
         normSearch(l.wantedFor),
-        tagText,
+        ...(l.trazimTags ?? []).map(normSearch),
       ];
 
-      // Cijeli upit se podudara s nekim poljem ILI svaka riječ ima podudaranje
-      const fullMatch = fields.some((f) => f.includes(q));
-      const wordMatch = words.every((w) =>
-        fields.some((f) => f.includes(w))
-      );
+      // "Tražim X" → tražim oglas gdje netko nudi X
+      const trazimOk = !hasTrazim || matchesQuery(searchTrazim, nudimText);
+      // "Nudim Y"  → tražim oglas gdje netko traži Y
+      const nudimOk  = !hasNudim  || matchesQuery(searchNudim,  trazimText);
 
-      return matchesCategory && l.status === "active" && (fullMatch || wordMatch);
+      // Ako su oba popunjena: oglas mora zadovoljiti oba uvjeta
+      // Ako je samo jedan: dovoljno je jedan
+      return hasTrazim && hasNudim ? trazimOk && nudimOk : trazimOk && nudimOk;
     });
-  }, [listings, selectedCategories, search]);
+  }, [listings, selectedCategories, searchTrazim, searchNudim]);
 
   const flatData = useMemo(() => injectAds(filtered), [filtered]);
 
@@ -280,29 +289,42 @@ export default function BrowseScreen() {
           )}
         </View>
 
-        {/* Search bar — thinner when logged in */}
-        <View style={[
-          styles.searchBar,
-          {
-            backgroundColor: colors.muted,
-            borderColor: colors.border,
-            paddingVertical: user ? 7 : 12,
-          },
-        ]}>
-          <Feather name="search" size={16} color={colors.mutedForeground} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Pretraži oglase..."
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.searchInput, { color: colors.foreground }]}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Feather name="x" size={16} color={colors.mutedForeground} />
-            </Pressable>
-          )}
+        {/* Search — dva polja: Tražim i Nudim */}
+        <View style={styles.searchGroup}>
+          <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="search" size={14} color={colors.secondary} />
+            <Text style={[styles.searchLabel, { color: colors.secondary }]}>Tražim:</Text>
+            <TextInput
+              value={searchTrazim}
+              onChangeText={setSearchTrazim}
+              placeholder="bicikl, iPhone, jakna…"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.searchInput, { color: colors.foreground }]}
+              returnKeyType="search"
+            />
+            {searchTrazim.length > 0 && (
+              <Pressable onPress={() => setSearchTrazim("")}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+          <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="package" size={14} color={colors.primary} />
+            <Text style={[styles.searchLabel, { color: colors.primary }]}>Nudim:</Text>
+            <TextInput
+              value={searchNudim}
+              onChangeText={setSearchNudim}
+              placeholder="peć, laptop, sofa…"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.searchInput, { color: colors.foreground }]}
+              returnKeyType="search"
+            />
+            {searchNudim.length > 0 && (
+              <Pressable onPress={() => setSearchNudim("")}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Fixed ad banner in header — only when logged in */}
@@ -364,8 +386,8 @@ export default function BrowseScreen() {
             icon="search"
             title="Nema oglasa"
             subtitle={
-              search
-                ? `Nema rezultata za "${search}"`
+              searchTrazim || searchNudim
+                ? `Nema rezultata${searchTrazim ? ` — tražim: "${searchTrazim}"` : ""}${searchNudim ? ` — nudim: "${searchNudim}"` : ""}`
                 : "U ovoj kategoriji nema aktivnih oglasa"
             }
           />
@@ -469,19 +491,28 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
+  searchGroup: {
+    gap: 6,
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  searchLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 48,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    paddingVertical: Platform.OS === "web" ? 0 : 0,
+    paddingVertical: 0,
   },
   categories: {
     gap: 8,
