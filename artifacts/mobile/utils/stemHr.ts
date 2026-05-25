@@ -52,7 +52,9 @@ export function queryMatchesFields(query: string, fields: string[]): boolean {
   const fTokens = fields.flatMap(stemTokens);
   if (!fTokens.length) return false;
 
+  // ft mora počinjati s qt (query je prefiks fielda) — jednosmjerno,
+  // da "stol" (table) ne matchira query "stolica" (chair)
   return qTokens.every((qt) =>
-    fTokens.some((ft) => ft.startsWith(qt) || qt.startsWith(ft))
+    fTokens.some((ft) => ft.startsWith(qt))
   );
 }
