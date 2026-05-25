@@ -6,7 +6,6 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
@@ -18,7 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChatProvider } from "@/context/ChatContext";
 import { ListingsProvider } from "@/context/ListingsContext";
 import { AuthProvider } from "@/context/AuthContext";
-import { setupNotifications } from "@/utils/notifications";
+import { setupNotifications, addNotificationResponseListener } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,14 +47,13 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  const notifListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     setupNotifications();
 
     // Tap na notifikaciju → otvori chat
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    responseListener.current = addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data as { listingId?: string };
       if (data?.listingId) {
         router.push(`/chat/${data.listingId}`);
@@ -63,7 +61,6 @@ export default function RootLayout() {
     });
 
     return () => {
-      notifListener.current?.remove();
       responseListener.current?.remove();
     };
   }, []);

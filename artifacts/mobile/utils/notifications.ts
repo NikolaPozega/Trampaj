@@ -1,18 +1,33 @@
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// expo-notifications is not available in Expo Go (SDK 53+).
+// Use require() so a missing module never crashes the app.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Notifications: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Device: any = null;
+try {
+  Notifications = require("expo-notifications");
+  Device = require("expo-device");
+} catch {
+  // Running in Expo Go — notifications not supported, silently skip
+}
+
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function setupNotifications(): Promise<boolean> {
+  if (!Notifications || !Device) return false;
+
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("poruke", {
       name: "Poruke",
@@ -26,12 +41,10 @@ export async function setupNotifications(): Promise<boolean> {
 
   if (!Device.isDevice) return false;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const existing = await Notifications.getPermissionsAsync() as any;
+  const existing = await Notifications.getPermissionsAsync();
   if (existing.granted || existing.status === "granted") return true;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = await Notifications.requestPermissionsAsync() as any;
+  const result = await Notifications.requestPermissionsAsync();
   return result.granted || result.status === "granted";
 }
 
@@ -40,6 +53,7 @@ export async function sendLocalNotification(
   body: string,
   data?: Record<string, string>
 ) {
+  if (!Notifications) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -50,4 +64,12 @@ export async function sendLocalNotification(
     },
     trigger: null,
   });
+}
+
+export function addNotificationResponseListener(
+  callback: (response: { notification: { request: { content: { data: Record<string, string> } } } }) => void
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): { remove: () => void } | null {
+  if (!Notifications) return null;
+  return Notifications.addNotificationResponseReceivedListener(callback);
 }
