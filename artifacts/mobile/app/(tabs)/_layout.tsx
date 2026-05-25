@@ -11,13 +11,13 @@ export default function TabLayout() {
   const { user, isLoading } = useAuth();
   const wasLoggedIn = useRef(false);
 
-  // Track if user was ever logged in; redirect to login on logout
+  // Track if user was ever logged in; on logout go back to browse (not login)
   useEffect(() => {
     if (user) {
       wasLoggedIn.current = true;
     } else if (!isLoading && wasLoggedIn.current) {
       wasLoggedIn.current = false;
-      router.replace("/login");
+      router.replace("/(tabs)");
     }
   }, [user, isLoading]);
 

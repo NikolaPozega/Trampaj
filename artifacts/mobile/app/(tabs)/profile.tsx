@@ -1008,7 +1008,7 @@ export default function ProfileScreen() {
                 onPress={async () => {
                   setShowLogoutModal(false);
                   await logout();
-                  router.replace("/login");
+                  router.replace("/(tabs)");
                 }}
                 style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
               >
