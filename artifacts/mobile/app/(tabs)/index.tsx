@@ -88,24 +88,22 @@ type FlatItem = Listing | AdSlot;
 
 /**
  * Injects card-sized ad slots into the flat data array.
- * Pattern: after 8 real items → AD (position 9), after 6 more → AD (position 7 of next group), repeat.
+ * Pattern alternates: 8 real items → AD (slot 9), 6 real items → AD (slot 7), repeat.
+ * An ad is always appended after every group so the 9-7-9-7 rhythm never breaks.
  */
 function injectAds(listings: Listing[]): FlatItem[] {
   const result: FlatItem[] = [];
-  const pattern = [8, 6]; // real items before each ad, alternating
-  let pIdx = 0;
+  const GROUPS = [8, 6]; // items per group before each ad
+  let groupIdx = 0;
   let i = 0;
   let adCount = 0;
   while (i < listings.length) {
-    const take = pattern[pIdx % pattern.length];
-    const chunk = listings.slice(i, i + take);
-    result.push(...chunk);
-    i += take;
-    // Insert ad after full chunk, or after the last chunk if it was exactly `take`
-    if (i < listings.length || chunk.length === take) {
-      result.push({ type: "ad", id: `ad_${adCount++}` });
-    }
-    pIdx++;
+    const size = GROUPS[groupIdx % GROUPS.length];
+    const end = Math.min(i + size, listings.length);
+    for (let j = i; j < end; j++) result.push(listings[j]);
+    result.push({ type: "ad", id: `ad_${adCount++}` });
+    i = end;
+    groupIdx++;
   }
   return result;
 }
