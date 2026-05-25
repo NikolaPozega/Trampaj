@@ -237,6 +237,11 @@ export default function PostScreen() {
   const [analyzing, setAnalyzing] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track whether AI filled title/description (so we know if user overrode it)
+  const titleFromAI = useRef(false);
+  const descriptionFromAI = useRef(false);
+  const [titleAIBadge, setTitleAIBadge] = useState(false);
+  const [descriptionAIBadge, setDescriptionAIBadge] = useState(false);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
@@ -326,8 +331,16 @@ export default function PostScreen() {
         try {
           const ai = await analyzeImageForCategory(compressed.base64);
           if (ai.category && !categoryManuallySet) setCategory(ai.category);
-          if (ai.title && !title) setTitle(ai.title);
-          if (ai.description && !description) setDescription(ai.description);
+          if (ai.title) {
+            setTitle(ai.title);
+            titleFromAI.current = true;
+            setTitleAIBadge(true);
+          }
+          if (ai.description) {
+            setDescription(ai.description);
+            descriptionFromAI.current = true;
+            setDescriptionAIBadge(true);
+          }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch {}
         finally {
@@ -374,7 +387,10 @@ export default function PostScreen() {
     console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), imaSliku: !!imageBase64 });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim(), imageBase64);
     console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
-    console.log("[SUBMIT] Ispravak teksta:", { naslov: tags.correctedTitle, opis: tags.correctedDescription });
+    // Ako je korisnik ručno izmijenio AI tekst, poštujemo njegovu verziju i ne ispravljamo
+    const finalTitle = titleFromAI.current ? tags.correctedTitle : title.trim();
+    const finalDescription = descriptionFromAI.current ? tags.correctedDescription : description.trim();
+    console.log("[SUBMIT] Finalni tekst:", { naslov: finalTitle, opis: finalDescription, naslovIspravio: !titleFromAI.current, opisIspravio: !descriptionFromAI.current });
     // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
     let resolvedCategory = category;
     if (!resolvedCategory && tags.nudimTags.length > 0) {
@@ -384,8 +400,8 @@ export default function PostScreen() {
       }
     }
     const listing = {
-      title: tags.correctedTitle,
-      description: tags.correctedDescription,
+      title: finalTitle,
+      description: finalDescription,
       wantedFor: wantedFor.trim(),
       category: resolvedCategory,
       location,
@@ -423,6 +439,10 @@ export default function PostScreen() {
       setDeadline(null);
       setLocationSuggestions([]);
       setCategoryManuallySet(false);
+      titleFromAI.current = false;
+      descriptionFromAI.current = false;
+      setTitleAIBadge(false);
+      setDescriptionAIBadge(false);
       setSubmitted(false);
       router.push("/(tabs)/");
     }, 1500);
@@ -569,18 +589,25 @@ export default function PostScreen() {
             >
               Naziv predmeta
             </Text>
-            {!title.trim() && (
-              <Text
-                style={[styles.requiredTag, { color: colors.destructive }]}
-              >
-                obvezno
-              </Text>
-            )}
+            {titleAIBadge ? (
+              <View style={[styles.aiBadgePill, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}>
+                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>✨ AI predložilo</Text>
+              </View>
+            ) : !title.trim() ? (
+              <Text style={[styles.requiredTag, { color: colors.destructive }]}>obvezno</Text>
+            ) : null}
           </View>
           <View style={styles.titleWrapper}>
             <TextInput
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(v) => {
+                setTitle(v);
+                if (titleFromAI.current) {
+                  titleFromAI.current = false;
+                  setTitleAIBadge(false);
+                  console.log("[AI] Korisnik ispravio AI naslov");
+                }
+              }}
               placeholder="npr. Sony slušalice, Bicikl Trek…"
               placeholderTextColor={colors.mutedForeground}
               style={[inputStyle, styles.titleInput]}
@@ -604,17 +631,24 @@ export default function PostScreen() {
             >
               Opis
             </Text>
-            {!description.trim() && (
-              <Text
-                style={[styles.requiredTag, { color: colors.destructive }]}
-              >
-                obvezno
-              </Text>
-            )}
+            {descriptionAIBadge ? (
+              <View style={[styles.aiBadgePill, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}>
+                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>✨ AI predložilo</Text>
+              </View>
+            ) : !description.trim() ? (
+              <Text style={[styles.requiredTag, { color: colors.destructive }]}>obvezno</Text>
+            ) : null}
           </View>
           <TextInput
             value={description}
-            onChangeText={setDescription}
+            onChangeText={(v) => {
+              setDescription(v);
+              if (descriptionFromAI.current) {
+                descriptionFromAI.current = false;
+                setDescriptionAIBadge(false);
+                console.log("[AI] Korisnik ispravio AI opis");
+              }
+            }}
             placeholder="Opiši predmet — stanje, veličina, marka, godište…"
             placeholderTextColor={colors.mutedForeground}
             style={[inputStyle, styles.descInput]}
@@ -1235,6 +1269,15 @@ const wStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 14 },
+  aiBadgePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  aiBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 
   headerRow: {
     flexDirection: "row",

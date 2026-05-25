@@ -41,11 +41,11 @@ export async function analyzeImageForCategory(base64Image: string): Promise<{
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      max_tokens: 200,
+      max_tokens: 300,
       messages: [
         {
           role: "system",
-          content: `Ti si asistent koji prepoznaje predmete sa slika.
+          content: `Ti si asistent koji prepoznaje predmete sa slika za oglas trampe na hrvatskom.
 Dostupne kategorije:
 ${CATEGORY_EXAMPLES}
 
@@ -56,13 +56,13 @@ VAŽNO: Uvijek odgovaraj SAMO JSON-om na hrvatskom jeziku, bez ikakvog teksta ok
           content: [
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "low" },
+              image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "auto" },
             },
             {
               type: "text",
-              text: `Što je na slici? Odredi TOČNU kategoriju iz popisa, naziv i opis na HRVATSKOM.
+              text: `Što je na slici? Napiši konkretan oglasnički naziv i opis na HRVATSKOM.
 Odgovori SAMO ovim JSON-om (bez teksta oko njega):
-{"category":"<kategorija iz popisa>","title":"<naziv max 5 riječi>","description":"<opis max 10 riječi>"}`,
+{"category":"<kategorija iz popisa>","title":"<konkretan naziv predmeta, max 6 riječi>","description":"<1-2 rečenice: materijal, boja, stanje, dimenzije ako su vidljive>"}`,
             },
           ],
         },
