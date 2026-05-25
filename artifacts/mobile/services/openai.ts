@@ -70,7 +70,10 @@ Odgovori SAMO ovim JSON-om (bez teksta oko njega):
     }),
   });
 
-  if (!response.ok) throw new Error("AI analiza nije uspjela");
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "(no body)");
+    throw new Error(`AI analiza nije uspjela: HTTP ${response.status} — ${errBody.slice(0, 200)}`);
+  }
 
   const data = await response.json();
   const text: string = data.choices[0]?.message?.content ?? "{}";
