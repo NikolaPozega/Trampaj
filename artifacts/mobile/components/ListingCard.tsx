@@ -58,9 +58,9 @@ export function ListingCard({ listing }: Props) {
       ]}
     >
       <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
-        {listing.imageUri ? (
+        {(listing.imageUris?.[0] ?? listing.imageUri) ? (
           <Image
-            source={{ uri: listing.imageUri }}
+            source={{ uri: listing.imageUris?.[0] ?? listing.imageUri! }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
           />

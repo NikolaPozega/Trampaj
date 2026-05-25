@@ -36,7 +36,8 @@ export interface Listing {
   condition: Condition | null;
   wantedFor: string;
   price: number | null;
-  imageUri: string | null;
+  imageUris: string[];
+  imageUri?: string | null;
   phone: string | null;
   userName: string;
   location: string;
@@ -88,7 +89,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Jako dobro",
     wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
     price: 180,
-    imageUri: "https://picsum.photos/seed/headphones1/400/300",
+    imageUris: ["https://picsum.photos/seed/headphones1/400/300"],
     phone: "091 123 4567",
     userName: "Marko K.",
     location: "Zagreb",
@@ -104,7 +105,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Jako dobro",
     wantedFor: "Ljetna jakna ili sportska oprema",
     price: null,
-    imageUri: "https://picsum.photos/seed/jacket2/400/300",
+    imageUris: ["https://picsum.photos/seed/jacket2/400/300"],
     phone: null,
     userName: "Ana P.",
     location: "Split",
@@ -120,7 +121,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Kao novo",
     wantedFor: "Sci-fi knjige ili stripovi",
     price: 60,
-    imageUri: "https://picsum.photos/seed/books3/400/300",
+    imageUris: ["https://picsum.photos/seed/books3/400/300"],
     phone: "095 765 4321",
     userName: "Luka B.",
     location: "Rijeka",
@@ -136,7 +137,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Dobro",
     wantedFor: "Roleri ili električni romobil",
     price: 350,
-    imageUri: "https://picsum.photos/seed/bicycle4/400/300",
+    imageUris: ["https://picsum.photos/seed/bicycle4/400/300"],
     phone: "098 111 2233",
     userName: "Petra M.",
     location: "Osijek",
@@ -152,7 +153,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Dobro",
     wantedFor: "Polica za knjige ili mali stol",
     price: null,
-    imageUri: "https://picsum.photos/seed/lamp5/400/300",
+    imageUris: ["https://picsum.photos/seed/lamp5/400/300"],
     phone: null,
     userName: "Tomislav R.",
     location: "Zagreb",
@@ -168,7 +169,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Kao novo",
     wantedFor: "Bicikl gradski ili električni romobil",
     price: 120,
-    imageUri: "https://picsum.photos/seed/skates6/400/300",
+    imageUris: ["https://picsum.photos/seed/skates6/400/300"],
     phone: "091 555 7788",
     userName: "Ivan S.",
     location: "Zagreb",
@@ -184,7 +185,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Jako dobro",
     wantedFor: "Mehanička tipkovnica ili slušalice",
     price: 90,
-    imageUri: "https://picsum.photos/seed/mouse7/400/300",
+    imageUris: ["https://picsum.photos/seed/mouse7/400/300"],
     phone: null,
     userName: "Dora V.",
     location: "Zagreb",
@@ -200,7 +201,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Prihvatljivo",
     wantedFor: "Zimska jakna ili kaput",
     price: null,
-    imageUri: "https://picsum.photos/seed/jacket8/400/300",
+    imageUris: ["https://picsum.photos/seed/jacket8/400/300"],
     phone: "092 333 1122",
     userName: "Maja L.",
     location: "Split",
@@ -216,7 +217,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Jako dobro",
     wantedFor: "Slušalice ili bežični miš",
     price: 150,
-    imageUri: "https://picsum.photos/seed/keyboard9/400/300",
+    imageUris: ["https://picsum.photos/seed/keyboard9/400/300"],
     phone: "098 000 1234",
     userName: "Korisnik",
     location: "Zagreb",
@@ -232,7 +233,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Dobro",
     wantedFor: "Roleri ili električni romobil",
     price: 280,
-    imageUri: "https://picsum.photos/seed/mtb10/400/300",
+    imageUris: ["https://picsum.photos/seed/mtb10/400/300"],
     phone: "098 000 1234",
     userName: "Korisnik",
     location: "Zagreb",
@@ -248,7 +249,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     condition: "Kao novo",
     wantedFor: "Fantazija ili kriminalistički romani",
     price: 40,
-    imageUri: "https://picsum.photos/seed/scifi11/400/300",
+    imageUris: ["https://picsum.photos/seed/scifi11/400/300"],
     phone: "098 000 1234",
     userName: "Korisnik",
     location: "Zagreb",
@@ -274,7 +275,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(SAVED_KEY),
           AsyncStorage.getItem(REVIEWS_KEY),
         ]);
-        const parsed: Listing[] = storedListings ? JSON.parse(storedListings) : [];
+        const rawParsed: Array<Listing & { imageUri?: string | null }> = storedListings ? JSON.parse(storedListings) : [];
+        const parsed: Listing[] = rawParsed.map((l) =>
+          Array.isArray(l.imageUris) ? l : { ...l, imageUris: l.imageUri ? [l.imageUri] : [] }
+        );
         // Merge user listings with samples, replace sample_mine_* with user's actual name
         const storedName_ = storedName || "Korisnik";
         const mergedSamples = SAMPLE_LISTINGS.map((s) =>

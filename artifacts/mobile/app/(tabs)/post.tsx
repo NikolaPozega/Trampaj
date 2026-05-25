@@ -54,7 +54,8 @@ export default function PostScreen() {
   const insets = useSafeAreaInsets();
   const { addListing, listings } = useListings();
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const MAX_IMAGES = 5;
+  const [imageUris, setImageUris] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [wantedFor, setWantedFor] = useState("");
@@ -134,9 +135,10 @@ export default function PostScreen() {
     }
 
     if (!result.canceled && result.assets[0]) {
-      const compressed = await compressImage(result.assets[0].uri, 1024, 0.6);
-      setImageUri(compressed.uri);
-      if (compressed.base64) {
+      const isFirst = imageUris.length === 0;
+      const compressed = await compressImage(result.assets[0].uri, 800, 0.65);
+      setImageUris((prev) => (prev.length < MAX_IMAGES ? [...prev, compressed.uri] : prev));
+      if (isFirst && compressed.base64) {
         setAnalyzing(true);
         try {
           const ai = await analyzeImageForCategory(compressed.base64);
@@ -151,6 +153,11 @@ export default function PostScreen() {
         }
       }
     }
+  }
+
+  function removeImage(index: number) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setImageUris((prev) => prev.filter((_, i) => i !== index));
   }
 
 
@@ -179,7 +186,7 @@ export default function PostScreen() {
       location,
       condition,
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
-      imageUri,
+      imageUris,
       phone: showPhone && phone.trim() ? phone.trim() : null,
     });
 
@@ -200,7 +207,7 @@ export default function PostScreen() {
     setTimeout(() => {
       setTitle(""); setDescription(""); setWantedFor("");
       setCategory(""); setLocation(""); setPriceText("");
-      setPhone(""); setShowPhone(false); setImageUri(null);
+      setPhone(""); setShowPhone(false); setImageUris([]);
       setCondition(null); setLocationSuggestions([]);
       setSubmitted(false); setAiSuggestions([]);
       router.push("/(tabs)/");
@@ -225,61 +232,42 @@ export default function PostScreen() {
       </View>
 
       <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.imageUploadRow}>
-          <Pressable
-            onPress={showImagePicker}
-            style={({ pressed }) => [
-              styles.imageUpload,
-              { backgroundColor: colors.muted, borderColor: analyzing ? colors.primary : colors.secondary, opacity: pressed ? 0.8 : 1 },
-            ]}
-          >
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            ) : analyzing ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Feather name="camera" size={26} color={colors.secondary} />
-            )}
-            {analyzing && (
-              <View style={[styles.analyzingOverlay, { backgroundColor: "rgba(8,21,46,0.7)" }]}>
-                <Text style={[styles.analyzingText, { color: colors.primary }]}>AI analiza...</Text>
-              </View>
-            )}
-            {imageUri && !analyzing && (
-              <View style={styles.editImageBadge}>
-                <Feather name="camera" size={12} color="#fff" />
-              </View>
-            )}
-          </Pressable>
-
-          <View style={styles.titleDescCol}>
-            <View style={styles.titleWrapper}>
-              <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Unesi naslov"
-                placeholderTextColor={colors.mutedForeground}
-                style={[inputStyle, styles.titleInput]}
-                maxLength={80}
-              />
-              {titleSuggesting && (
-                <View style={styles.titleAiDot}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+        {/* ── Slike ── */}
+        <View style={styles.imageSectionHeader}>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Slike</Text>
+          <Text style={[styles.imageCountBadge, { color: colors.mutedForeground }]}>{imageUris.length}/{MAX_IMAGES}</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageStrip}>
+          {imageUris.map((uri, i) => (
+            <View key={i} style={styles.imageThumb}>
+              <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              {i === 0 && (
+                <View style={[styles.mainBadge, { backgroundColor: colors.primary + "DD" }]}>
+                  <Text style={styles.mainBadgeText}>Naslovna</Text>
                 </View>
               )}
+              <Pressable hitSlop={6} style={styles.removeBtn} onPress={() => removeImage(i)}>
+                <Feather name="x" size={11} color="#fff" />
+              </Pressable>
             </View>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Opis"
-              placeholderTextColor={colors.mutedForeground}
-              style={[inputStyle, styles.descInput]}
-              multiline
-              maxLength={500}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
+          ))}
+          {imageUris.length < MAX_IMAGES && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.imageThumbAdd,
+                { borderColor: analyzing ? colors.primary : colors.secondary, opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={showImagePicker}
+            >
+              {analyzing
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Feather name="plus" size={24} color={colors.secondary} />}
+              <Text style={[styles.imageAddLabel, { color: colors.mutedForeground }]}>
+                {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
+              </Text>
+            </Pressable>
+          )}
+        </ScrollView>
 
         {analyzing && (
           <View style={[styles.aiBanner, { backgroundColor: colors.muted, borderColor: colors.primary }]}>
@@ -287,6 +275,33 @@ export default function PostScreen() {
             <Text style={[styles.aiText, { color: colors.primary }]}>AI prepoznaje predmet...</Text>
           </View>
         )}
+
+        {/* ── Naslov + Opis ── */}
+        <View style={styles.titleWrapper}>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Unesi naslov"
+            placeholderTextColor={colors.mutedForeground}
+            style={[inputStyle, styles.titleInput]}
+            maxLength={80}
+          />
+          {titleSuggesting && (
+            <View style={styles.titleAiDot}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          )}
+        </View>
+        <TextInput
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Opis predmeta..."
+          placeholderTextColor={colors.mutedForeground}
+          style={[inputStyle, styles.descInput]}
+          multiline
+          maxLength={500}
+          textAlignVertical="top"
+        />
 
         <TextInput
           value={wantedFor}
@@ -649,42 +664,31 @@ const styles = StyleSheet.create({
   logoIcon: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   heading: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   formCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 12 },
-  imageUploadRow: { flexDirection: "row", gap: 12 },
-  imageUpload: {
-    width: 92,
-    height: 92,
+  imageSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  imageCountBadge: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  imageStrip: { flexDirection: "row", gap: 8, paddingVertical: 2 },
+  imageThumb: { width: 88, height: 88, borderRadius: 12, overflow: "hidden", position: "relative", flexShrink: 0 },
+  mainBadge: { position: "absolute", bottom: 0, left: 0, right: 0, paddingVertical: 3, alignItems: "center" },
+  mainBadgeText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  removeBtn: { position: "absolute", top: 5, right: 5, backgroundColor: "rgba(0,0,0,0.65)", borderRadius: 10, padding: 3 },
+  imageThumbAdd: {
+    width: 88,
+    height: 88,
     borderRadius: 12,
     borderWidth: 1.5,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
+    gap: 2,
     flexShrink: 0,
-    overflow: "hidden",
   },
-  analyzingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  analyzingText: { fontSize: 10, fontFamily: "Inter_600SemiBold", marginTop: 4 },
-  editImageBadge: {
-    position: "absolute",
-    bottom: 6,
-    right: 6,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 10,
-    padding: 4,
-  },
-  aiBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
+  imageAddLabel: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center" },
+  aiBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
   aiText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  titleDescCol: { flex: 1, gap: 8 },
   titleInput: { flex: 0 },
   titleWrapper: { position: "relative" },
   titleAiDot: { position: "absolute", right: 10, top: 0, bottom: 0, justifyContent: "center" },
-  descInput: { flex: 1, minHeight: 52, paddingTop: 10, textAlignVertical: "top" },
+  descInput: { minHeight: 52, paddingTop: 10, textAlignVertical: "top" },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   euroPrefix: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center" },

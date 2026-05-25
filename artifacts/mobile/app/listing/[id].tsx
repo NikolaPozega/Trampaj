@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  Dimensions,
   Linking,
   Modal,
   Platform,
@@ -57,6 +58,8 @@ export default function ListingDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { listings, myName, reviews, addReview } = useListings();
+  const [imgIdx, setImgIdx] = useState(0);
+  const [heroWidth, setHeroWidth] = useState(0);
   const [offerModal, setOfferModal] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("barter");
   const [offerText, setOfferText] = useState("");
@@ -141,18 +144,65 @@ export default function ListingDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]} showsVerticalScrollIndicator={false}>
-        <View style={[styles.imageHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {listing.imageUri ? (
-            <Image source={{ uri: listing.imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
-            <Feather name={iconName} size={64} color={colors.secondary} />
-          )}
-            {listing.status === "traded" && (
-            <View style={styles.tradedOverlay}>
-              <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
+        {(() => {
+          const images = (listing.imageUris?.length ?? 0) > 0
+            ? listing.imageUris!
+            : listing.imageUri ? [listing.imageUri] : [];
+          return (
+            <View
+              style={[styles.imageHero, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}
+            >
+              {images.length > 0 && heroWidth > 0 ? (
+                <>
+                  <ScrollView
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={{ width: heroWidth, height: "100%" }}
+                    onMomentumScrollEnd={(e) =>
+                      setImgIdx(Math.round(e.nativeEvent.contentOffset.x / heroWidth))
+                    }
+                  >
+                    {images.map((uri, i) => (
+                      <Image
+                        key={i}
+                        source={{ uri }}
+                        style={{ width: heroWidth, height: "100%" }}
+                        contentFit="cover"
+                      />
+                    ))}
+                  </ScrollView>
+                  {images.length > 1 && (
+                    <View style={styles.dotsRow}>
+                      {images.map((_, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.dot,
+                            { backgroundColor: i === imgIdx ? colors.primary : "rgba(255,255,255,0.4)" },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                  {images.length > 1 && (
+                    <View style={[styles.imageCountPill, { backgroundColor: "rgba(0,0,0,0.55)" }]}>
+                      <Text style={styles.imageCountPillText}>{imgIdx + 1}/{images.length}</Text>
+                    </View>
+                  )}
+                </>
+              ) : images.length > 0 && heroWidth === 0 ? null : (
+                <Feather name={iconName} size={64} color={colors.secondary} />
+              )}
+              {listing.status === "traded" && (
+                <View style={styles.tradedOverlay}>
+                  <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
+                </View>
+              )}
             </View>
-          )}
-        </View>
+          );
+        })()}
 
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={3}>
@@ -414,7 +464,11 @@ const styles = StyleSheet.create({
   backCircle: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   topBarTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   content: { padding: 16, gap: 16 },
-  imageHero: { height: 220, borderRadius: 18, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  imageHero: { height: 260, borderRadius: 18, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  dotsRow: { position: "absolute", bottom: 10, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  imageCountPill: { position: "absolute", top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  imageCountPillText: { color: "#fff", fontSize: 11, fontFamily: "Inter_600SemiBold" },
   heroPrice: { position: "absolute", bottom: 12, right: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   heroPriceText: { fontSize: 16, fontFamily: "Inter_700Bold" },
   tradedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
