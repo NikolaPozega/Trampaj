@@ -172,13 +172,33 @@ export default function BrowseScreen() {
     return listings.filter((l) => {
       const matchesCategory =
         selectedCategories.length === 0 || selectedCategories.includes(l.category);
-      const q = normSearch(search);
-      const matchesSearch =
-        !q ||
-        normSearch(l.title).includes(q) ||
-        normSearch(l.description).includes(q) ||
-        normSearch(l.wantedFor).includes(q);
-      return matchesCategory && matchesSearch && l.status === "active";
+
+      const q = normSearch(search.trim());
+      if (!q) return matchesCategory && l.status === "active";
+
+      // Tokenizacija upita — svaka riječ >= 3 slova se provjerava zasebno
+      const words = q.split(/[\s,+]+/).filter((w) => w.length >= 3);
+
+      const allTags = [
+        ...(l.nudimTags ?? []),
+        ...(l.trazimTags ?? []),
+      ].map(normSearch);
+      const tagText = allTags.join(" ");
+
+      const fields = [
+        normSearch(l.title),
+        normSearch(l.description),
+        normSearch(l.wantedFor),
+        tagText,
+      ];
+
+      // Cijeli upit se podudara s nekim poljem ILI svaka riječ ima podudaranje
+      const fullMatch = fields.some((f) => f.includes(q));
+      const wordMatch = words.every((w) =>
+        fields.some((f) => f.includes(w))
+      );
+
+      return matchesCategory && l.status === "active" && (fullMatch || wordMatch);
     });
   }, [listings, selectedCategories, search]);
 

@@ -8,10 +8,31 @@ export interface TradeMatch {
   matchType: "both" | "i_want" | "they_want";
 }
 
+function norm(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function keywordsOverlap(a: string, b: string): boolean {
-  const aWords = a.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  const bLower = b.toLowerCase();
-  return aWords.some((w) => bLower.includes(w));
+  const aWords = norm(a).split(/\s+/).filter((w) => w.length > 3);
+  const bNorm = norm(b);
+  return aWords.some((w) => bNorm.includes(w));
+}
+
+// Provjeri preklapa li se slobodni tekst (wantedFor) s tagovima drugog oglasa
+function textMatchesTags(text: string, tags: string[]): boolean {
+  if (!tags.length) return false;
+  const words = norm(text).split(/[\s,+]+/).filter((w) => w.length > 3);
+  if (!words.length) return false;
+  const tagNorms = tags.map(norm);
+  return words.some((w) => tagNorms.some((t) => t.includes(w) || w.includes(t)));
+}
+
+// Preklapa li se jedan set tagova s drugim
+function tagsOverlap(a: string[], b: string[]): boolean {
+  if (!a.length || !b.length) return false;
+  const aNorms = a.map(norm);
+  const bNorms = b.map(norm);
+  return aNorms.some((at) => bNorms.some((bt) => at.includes(bt) || bt.includes(at)));
 }
 
 export function findTradeMatches(
@@ -34,24 +55,37 @@ export function findTradeMatches(
 
       const theyWantCat = detectCategoryLocally(theirs.wantedFor);
 
+      // Ja tražim njih: kategorija, slobodan tekst, ili tagovi
       const iWantThem =
         (iWantCat && iWantCat === theirs.category) ||
         keywordsOverlap(mine.wantedFor, theirs.title) ||
-        keywordsOverlap(mine.wantedFor, theirs.description);
+        keywordsOverlap(mine.wantedFor, theirs.description) ||
+        textMatchesTags(mine.wantedFor, theirs.nudimTags ?? []) ||
+        tagsOverlap(mine.trazimTags ?? [], theirs.nudimTags ?? []);
 
+      // Oni traže mene: kategorija, slobodan tekst, ili tagovi
       const theyWantMe =
         (theyWantCat && theyWantCat === myCat) ||
         keywordsOverlap(theirs.wantedFor, mine.title) ||
-        keywordsOverlap(theirs.wantedFor, mine.description);
+        keywordsOverlap(theirs.wantedFor, mine.description) ||
+        textMatchesTags(theirs.wantedFor, mine.nudimTags ?? []) ||
+        tagsOverlap(theirs.trazimTags ?? [], mine.nudimTags ?? []);
 
       if (!iWantThem && !theyWantMe) continue;
 
       const matchType: TradeMatch["matchType"] =
         iWantThem && theyWantMe ? "both" : iWantThem ? "i_want" : "they_want";
 
-      // Score: both=3, single=1, boosted by price proximity
+      // Osnova: both=3, jedno=1
       let score = matchType === "both" ? 3 : 1;
 
+      // Bonus za tag poklapanje (preciznije od slobodnog teksta)
+      const tagBonus =
+        tagsOverlap(mine.trazimTags ?? [], theirs.nudimTags ?? []) ||
+        tagsOverlap(theirs.trazimTags ?? [], mine.nudimTags ?? []);
+      if (tagBonus) score += 1;
+
+      // Bonus za blizinu cijene
       if (mine.price != null && theirs.price != null) {
         const diff = Math.abs(mine.price - theirs.price);
         const avg = (mine.price + theirs.price) / 2 || 1;
