@@ -21,6 +21,89 @@ import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { searchBus } from "@/utils/searchBus";
+import type { Listing } from "@/context/ListingsContext";
+
+// ─── Ad banner placeholder ────────────────────────────────────────────────────
+function AdBannerSlot({ size = "medium" }: { size?: "small" | "medium" | "bottom" }) {
+  const colors = useColors();
+  const height = size === "bottom" ? 52 : size === "small" ? 44 : 72;
+  return (
+    <View
+      style={[
+        adStyles.wrap,
+        {
+          height,
+          backgroundColor: `${colors.muted}CC`,
+          borderColor: `${colors.border}88`,
+        },
+      ]}
+    >
+      <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
+      <Text style={[adStyles.label, { color: colors.mutedForeground }]}>Google Oglas</Text>
+    </View>
+  );
+}
+
+const adStyles = StyleSheet.create({
+  wrap: {
+    width: "100%",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginVertical: 4,
+  },
+  label: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.3,
+  },
+});
+
+// ─── Row type used by FlatList ────────────────────────────────────────────────
+type ItemRow = { type: "row"; id: string; items: Listing[] };
+type AdRow   = { type: "ad";  id: string };
+type Row     = ItemRow | AdRow;
+
+/**
+ * Injects full-width ad rows into listing rows.
+ * Pattern: 3 rows (9 listings), AD, 2 rows (6 listings), AD, repeat.
+ */
+function buildRows(listings: Listing[]): Row[] {
+  const COLS = 3;
+  // Split listings into rows of 3
+  const itemRows: ItemRow[] = [];
+  for (let i = 0; i < listings.length; i += COLS) {
+    itemRows.push({
+      type: "row",
+      id: `row_${i}`,
+      items: listings.slice(i, i + COLS),
+    });
+  }
+
+  // Inject ads: first ad after 3 rows, then every 2 rows, then every 3 rows (alternates)
+  const result: Row[] = [];
+  const adPattern = [3, 2]; // rows between ads: 3, 2, 3, 2, ...
+  let patternIdx = 0;
+  let rowIdx = 0;
+  let adIdx = 0;
+
+  while (rowIdx < itemRows.length) {
+    const take = adPattern[patternIdx % adPattern.length];
+    const chunk = itemRows.slice(rowIdx, rowIdx + take);
+    result.push(...chunk);
+    rowIdx += take;
+    if (rowIdx < itemRows.length || chunk.length === take) {
+      result.push({ type: "ad", id: `ad_${adIdx++}` });
+    }
+    patternIdx++;
+  }
+
+  return result;
+}
 
 const FILTER_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Sve: "grid",
@@ -82,10 +165,37 @@ export default function BrowseScreen() {
     });
   }, [listings, selectedCategories, search]);
 
+  const rows = useMemo(() => buildRows(filtered), [filtered]);
+
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
+  // Guest: bottom inset for the fixed ad banner (52px banner + safe area)
+  const guestBottomAd = !user ? 52 : 0;
+
+  const renderRow = ({ item }: { item: Row }) => {
+    if (item.type === "ad") {
+      return (
+        <View style={{ paddingHorizontal: 10 }}>
+          <AdBannerSlot size="medium" />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.rowWrap}>
+        {item.items.map((listing) => (
+          <ListingCard key={listing.id} listing={listing} />
+        ))}
+        {/* Fill empty cells so the row always has 3 columns */}
+        {item.items.length < 3 &&
+          Array.from({ length: 3 - item.items.length }).map((_, i) => (
+            <View key={`empty_${i}`} style={styles.emptyCell} />
+          ))}
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Sticky header ─────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: topPad, backgroundColor: colors.background }]}>
         <View style={styles.logoRow}>
           <Pressable
@@ -148,7 +258,15 @@ export default function BrowseScreen() {
           )}
         </View>
 
-        <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+        {/* Search bar — thinner when logged in */}
+        <View style={[
+          styles.searchBar,
+          {
+            backgroundColor: colors.muted,
+            borderColor: colors.border,
+            paddingVertical: user ? 7 : 12,
+          },
+        ]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             value={search}
@@ -164,6 +282,13 @@ export default function BrowseScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Fixed ad banner in header — only when logged in */}
+        {user && (
+          <View style={{ marginHorizontal: 0 }}>
+            <AdBannerSlot size="small" />
+          </View>
+        )}
 
         <ScrollView
           horizontal
@@ -206,21 +331,36 @@ export default function BrowseScreen() {
         </ScrollView>
       </View>
 
+      {/* ── Content ────────────────────────────────────────────────────────── */}
       {!isLoaded ? (
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Učitavanje...</Text>
         </View>
+      ) : filtered.length === 0 ? (
+        <View style={{ flex: 1 }}>
+          <EmptyState
+            icon="search"
+            title="Nema oglasa"
+            subtitle={
+              search
+                ? `Nema rezultata za "${search}"`
+                : "U ovoj kategoriji nema aktivnih oglasa"
+            }
+          />
+        </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={rows}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ListingCard listing={item} />}
-          numColumns={3}
-          columnWrapperStyle={styles.columnWrapper}
+          renderItem={renderRow}
           contentContainerStyle={[
             styles.list,
-            filtered.length === 0 && styles.listEmpty,
-            { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) },
+            {
+              paddingBottom:
+                insets.bottom +
+                guestBottomAd +
+                (Platform.OS === "web" ? 60 : 100),
+            },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -231,20 +371,24 @@ export default function BrowseScreen() {
               colors={[colors.primary]}
             />
           }
-          ListEmptyComponent={
-            <EmptyState
-              icon="search"
-              title="Nema oglasa"
-              subtitle={
-                search
-                  ? `Nema rezultata za "${search}"`
-                  : "U ovoj kategoriji nema aktivnih oglasa"
-              }
-            />
-          }
         />
       )}
 
+      {/* ── Guest fixed bottom ad ──────────────────────────────────────────── */}
+      {!user && (
+        <View
+          style={[
+            styles.guestBottomAd,
+            {
+              backgroundColor: colors.background,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + 4,
+            },
+          ]}
+        >
+          <AdBannerSlot size="bottom" />
+        </View>
+      )}
     </View>
   );
 }
@@ -307,13 +451,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 12,
     gap: 10,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+    paddingVertical: Platform.OS === "web" ? 0 : 0,
   },
   categories: {
     gap: 8,
@@ -337,10 +481,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 8,
   },
-  listEmpty: { flex: 1 },
-  columnWrapper: {
+  rowWrap: {
+    flexDirection: "row",
     gap: 6,
     paddingHorizontal: 2,
+    marginBottom: 6,
+  },
+  emptyCell: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -350,5 +498,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  guestBottomAd: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    borderTopWidth: 1,
   },
 });
