@@ -87,24 +87,38 @@ type AdSlot = { type: "ad"; id: string };
 type FlatItem = Listing | AdSlot;
 
 /**
- * Injects card-sized ad slots into the flat data array.
- * Pattern alternates: 8 real items → AD (slot 9), 6 real items → AD (slot 7), repeat.
- * An ad is always appended after every group so the 9-7-9-7 rhythm never breaks.
+ * Injects card-sized ad slots at exact grid positions.
+ * Ads alternate between col 3 and col 1, every 3 rows:
+ *   row3-col3, row6-col1, row9-col3, row12-col1, ...
+ *
+ * Pre-compute the flat indices in the final mixed array, then fill
+ * non-ad slots with listings in order.
  */
 function injectAds(listings: Listing[]): FlatItem[] {
-  const result: FlatItem[] = [];
-  const GROUPS = [8, 6]; // items per group before each ad
-  let groupIdx = 0;
-  let i = 0;
-  let adCount = 0;
-  while (i < listings.length) {
-    const size = GROUPS[groupIdx % GROUPS.length];
-    const end = Math.min(i + size, listings.length);
-    for (let j = i; j < end; j++) result.push(listings[j]);
-    result.push({ type: "ad", id: `ad_${adCount++}` });
-    i = end;
-    groupIdx++;
+  if (listings.length === 0) return [];
+
+  // Build set of flat indices (in the final array) where an ad sits.
+  // Row R (1-based), Col C (1-based) → flat index = (R-1)*3 + (C-1)
+  const adIndices = new Set<number>();
+  for (let n = 0; n < 30; n++) {
+    const row = 3 + n * 3;          // 3, 6, 9, 12, 15 …
+    const col = n % 2 === 0 ? 3 : 1; // alternates col3, col1
+    adIndices.add((row - 1) * 3 + (col - 1));
   }
+
+  const result: FlatItem[] = [];
+  let listingIdx = 0;
+  let flatIdx = 0;
+
+  while (listingIdx < listings.length) {
+    if (adIndices.has(flatIdx)) {
+      result.push({ type: "ad", id: `ad_${flatIdx}` });
+    } else {
+      result.push(listings[listingIdx++]);
+    }
+    flatIdx++;
+  }
+
   return result;
 }
 
