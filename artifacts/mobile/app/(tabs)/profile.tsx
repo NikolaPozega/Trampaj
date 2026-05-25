@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as LocalAuthentication from "expo-local-authentication";
 import { compressImage } from "@/utils/compressImage";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -45,6 +47,10 @@ const LOCATION_OPTIONS = [
   "Zagreb", "Split", "Rijeka", "Osijek",
   "Sarajevo", "Beograd", "Ljubljana", "Ostalo",
 ];
+
+const BIO_ASKED_KEY = "@trampaj_bio_asked_v1";
+const BIO_ENABLED_KEY = "@trampaj_bio_enabled_v1";
+const BIO_CREDS_KEY = "@trampaj_bio_creds_v1";
 
 const MATCH_LABEL: Record<TradeMatch["matchType"], string> = {
   both: "Obostrana zamjena ✦",
@@ -366,6 +372,76 @@ export default function ProfileScreen() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
 
+  const [bioEnabled, setBioEnabled] = useState(false);
+  const [bioPasswordInput, setBioPasswordInput] = useState("");
+  const [showBioPasswordModal, setShowBioPasswordModal] = useState(false);
+  const [bioActivating, setBioActivating] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(BIO_ENABLED_KEY).then((v) => setBioEnabled(v === "yes"));
+  }, []);
+
+  async function handleBioEnable() {
+    const hasHw = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!hasHw || !enrolled) {
+      Alert.alert("Nije podržano", "Uređaj ne podržava biometrijsku prijavu.");
+      return;
+    }
+    setBioPasswordInput("");
+    setShowBioPasswordModal(true);
+  }
+
+  async function confirmBioEnable() {
+    if (!bioPasswordInput || !user) return;
+    setBioActivating(true);
+    try {
+      const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
+        ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
+        : "/api";
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, password: bioPasswordInput }),
+      });
+      if (!res.ok) {
+        setBioActivating(false);
+        Alert.alert("Pogrešna lozinka", "Unesi ispravnu lozinku za aktivaciju biometrije.");
+        return;
+      }
+      const auth = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Potvrdi biometrijsku prijavu",
+        fallbackLabel: "Koristi lozinku",
+      });
+      if (!auth.success) { setBioActivating(false); return; }
+      await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
+      await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username, password: bioPasswordInput }));
+      setBioEnabled(true);
+      setShowBioPasswordModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Greška", "Provjeri internetsku vezu i pokušaj ponovo.");
+    } finally {
+      setBioActivating(false);
+    }
+  }
+
+  async function handleBioDisable() {
+    Alert.alert("Deaktiviraj biometriju", "Isključuješ prijavu otiskom/licem?", [
+      { text: "Odustani", style: "cancel" },
+      {
+        text: "Deaktiviraj",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
+          setBioEnabled(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        },
+      },
+    ]);
+  }
+
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const { width: screenWidth } = useWindowDimensions();
@@ -388,12 +464,17 @@ export default function ProfileScreen() {
   const [statusFilter, setStatusFilter] = useState<"active" | "traded" | null>(null);
   const filteredMyListings = statusFilter ? myListings.filter((l) => l.status === statusFilter) : myListings;
 
+  // Scroll to very top (header) when statusFilter changes, or when tab gets focus
+  useFocusEffect(
+    useCallback(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, [])
+  );
+
   useEffect(() => {
-    if (filteredMyListings.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: 0, animated: true, viewOffset: 0 });
-      }, 150);
-    }
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }, 80);
   }, [statusFilter]);
 
   const allMatches = useMemo(
@@ -623,6 +704,34 @@ export default function ProfileScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Biometric login toggle */}
+        {user && (
+          <Pressable
+            onPress={bioEnabled ? handleBioDisable : handleBioEnable}
+            style={({ pressed }) => [{
+              flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginTop: 6,
+              backgroundColor: bioEnabled ? `${colors.secondary}18` : colors.muted,
+              borderWidth: 1,
+              borderColor: bioEnabled ? `${colors.secondary}50` : colors.border,
+              opacity: pressed ? 0.75 : 1,
+            }]}
+          >
+            <Feather name="lock" size={13} color={bioEnabled ? colors.secondary : colors.mutedForeground} />
+            <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: bioEnabled ? colors.secondary : colors.mutedForeground }}>
+              Biometrijska prijava
+            </Text>
+            <View style={{
+              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+              backgroundColor: bioEnabled ? colors.secondary : colors.border,
+            }}>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: bioEnabled ? "#08152E" : colors.mutedForeground }}>
+                {bioEnabled ? "AKTIVNA" : "NEAKTIVNA"}
+              </Text>
+            </View>
+          </Pressable>
+        )}
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stats}>
@@ -890,6 +999,53 @@ export default function ProfileScreen() {
               </Pressable>
               <Pressable onPress={handleSaveName} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
                 <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Biometric enable: password entry modal */}
+      <Modal visible={showBioPasswordModal} transparent animationType="fade" onRequestClose={() => setShowBioPasswordModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowBioPasswordModal(false)}>
+          <Pressable
+            style={[styles.editModal, { backgroundColor: colors.card, borderColor: colors.border, gap: 14 }]}
+            onPress={() => {}}
+          >
+            <View style={styles.editModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Aktiviraj biometriju</Text>
+              <Pressable onPress={() => setShowBioPasswordModal(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+              Unesi lozinku za potvrdu. Koristit će se samo za biometrijsku prijavu.
+            </Text>
+            <TextInput
+              value={bioPasswordInput}
+              onChangeText={setBioPasswordInput}
+              placeholder="Lozinka"
+              placeholderTextColor={colors.mutedForeground}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+            />
+            <View style={styles.modalBtns}>
+              <Pressable
+                onPress={() => setShowBioPasswordModal(false)}
+                style={[styles.modalBtn, { backgroundColor: colors.muted }]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmBioEnable}
+                disabled={bioActivating || !bioPasswordInput}
+                style={[styles.modalBtn, { backgroundColor: colors.primary, flex: 1, opacity: !bioPasswordInput ? 0.5 : 1 }]}
+              >
+                {bioActivating
+                  ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  : <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Aktiviraj</Text>}
               </Pressable>
             </View>
           </Pressable>
