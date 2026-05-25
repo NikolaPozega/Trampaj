@@ -30,6 +30,7 @@ import { CATEGORIES, type Listing, useListings } from "@/context/ListingsContext
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { findTradeMatches, type TradeMatch } from "@/services/tradeMatches";
+import { useChat } from "@/context/ChatContext";
 
 interface EditState {
   id: string;
@@ -316,6 +317,7 @@ export default function ProfileScreen() {
     deleteAllData,
   } = useListings();
   const { user, logout, updateProfile, refreshUser } = useAuth();
+  const { conversations } = useChat();
 
   // Local-only edit (no auth)
   const [editingName, setEditingName] = useState(false);
@@ -758,6 +760,84 @@ export default function ProfileScreen() {
               />
             ))}
           </ScrollView>
+        </View>
+      )}
+
+      {/* ── Poruke ── */}
+      {conversations.length > 0 && (
+        <View style={styles.suggestSection}>
+          <View style={styles.suggestTitleRow}>
+            <View style={[styles.suggestTitleBadge, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
+              <Feather name="message-circle" size={13} color={colors.secondary} />
+              <Text style={[styles.suggestTitleText, { color: colors.secondary }]}>Poruke</Text>
+            </View>
+            <Text style={[styles.suggestCount, { color: colors.mutedForeground }]}>
+              {conversations.length} {conversations.length === 1 ? "razgovor" : "razgovora"}
+            </Text>
+          </View>
+          <View style={{ gap: 8, paddingHorizontal: 16, marginTop: 4 }}>
+            {conversations.map((conv) => {
+              const lastMsg = conv.messages[conv.messages.length - 1];
+              const unread = conv.messages.filter(
+                (m) => !m.fromMe && m.createdAt > (conv.lastReadAt ?? 0)
+              ).length;
+              const lastText = !lastMsg
+                ? "Nema poruka"
+                : lastMsg.type === "handshake_accepted"
+                ? "🤝 Trampa zaključena!"
+                : lastMsg.type === "handshake_request"
+                ? "🫱 Zahtjev za zamjenu"
+                : lastMsg.type === "handshake_rejected"
+                ? "Trampa odbijena"
+                : lastMsg.text;
+              return (
+                <Pressable
+                  key={conv.id}
+                  onPress={() => router.push({
+                    pathname: "/chat/[listingId]",
+                    params: { listingId: conv.listingId, listingTitle: conv.listingTitle, otherUser: conv.otherUserName },
+                  })}
+                  style={({ pressed }) => [
+                    styles.convRow,
+                    { backgroundColor: colors.card, borderColor: unread > 0 ? `${colors.secondary}50` : colors.border, opacity: pressed ? 0.8 : 1 },
+                  ]}
+                >
+                  <View style={[styles.convAvatar, { backgroundColor: colors.muted, borderColor: unread > 0 ? colors.secondary : colors.border }]}>
+                    <Text style={[styles.convAvatarText, { color: unread > 0 ? colors.secondary : colors.primary }]}>
+                      {(conv.otherUserName || "?").charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <Text style={[styles.convName, { color: colors.foreground }]} numberOfLines={1}>
+                        {conv.otherUserName}
+                      </Text>
+                      {lastMsg && (
+                        <Text style={[styles.convTime, { color: colors.mutedForeground }]}>
+                          {new Date(lastMsg.createdAt).toLocaleTimeString("hr", { hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={[styles.convSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {conv.listingTitle}
+                    </Text>
+                    <Text
+                      style={[styles.convLastMsg, { color: unread > 0 ? colors.foreground : colors.mutedForeground, fontFamily: unread > 0 ? "Inter_600SemiBold" : "Inter_400Regular" }]}
+                      numberOfLines={1}
+                    >
+                      {lastMsg?.fromMe ? "Ti: " : ""}{lastText}
+                    </Text>
+                  </View>
+                  {unread > 0 && (
+                    <View style={[styles.convBadge, { backgroundColor: colors.secondary }]}>
+                      <Text style={styles.convBadgeText}>{unread > 9 ? "9+" : unread}</Text>
+                    </View>
+                  )}
+                  <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       )}
 
@@ -1547,6 +1627,36 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", paddingTop: 4 },
+  convRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  convAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  convAvatarText: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  convName: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
+  convSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  convLastMsg: { fontSize: 12, lineHeight: 17 },
+  convTime: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  convBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  convBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#08152E" },
   list: { paddingHorizontal: 12, paddingTop: 4 },
   listEmpty: { flex: 1 },
   columnWrapper: { gap: 10, paddingHorizontal: 4, marginBottom: 0 },

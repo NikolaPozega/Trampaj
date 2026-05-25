@@ -84,10 +84,10 @@ function HandshakeBanner({ onPress }: { onPress: () => void }) {
     >
       <View style={styles.hsFistsRow}>
         <Animated.Text style={[styles.hsFist, { transform: [{ translateX: offsetL }] }]}>
-          🤜
+          🫱
         </Animated.Text>
         <Animated.Text style={[styles.hsFist, { transform: [{ translateX: offsetR }] }]}>
-          🤛
+          🫲
         </Animated.Text>
       </View>
       <Text style={styles.hsBannerTitle}>Zaključi trampu</Text>
@@ -122,9 +122,9 @@ function ReachingHand({
   return (
     <View style={styles.reachBox}>
       <View style={styles.reachFists}>
-        <Text style={styles.hsFist}>🤜</Text>
+        <Text style={styles.hsFist}>🫱</Text>
         <Animated.Text style={[styles.hsFist, { transform: [{ translateX: reach }] }]}>
-          🤛
+          🫲
         </Animated.Text>
       </View>
       <Text style={styles.reachName}>{otherName} želi zaključiti trampu</Text>
@@ -168,7 +168,7 @@ function MiniBadge() {
   }, [scale]);
   return (
     <Animated.View style={[styles.miniBadge, { transform: [{ scale }] }]}>
-      <Text style={{ fontSize: 18 }}>🤜</Text>
+      <Text style={{ fontSize: 18 }}>🫱</Text>
     </Animated.View>
   );
 }
@@ -309,7 +309,7 @@ export default function ChatScreen() {
         return (
           <View style={styles.pendingRow}>
             <Text style={styles.pendingText}>
-              🤜 Čekaš potvrdu od {liveConv.otherUserName}…
+              🫱 Čekaš potvrdu od {liveConv.otherUserName}…
             </Text>
           </View>
         );
@@ -367,7 +367,7 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: topPad }]}>
@@ -411,19 +411,19 @@ export default function ChatScreen() {
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         renderItem={renderMessage}
+        ListHeaderComponent={
+          (hsStatus === "idle" || hsStatus === "rejected") ? (
+            <Animated.View style={{ opacity: bannerOpacity }}>
+              <HandshakeBanner onPress={handleHandshake} />
+            </Animated.View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyChat}>
             <Text style={styles.emptyChatText}>Nema poruka — započni razgovor</Text>
           </View>
         }
       />
-
-      {/* ── Handshake Banner (idle only) ── */}
-      {(hsStatus === "idle" || hsStatus === "rejected") && (
-        <Animated.View style={{ opacity: bannerOpacity }}>
-          <HandshakeBanner onPress={handleHandshake} />
-        </Animated.View>
-      )}
 
       {/* ── Input Bar ── */}
       <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
