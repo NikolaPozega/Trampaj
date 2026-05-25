@@ -106,7 +106,10 @@ export default function LoginScreen() {
 
     const savedCredsRaw = await AsyncStorage.getItem(BIO_CREDS_KEY);
     if (!savedCredsRaw) {
-      Alert.alert("Postavi biometriju", "Idi na Profil i aktiviraj biometrijsku prijavu.");
+      Alert.alert(
+        "Biometrija nije aktivirana",
+        "Prijavi se lozinkom, idi na Profil i aktiviraj biometrijsku prijavu u postavkama."
+      );
       return;
     }
 

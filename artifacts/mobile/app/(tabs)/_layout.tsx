@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import React from "react";
+import { router, Tabs } from "expo-router";
+import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
@@ -8,7 +8,18 @@ import { searchBus } from "@/utils/searchBus";
 
 export default function TabLayout() {
   const colors = useColors();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const wasLoggedIn = useRef(false);
+
+  // Track if user was ever logged in; redirect to login on logout
+  useEffect(() => {
+    if (user) {
+      wasLoggedIn.current = true;
+    } else if (!isLoading && wasLoggedIn.current) {
+      wasLoggedIn.current = false;
+      router.replace("/login");
+    }
+  }, [user, isLoading]);
 
   return (
     <Tabs

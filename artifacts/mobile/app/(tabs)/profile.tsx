@@ -611,7 +611,7 @@ export default function ProfileScreen() {
     { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted },
   ];
 
-  const ListHeader = (
+  const ListHeader = () => (
     <View style={[styles.headerSection, { paddingTop: topPad }]}>
       {/* Profile card */}
       <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
