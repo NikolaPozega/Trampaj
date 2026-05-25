@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
@@ -220,7 +221,11 @@ export default function BrowseScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
       {/* ── Sticky header ─────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: topPad, backgroundColor: colors.background }]}>
         <View style={styles.logoRow}>
@@ -430,7 +435,7 @@ export default function BrowseScreen() {
           <AdBannerSlot size="bottom" />
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
