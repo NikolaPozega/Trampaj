@@ -273,6 +273,7 @@ export default function PostScreen() {
       setTitleSuggesting(true);
       try {
         const detected = await detectCategoryFromTitle(title);
+        console.log("[KATEGORIJA] Detekcija za naslov:", title, "→", detected || "(nije detektirana)");
         if (detected && !categoryManuallySet) {
           setCategory(detected);
         }
@@ -359,8 +360,10 @@ export default function PostScreen() {
     const priceNum = priceText.trim()
       ? parseFloat(priceText.replace(",", "."))
       : null;
+    console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim() });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim());
-    addListing({
+    console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
+    const listing = {
       title: title.trim(),
       description: description.trim(),
       wantedFor: wantedFor.trim(),
@@ -376,7 +379,9 @@ export default function PostScreen() {
       deadline,
       nudimTags: tags.nudimTags,
       trazimTags: tags.trazimTags,
-    });
+    };
+    console.log("[SUBMIT] Novi oglas:", JSON.stringify(listing));
+    addListing(listing);
     setSubmitted(true);
     setTimeout(() => {
       const defaultLoc = user
