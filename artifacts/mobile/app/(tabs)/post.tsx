@@ -374,6 +374,7 @@ export default function PostScreen() {
     console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), imaSliku: !!imageBase64 });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim(), imageBase64);
     console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
+    console.log("[SUBMIT] Ispravak teksta:", { naslov: tags.correctedTitle, opis: tags.correctedDescription });
     // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
     let resolvedCategory = category;
     if (!resolvedCategory && tags.nudimTags.length > 0) {
@@ -383,8 +384,8 @@ export default function PostScreen() {
       }
     }
     const listing = {
-      title: title.trim(),
-      description: description.trim(),
+      title: tags.correctedTitle,
+      description: tags.correctedDescription,
       wantedFor: wantedFor.trim(),
       category: resolvedCategory,
       location,

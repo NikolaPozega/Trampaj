@@ -138,7 +138,7 @@ export async function generateListingTags(
   description: string,
   wantedFor: string,
   base64Image?: string
-): Promise<{ nudimTags: string[]; trazimTags: string[] }> {
+): Promise<{ nudimTags: string[]; trazimTags: string[]; correctedTitle: string; correctedDescription: string }> {
   const apiKey = getApiKey();
   if (!apiKey) {
     const normalize = (s: string) =>
@@ -148,6 +148,8 @@ export async function generateListingTags(
     return {
       nudimTags: [...new Set([...tokenize(title), ...tokenize(description)])].slice(0, 12),
       trazimTags: [...new Set(tokenize(wantedFor))].slice(0, 10),
+      correctedTitle: title,
+      correctedDescription: description,
     };
   }
 
@@ -155,13 +157,17 @@ export async function generateListingTags(
 Opis: "${description}"
 Što traži: "${wantedFor}"
 
+Ispravi sve pravopisne greške u naslovu i opisu (hrvatski jezik). Generiraj ključne riječi.${base64Image ? " Analiziraj i sliku — dodaj vizualne detalje u nudimTags: boja, materijal, stil, marka, dimenzije." : ""}
+
 Vrati SAMO ovaj JSON:
-{"nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
+{"correctedTitle":"...","correctedDescription":"...","nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
 
-nudimTags = ključne riječi koje opisuju što osoba NUDI — kombiniraj tekst I ono što vidiš na slici (boja, materijal, stil, marka, stanje...), max 20 riječi na hrvatskom
-trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10 riječi`;
+correctedTitle = ispravljen naslov (samo ispravi greške, ne mijenjaj sadržaj)
+correctedDescription = ispravljen opis (samo ispravi greške, ne mijenjaj sadržaj)
+nudimTags = ključne riječi što osoba NUDI, max 20 na hrvatskom
+trazimTags = ključne riječi što osoba TRAŽI, max 10`;
 
-  const userContent: unknown[] = base64Image
+  const userContent: unknown = base64Image
     ? [
         {
           type: "image_url",
@@ -180,11 +186,11 @@ trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 250,
+        max_tokens: 350,
         messages: [
           {
             role: "system",
-            content: `Generiraj ključne riječi za oglas trampe na hrvatskom. ${base64Image ? "Analiziraj i sliku — dodaj vizualne detalje: boja, materijal, stil, marka, dimenzije, stanje." : ""} Vrati SAMO JSON bez ikakvog teksta oko njega.`,
+            content: `Ti si asistent za oglas trampe na hrvatskom. Ispravljaš pravopisne greške i generiraš ključne riječi. Vrati SAMO JSON bez ikakvog teksta oko njega.`,
           },
           {
             role: "user",
@@ -196,12 +202,14 @@ trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10
 
     if (!response.ok) throw new Error("tags failed");
     const data = await response.json();
-    const text: string = data.choices[0]?.message?.content ?? "{}";
-    const match = text.match(/\{[\s\S]*?\}/);
+    const raw: string = data.choices[0]?.message?.content ?? "{}";
+    const match = raw.match(/\{[\s\S]*?\}/);
     const parsed = match ? JSON.parse(match[0]) : {};
     return {
       nudimTags: Array.isArray(parsed.nudimTags) ? parsed.nudimTags.slice(0, 20) : [],
       trazimTags: Array.isArray(parsed.trazimTags) ? parsed.trazimTags.slice(0, 10) : [],
+      correctedTitle: typeof parsed.correctedTitle === "string" && parsed.correctedTitle ? parsed.correctedTitle : title,
+      correctedDescription: typeof parsed.correctedDescription === "string" && parsed.correctedDescription ? parsed.correctedDescription : description,
     };
   } catch {
     const normalize = (s: string) =>
@@ -211,6 +219,8 @@ trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10
     return {
       nudimTags: [...new Set([...tokenize(title), ...tokenize(description)])].slice(0, 12),
       trazimTags: [...new Set(tokenize(wantedFor))].slice(0, 10),
+      correctedTitle: title,
+      correctedDescription: description,
     };
   }
 }
