@@ -100,7 +100,7 @@ function injectAds(listings: Listing[]): FlatItem[] {
   // Build set of flat indices (in the final array) where an ad sits.
   // Row R (1-based), Col C (1-based) → flat index = (R-1)*3 + (C-1)
   const adIndices = new Set<number>();
-  for (let n = 0; n < 30; n++) {
+  for (let n = 0; n < 200; n++) {
     const row = 3 + n * 3;          // 3, 6, 9, 12, 15 …
     const col = n % 2 === 0 ? 3 : 1; // alternates col3, col1
     adIndices.add((row - 1) * 3 + (col - 1));
