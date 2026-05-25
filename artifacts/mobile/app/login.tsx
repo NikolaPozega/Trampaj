@@ -5,8 +5,10 @@ import * as Haptics from "expo-haptics";
 import * as LocalAuthentication from "expo-local-authentication";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -39,6 +41,10 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [notVerified, setNotVerified] = useState(false);
   const [notVerifiedEmail, setNotVerifiedEmail] = useState("");
+  const [showBioConfirm, setShowBioConfirm] = useState(false);
+  const [bioConfirmPassword, setBioConfirmPassword] = useState("");
+  const [bioConfirmLoading, setBioConfirmLoading] = useState(false);
+  const [bioConfirmError, setBioConfirmError] = useState("");
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
@@ -80,6 +86,21 @@ export default function LoginScreen() {
     );
   }
 
+  async function doLoginWithStoredCreds(savedUser: string, savedPass: string) {
+    setLoading(true);
+    const r = await login(savedUser, savedPass);
+    setLoading(false);
+    if (r.ok) {
+      await setMyName(savedUser);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(tabs)");
+    } else {
+      await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
+      setBioEnabled(false);
+      Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
+    }
+  }
+
   async function handleBioLogin() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -89,37 +110,49 @@ export default function LoginScreen() {
       return;
     }
 
-    // Try native biometrics if available; fall back silently on web
+    // Check if native biometrics are available
+    let hasNativeBio = false;
     try {
       const hasHw = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (hasHw && enrolled) {
-        const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: "Prijavi se biometricom",
-          fallbackLabel: "Koristi lozinku",
-          disableDeviceFallback: false,
-        });
-        if (!result.success) return;
-      }
+      hasNativeBio = hasHw && enrolled;
     } catch {
-      // Not supported (web) — skip hardware check, proceed with stored credentials
+      // Web — biometrics not supported
     }
 
-    const { username: savedUser, password: savedPass } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+    if (hasNativeBio) {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Prijavi se biometricom",
+        fallbackLabel: "Koristi lozinku",
+        disableDeviceFallback: false,
+      });
+      if (!result.success) return;
+      const { username: savedUser, password: savedPass } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+      await doLoginWithStoredCreds(savedUser, savedPass);
+    } else {
+      // No hardware biometrics (web) — ask for password confirmation
+      setBioConfirmPassword("");
+      setBioConfirmError("");
+      setShowBioConfirm(true);
+    }
+  }
 
-    setLoading(true);
-    const r = await login(savedUser, savedPass);
-    setLoading(false);
-
+  async function confirmBioLogin() {
+    if (!bioConfirmPassword) return;
+    const savedCredsRaw = await AsyncStorage.getItem(BIO_CREDS_KEY);
+    if (!savedCredsRaw) { setShowBioConfirm(false); return; }
+    const { username: savedUser } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+    setBioConfirmLoading(true);
+    setBioConfirmError("");
+    const r = await login(savedUser, bioConfirmPassword);
+    setBioConfirmLoading(false);
     if (r.ok) {
+      setShowBioConfirm(false);
       await setMyName(savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
-      // Credentials changed — disable biometrics, ask user to re-login
-      await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
-      setBioEnabled(false);
-      Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
+      setBioConfirmError("Pogrešna lozinka. Pokušaj ponovo.");
     }
   }
 
@@ -369,6 +402,61 @@ export default function LoginScreen() {
           <Text style={[styles.guestText, { color: colors.mutedForeground }]}>Nastavi bez prijave →</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Bio confirm password modal (web fallback) */}
+      <Modal visible={showBioConfirm} transparent animationType="fade" onRequestClose={() => setShowBioConfirm(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}
+          onPress={() => setShowBioConfirm(false)}
+        >
+          <Pressable
+            style={{ width: "100%", maxWidth: 340, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 20, gap: 14 }}
+            onPress={() => {}}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: colors.foreground }}>Potvrdi identitet</Text>
+              <Pressable onPress={() => setShowBioConfirm(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+              Unesi lozinku za potvrdu brze prijave.
+            </Text>
+            <TextInput
+              value={bioConfirmPassword}
+              onChangeText={(t) => { setBioConfirmPassword(t); setBioConfirmError(""); }}
+              placeholder="Lozinka"
+              placeholderTextColor={colors.mutedForeground}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+              style={{
+                borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11,
+                fontSize: 14, fontFamily: "Inter_400Regular",
+                borderColor: bioConfirmError ? colors.destructive : colors.border,
+                color: colors.foreground, backgroundColor: colors.muted,
+              }}
+            />
+            {bioConfirmError ? (
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.destructive }}>{bioConfirmError}</Text>
+            ) : null}
+            <Pressable
+              onPress={confirmBioLogin}
+              disabled={bioConfirmLoading || !bioConfirmPassword}
+              style={({ pressed }) => [{
+                borderRadius: 10, paddingVertical: 13, alignItems: "center" as const,
+                backgroundColor: colors.primary,
+                opacity: (!bioConfirmPassword || bioConfirmLoading) ? 0.5 : pressed ? 0.85 : 1,
+              }]}
+            >
+              {bioConfirmLoading
+                ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                : <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.primaryForeground }}>Prijavi se</Text>}
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
