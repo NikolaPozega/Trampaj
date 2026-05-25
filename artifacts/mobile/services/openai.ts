@@ -204,10 +204,14 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
       }),
     });
 
-    if (!response.ok) throw new Error("tags failed");
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "(no body)");
+      throw new Error(`tags HTTP ${response.status} — ${errBody.slice(0, 200)}`);
+    }
     const data = await response.json();
     const raw: string = data.choices[0]?.message?.content ?? "{}";
-    const match = raw.match(/\{[\s\S]*?\}/);
+    console.log("[TAGS] GPT raw odgovor:", raw);
+    const match = raw.match(/\{[\s\S]*\}/);
     const parsed = match ? JSON.parse(match[0]) : {};
     return {
       nudimTags: Array.isArray(parsed.nudimTags) ? parsed.nudimTags.slice(0, 20) : [],
@@ -215,7 +219,8 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
       correctedTitle: typeof parsed.correctedTitle === "string" && parsed.correctedTitle ? parsed.correctedTitle : title,
       correctedDescription: typeof parsed.correctedDescription === "string" && parsed.correctedDescription ? parsed.correctedDescription : description,
     };
-  } catch {
+  } catch (err) {
+    console.log("[TAGS] Greška:", String(err));
     const normalize = (s: string) =>
       s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const tokenize = (s: string) =>

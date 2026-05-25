@@ -397,10 +397,10 @@ export default function PostScreen() {
     console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), imaSliku: !!imageBase64 });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim(), imageBase64);
     console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
-    // Ako je korisnik ručno izmijenio AI tekst, poštujemo njegovu verziju i ne ispravljamo
-    const finalTitle = titleFromAI.current ? tags.correctedTitle : title.trim();
-    const finalDescription = descriptionFromAI.current ? tags.correctedDescription : description.trim();
-    console.log("[SUBMIT] Finalni tekst:", { naslov: finalTitle, opis: finalDescription, naslovIspravio: !titleFromAI.current, opisIspravio: !descriptionFromAI.current });
+    // Uvijek primjeni AI ispravak tipfelera — bez obzira je li korisnik uređivao ili ne
+    const finalTitle = tags.correctedTitle || title.trim();
+    const finalDescription = tags.correctedDescription || description.trim();
+    console.log("[SUBMIT] Finalni tekst:", { naslov: finalTitle, opis: finalDescription });
     // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
     let resolvedCategory = category;
     if (!resolvedCategory && tags.nudimTags.length > 0) {
