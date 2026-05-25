@@ -815,8 +815,8 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Fixed top ad banner ─────────────────────────────────────────────── */}
-      <View style={[styles.fixedAdTop, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      {/* ── Fixed top ad banner — right below status bar ──────────────────── */}
+      <View style={[styles.fixedAdTop, { paddingTop: insets.top + 4, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
           <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
           <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
@@ -964,7 +964,7 @@ export default function ProfileScreen() {
       />
 
       {/* ── Fixed bottom ad banner ──────────────────────────────────────────── */}
-      <View style={[styles.fixedAdBottom, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: insets.bottom + 4 }]}>
+      <View style={[styles.fixedAdBottom, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: 4 }]}>
         <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
           <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
           <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
