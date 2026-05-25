@@ -34,6 +34,7 @@ import {
   analyzeImageForCategory,
   detectCategoryFromTitle,
   detectCategoryLocally,
+  generateListingTags,
 } from "@/services/openai";
 
 interface LocationResult {
@@ -262,6 +263,10 @@ export default function PostScreen() {
   }, [user, location]);
 
   useEffect(() => {
+    if (user?.phone && !phone) setPhone(user.phone);
+  }, [user]);
+
+  useEffect(() => {
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
     if (title.trim().length < 3) return;
     titleDebounceRef.current = setTimeout(async () => {
@@ -354,6 +359,7 @@ export default function PostScreen() {
     const priceNum = priceText.trim()
       ? parseFloat(priceText.replace(",", "."))
       : null;
+    const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim());
     addListing({
       title: title.trim(),
       description: description.trim(),
@@ -363,11 +369,13 @@ export default function PostScreen() {
       condition,
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
       imageUris,
-      phone: showPhone && phone.trim() ? phone.trim() : null,
+      phone: phone.trim() || null,
       topup,
       flexibility,
       cashFallback,
       deadline,
+      nudimTags: tags.nudimTags,
+      trazimTags: tags.trazimTags,
     });
     setSubmitted(true);
     setTimeout(() => {
@@ -552,6 +560,8 @@ export default function PostScreen() {
               placeholderTextColor={colors.mutedForeground}
               style={[inputStyle, styles.titleInput]}
               maxLength={80}
+              autoCorrect
+              spellCheck
             />
             {titleSuggesting && (
               <View style={styles.titleAiDot}>
@@ -586,6 +596,8 @@ export default function PostScreen() {
             multiline
             maxLength={500}
             textAlignVertical="top"
+            autoCorrect
+            spellCheck
           />
         </View>
 
@@ -658,15 +670,10 @@ export default function PostScreen() {
             placeholderTextColor={colors.mutedForeground}
             style={inputStyle}
             maxLength={200}
+            autoCorrect
+            spellCheck
           />
         </View>
-
-        <WantedSuggestions
-          wantedFor={wantedFor}
-          priceText={priceText}
-          listings={listings}
-          colors={colors}
-        />
 
         <ChipGroup<Flexibility>
           label="Koliko si fleksibilan?"

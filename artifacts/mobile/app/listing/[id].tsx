@@ -17,8 +17,148 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useChat } from "@/context/ChatContext";
-import { useListings } from "@/context/ListingsContext";
+import { useListings, type Listing } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
+
+// ─── Matching helpers ─────────────────────────────────────────────────────────
+
+function normalize(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function tokenize(text: string): string[] {
+  return normalize(text).split(/[\s,.!?;:()\-\/\\]+/).filter((w) => w.length >= 3);
+}
+function wordsSimilar(a: string, b: string): boolean {
+  if (a === b) return true;
+  const short = a.length <= b.length ? a : b;
+  const long = a.length <= b.length ? b : a;
+  if (short.length / long.length < 0.72) return false;
+  const pl = short.length - 1;
+  return pl >= 2 && a.substring(0, pl) === b.substring(0, pl);
+}
+function overlap(tokensA: string[], tokensB: string[]): number {
+  return tokensA.reduce(
+    (sum, a) => sum + (tokensB.some((b) => wordsSimilar(a, b)) ? 1 : 0),
+    0
+  );
+}
+
+function computeMatches(listing: Listing, all: Listing[]): Listing[] {
+  const nudimTokens = [
+    ...tokenize(listing.title),
+    ...tokenize(listing.description ?? ""),
+    ...(listing.nudimTags ?? []).flatMap(tokenize),
+  ];
+  const trazimTokens = [
+    ...tokenize(listing.wantedFor),
+    ...(listing.trazimTags ?? []).flatMap(tokenize),
+  ];
+
+  return all
+    .filter((l) => l.id !== listing.id && l.status === "active" && !l.isMine)
+    .map((l) => {
+      const theirNudim = [
+        ...tokenize(l.title),
+        ...tokenize(l.description ?? ""),
+        ...(l.nudimTags ?? []).flatMap(tokenize),
+      ];
+      const theirTrazim = [
+        ...tokenize(l.wantedFor),
+        ...(l.trazimTags ?? []).flatMap(tokenize),
+      ];
+      // Bidirectional: they want what I offer + I want what they offer
+      const theyWantMine = overlap(nudimTokens, theirTrazim);
+      const iWantTheirs = overlap(trazimTokens, theirNudim);
+      return { l, score: theyWantMine * 2 + iWantTheirs * 2, theyWantMine, iWantTheirs };
+    })
+    .filter(({ theyWantMine, iWantTheirs }) => theyWantMine > 0 || iWantTheirs > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(({ l }) => l);
+}
+
+// ─── Match section component ──────────────────────────────────────────────────
+
+function MatchSection({
+  listing,
+  all,
+  colors,
+}: {
+  listing: Listing;
+  all: Listing[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  const matches = React.useMemo(() => computeMatches(listing, all), [listing, all]);
+  if (matches.length === 0) return null;
+
+  return (
+    <View style={mStyles.container}>
+      <View style={mStyles.header}>
+        <Feather name="zap" size={14} color={colors.primary} />
+        <Text style={[mStyles.headerText, { color: colors.primary }]}>
+          Podudaranja za ovaj oglas
+        </Text>
+        <View style={[mStyles.badge, { backgroundColor: colors.primary + "22" }]}>
+          <Text style={[mStyles.badgeText, { color: colors.primary }]}>{matches.length}</Text>
+        </View>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={mStyles.scroll}>
+        {matches.map((item) => {
+          const imgs = (item.imageUris?.length ?? 0) > 0 ? item.imageUris : item.imageUri ? [item.imageUri] : [];
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() => router.push(`/listing/${item.id}`)}
+              style={({ pressed }) => [
+                mStyles.card,
+                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              {imgs[0] ? (
+                <Image source={{ uri: imgs[0] }} style={mStyles.cardImg} contentFit="cover" />
+              ) : (
+                <View style={[mStyles.cardImgPlaceholder, { backgroundColor: colors.muted }]}>
+                  <Feather name="package" size={22} color={colors.mutedForeground} />
+                </View>
+              )}
+              <View style={mStyles.cardBody}>
+                <Text style={[mStyles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Text style={[mStyles.cardWanted, { color: colors.primary }]} numberOfLines={1}>
+                  ↔ {item.wantedFor}
+                </Text>
+                {item.price != null && (
+                  <Text style={[mStyles.cardPrice, { color: colors.mutedForeground }]}>
+                    {item.price} €
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const mStyles = StyleSheet.create({
+  container: { gap: 10 },
+  header: { flexDirection: "row", alignItems: "center", gap: 6 },
+  headerText: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  scroll: { gap: 10, paddingRight: 4 },
+  card: { width: 150, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  cardImg: { width: "100%", height: 100 },
+  cardImgPlaceholder: { width: "100%", height: 100, alignItems: "center", justifyContent: "center" },
+  cardBody: { padding: 10, gap: 4 },
+  cardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
+  cardWanted: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  cardPrice: { fontSize: 11, fontFamily: "Inter_500Medium" },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Elektronika: "cpu",
@@ -297,6 +437,10 @@ export default function ListingDetailScreen() {
             <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
           </View>
         </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <MatchSection listing={listing} all={listings} colors={colors} />
       </ScrollView>
 
       {!listing.isMine && listing.status === "active" && (

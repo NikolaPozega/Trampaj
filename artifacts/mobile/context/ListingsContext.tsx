@@ -52,6 +52,8 @@ export interface Listing {
   flexibility?: Flexibility | null;
   cashFallback?: boolean | null;
   deadline?: Deadline | null;
+  nudimTags?: string[];
+  trazimTags?: string[];
 }
 
 export interface Review {

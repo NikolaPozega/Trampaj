@@ -133,6 +133,76 @@ Elektronika, Odjeća, Knjige, Sport, Nakit, Namještaj, Igračke, Ostalo`,
   return validCategories.find((c) => raw.includes(c)) ?? "";
 }
 
+export async function generateListingTags(
+  title: string,
+  description: string,
+  wantedFor: string
+): Promise<{ nudimTags: string[]; trazimTags: string[] }> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    // Fallback: simple local tokenization
+    const normalize = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const tokenize = (s: string) =>
+      normalize(s).split(/[\s,.!?;:()\-\/\\]+/).filter((w) => w.length >= 3);
+    return {
+      nudimTags: [...new Set([...tokenize(title), ...tokenize(description)])].slice(0, 12),
+      trazimTags: [...new Set(tokenize(wantedFor))].slice(0, 10),
+    };
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 150,
+        messages: [
+          {
+            role: "system",
+            content: `Generiraj ključne riječi za oglas trampe na hrvatskom. Vrati SAMO JSON bez ikakvog teksta oko njega.`,
+          },
+          {
+            role: "user",
+            content: `Naslov: "${title}"
+Opis: "${description}"
+Što traži: "${wantedFor}"
+
+Vrati SAMO ovaj JSON:
+{"nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
+
+nudimTags = ključne riječi koje opisuju što osoba NUDI (iz naslova i opisa, max 12 riječi)
+trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži", max 10 riječi)`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) throw new Error("tags failed");
+    const data = await response.json();
+    const text: string = data.choices[0]?.message?.content ?? "{}";
+    const match = text.match(/\{[\s\S]*?\}/);
+    const parsed = match ? JSON.parse(match[0]) : {};
+    return {
+      nudimTags: Array.isArray(parsed.nudimTags) ? parsed.nudimTags.slice(0, 12) : [],
+      trazimTags: Array.isArray(parsed.trazimTags) ? parsed.trazimTags.slice(0, 10) : [],
+    };
+  } catch {
+    const normalize = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const tokenize = (s: string) =>
+      normalize(s).split(/[\s,.!?;:()\-\/\\]+/).filter((w) => w.length >= 3);
+    return {
+      nudimTags: [...new Set([...tokenize(title), ...tokenize(description)])].slice(0, 12),
+      trazimTags: [...new Set(tokenize(wantedFor))].slice(0, 10),
+    };
+  }
+}
+
 export async function suggestTrades(
   newListing: { title: string; category: string; wantedFor: string },
   existingListings: Array<{ id: string; title: string; category: string; wantedFor: string }>
