@@ -61,20 +61,21 @@ export default function LoginScreen() {
   async function checkBiometricAfterLogin(savedUser: string, savedPass: string) {
     const asked = await AsyncStorage.getItem(BIO_ASKED_KEY);
     if (asked) return;
-    await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
-    const hasHw = await LocalAuthentication.hasHardwareAsync();
-    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    let hasHw = false;
+    let enrolled = false;
+    try {
+      hasHw = await LocalAuthentication.hasHardwareAsync();
+      enrolled = await LocalAuthentication.isEnrolledAsync();
+    } catch { /* web — skip */ }
     if (!hasHw || !enrolled) return;
-    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-    const hasFace = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
-    const method = hasFace ? "skeniranje lica" : "otisak prsta";
+    await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
     Alert.alert(
-      "Brža prijava 🔒",
-      `Koristiš li ${method} umjesto lozinke za sljedeće prijave? Možeš promijeniti u Profilu.`,
+      "Brža prijava",
+      "Aktiviraj prijavu otiskom prsta ili licem — nećeš morati upisivati lozinku. Možeš isključiti u Profilu.",
       [
         { text: "Ne, hvala", style: "cancel" },
         {
-          text: "Da, aktiviraj",
+          text: "Aktiviraj",
           onPress: async () => {
             await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
             await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: savedPass }));
