@@ -35,6 +35,8 @@ import {
   detectCategoryFromTitle,
   detectCategoryLocally,
   generateListingTags,
+  moderateText,
+  moderateImage,
 } from "@/services/openai";
 
 interface LocationResult {
@@ -235,6 +237,7 @@ export default function PostScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [moderating, setModerating] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether AI filled title/description (so we know if user overrode it)
@@ -382,6 +385,40 @@ export default function PostScreen() {
   async function handleSubmit() {
     if (!isValid || submittingRef.current) return;
     submittingRef.current = true;
+
+    // ── Provjera sadržaja ──────────────────────────────────────────────────────
+    setModerating(true);
+    try {
+      const combinedText = [title.trim(), description.trim(), wantedFor.trim()].filter(Boolean).join(" | ");
+      let imageBase64ForMod: string | undefined;
+      if (imageUris.length > 0) {
+        try {
+          const c = await compressImage(imageUris[0], 600, 0.6);
+          imageBase64ForMod = c.base64 ?? undefined;
+        } catch {}
+      }
+
+      const [textMod, imgMod] = await Promise.all([
+        moderateText(combinedText),
+        imageBase64ForMod ? moderateImage(imageBase64ForMod) : Promise.resolve({ flagged: false, reason: undefined as string | undefined }),
+      ]);
+
+      if (textMod.flagged || imgMod.flagged) {
+        const reason = textMod.flagged ? textMod.reason : imgMod.reason;
+        Alert.alert(
+          "Sadržaj nije prihvatljiv",
+          `Oglas sadrži neprimjeren sadržaj${reason ? `: ${reason}` : ""}.\n\nMolimo prilagodi sadržaj i pokušaj ponovo.`,
+          [{ text: "U redu", style: "default" }]
+        );
+        submittingRef.current = false;
+        setModerating(false);
+        return;
+      }
+    } catch {
+      // Nastavi ako moderation API nije dostupan
+    }
+    setModerating(false);
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const priceNum = priceText.trim()
       ? parseFloat(priceText.replace(",", "."))
@@ -458,7 +495,7 @@ export default function PostScreen() {
       setDescriptionAIBadge(false);
       setSubmitted(false);
       submittingRef.current = false;
-      router.push("/(tabs)/");
+      router.push("/(tabs)" as never);
     }, 1500);
   }
 
@@ -1061,28 +1098,39 @@ export default function PostScreen() {
             },
           ]}
         >
-          <Feather
-            name={submitted ? "check" : "plus"}
-            size={18}
-            color={
-              isValid || submitted
-                ? colors.primaryForeground
-                : colors.mutedForeground
-            }
-          />
-          <Text
-            style={[
-              styles.submitText,
-              {
-                color:
+          {moderating ? (
+            <>
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+              <Text style={[styles.submitText, { color: colors.primaryForeground }]}>
+                Provjera sadržaja...
+              </Text>
+            </>
+          ) : (
+            <>
+              <Feather
+                name={submitted ? "check" : "plus"}
+                size={18}
+                color={
                   isValid || submitted
                     ? colors.primaryForeground
-                    : colors.mutedForeground,
-              },
-            ]}
-          >
-            {submitted ? "Oglas objavljen!" : "Objavi oglas"}
-          </Text>
+                    : colors.mutedForeground
+                }
+              />
+              <Text
+                style={[
+                  styles.submitText,
+                  {
+                    color:
+                      isValid || submitted
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                  },
+                ]}
+              >
+                {submitted ? "Oglas objavljen!" : "Objavi oglas"}
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
     </KeyboardAwareScrollView>

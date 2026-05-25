@@ -14,6 +14,8 @@ export const usersTable = pgTable("users", {
   isVerified: boolean("is_verified").notNull().default(false),
   verificationToken: text("verification_token"),
   verificationExpiry: timestamp("verification_expiry"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -30,4 +32,4 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
-export type PublicUser = Omit<User, "passwordHash" | "verificationToken" | "verificationExpiry">;
+export type PublicUser = Omit<User, "passwordHash" | "verificationToken" | "verificationExpiry" | "resetToken" | "resetTokenExpiry">;

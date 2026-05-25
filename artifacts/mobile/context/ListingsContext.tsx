@@ -81,6 +81,9 @@ interface ListingsContextType {
   addReview: (targetUserName: string, stars: number, comment: string) => void;
   deleteAllData: () => Promise<void>;
   isLoaded: boolean;
+  blockedUserNames: string[];
+  blockUser: (userName: string) => void;
+  unblockUser: (userName: string) => void;
 }
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
@@ -89,6 +92,7 @@ const STORAGE_KEY = "@trampaj_listings_v3";
 const NAME_KEY = "@trampaj_name";
 const SAVED_KEY = "@trampaj_saved_v1";
 const REVIEWS_KEY = "@trampaj_reviews_v1";
+const BLOCKED_KEY = "@trampaj_blocked_v1";
 
 const SAMPLE_LISTINGS: Listing[] = [
   {
@@ -666,16 +670,18 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [myName, setMyNameState] = useState<string>("Korisnik");
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [blockedUserNames, setBlockedUserNames] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [storedListings, storedName, storedSaved, storedReviews] = await Promise.all([
+        const [storedListings, storedName, storedSaved, storedReviews, storedBlocked] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(NAME_KEY),
           AsyncStorage.getItem(SAVED_KEY),
           AsyncStorage.getItem(REVIEWS_KEY),
+          AsyncStorage.getItem(BLOCKED_KEY),
         ]);
         const rawParsed: Array<Listing & { imageUri?: string | null }> = storedListings ? JSON.parse(storedListings) : [];
         const parsed: Listing[] = rawParsed.map((l) =>
@@ -690,6 +696,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         if (storedName) setMyNameState(storedName);
         if (storedSaved) setSavedListingIds(JSON.parse(storedSaved));
         if (storedReviews) setReviews(JSON.parse(storedReviews));
+        if (storedBlocked) setBlockedUserNames(JSON.parse(storedBlocked));
       } catch {
         setListings(SAMPLE_LISTINGS);
       } finally {
@@ -820,12 +827,30 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     [myName]
   );
 
+  const blockUser = useCallback((userName: string) => {
+    setBlockedUserNames((prev) => {
+      if (prev.includes(userName)) return prev;
+      const updated = [...prev, userName];
+      AsyncStorage.setItem(BLOCKED_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, []);
+
+  const unblockUser = useCallback((userName: string) => {
+    setBlockedUserNames((prev) => {
+      const updated = prev.filter((u) => u !== userName);
+      AsyncStorage.setItem(BLOCKED_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, []);
+
   const deleteAllData = useCallback(async () => {
     await AsyncStorage.multiRemove([
       STORAGE_KEY,
       NAME_KEY,
       SAVED_KEY,
       REVIEWS_KEY,
+      BLOCKED_KEY,
       "@trampaj_onboarded_v1",
       "@trampaj_chat_v1",
     ]);
@@ -833,6 +858,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     setMyNameState("Korisnik");
     setSavedListingIds([]);
     setReviews([]);
+    setBlockedUserNames([]);
   }, []);
 
   return (
@@ -853,6 +879,9 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         addReview,
         deleteAllData,
         isLoaded,
+        blockedUserNames,
+        blockUser,
+        unblockUser,
       }}
     >
       {children}

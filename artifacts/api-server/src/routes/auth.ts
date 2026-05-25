@@ -64,8 +64,41 @@ async function sendVerificationEmail(
 }
 
 function toPublicUser(u: typeof usersTable.$inferSelect): PublicUser {
-  const { passwordHash: _, verificationToken: __, verificationExpiry: ___, ...pub } = u;
+  const { passwordHash: _, verificationToken: __, verificationExpiry: ___, resetToken: ____, resetTokenExpiry: _____, ...pub } = u;
   return pub;
+}
+
+async function sendPasswordResetEmail(
+  email: string,
+  username: string,
+  token: string,
+): Promise<{ sent: boolean; devLink?: string }> {
+  const link = `${APP_URL}/reset-password?token=${token}`;
+  const transport = getTransport();
+
+  if (!transport) {
+    return { sent: false, devLink: link };
+  }
+
+  await transport.sendMail({
+    from: process.env["SMTP_FROM"] ?? `"Trampaj.hr" <noreply@trampaj.hr>`,
+    to: email,
+    subject: "Postavi novu lozinku — Trampaj.hr",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#08152E">Reset lozinke, ${username}</h2>
+        <p>Klikni na gumb ispod kako bi postavio/la novu lozinku. Link vrijedi <strong>1 sat</strong>.</p>
+        <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;
+          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0">
+          Postavi novu lozinku
+        </a>
+        <p style="color:#666;font-size:12px">Ako nisi tražio/la reset lozinke, ignoriraj ovaj email.</p>
+        <p style="color:#666;font-size:12px">Ili kopiraj link: ${link}</p>
+      </div>
+    `,
+  });
+
+  return { sent: true };
 }
 
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
@@ -320,6 +353,99 @@ router.put("/auth/profile", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "profile update error");
     res.status(500).json({ error: "Greška pri ažuriranju profila" });
+  }
+});
+
+// ─── POST /api/auth/forgot-password ───────────────────────────────────────────
+router.post("/auth/forgot-password", async (req, res) => {
+  const { email } = req.body as { email?: string };
+  if (!email?.trim()) {
+    res.status(400).json({ error: "Email je obavezan" });
+    return;
+  }
+
+  try {
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase().trim()))
+      .limit(1);
+
+    // Always return success to avoid email enumeration
+    if (!user || !user.isVerified) {
+      res.json({ message: "Ako postoji potvrđeni račun s tim emailom, poslan je link za reset." });
+      return;
+    }
+
+    const resetToken = randomUUID();
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await db
+      .update(usersTable)
+      .set({ resetToken, resetTokenExpiry, updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id));
+
+    const result = await sendPasswordResetEmail(user.email, user.username, resetToken);
+
+    res.json({
+      message: "Ako postoji potvrđeni račun s tim emailom, poslan je link za reset.",
+      emailSent: result.sent,
+      devResetLink: result.devLink,
+    });
+  } catch (err) {
+    req.log.error({ err }, "forgot-password error");
+    res.status(500).json({ error: "Greška pri slanju emaila" });
+  }
+});
+
+// ─── POST /api/auth/reset-password ────────────────────────────────────────────
+router.post("/auth/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body as { token?: string; newPassword?: string };
+  if (!token?.trim() || !newPassword) {
+    res.status(400).json({ error: "Token i nova lozinka su obavezni" });
+    return;
+  }
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: "Lozinka mora imati najmanje 6 znakova" });
+    return;
+  }
+
+  try {
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.resetToken, token.trim()))
+      .limit(1);
+
+    if (!user) {
+      res.status(400).json({ error: "Nevažeći ili istekli link za reset" });
+      return;
+    }
+
+    if (user.resetTokenExpiry && user.resetTokenExpiry < new Date()) {
+      res.status(400).json({ error: "Link za reset je istekao. Zatraži novi." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await db
+      .update(usersTable)
+      .set({ passwordHash, resetToken: null, resetTokenExpiry: null, updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id));
+
+    const jwtToken = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    res.json({
+      message: "Lozinka je uspješno promijenjena.",
+      token: jwtToken,
+      user: toPublicUser({ ...user, passwordHash, resetToken: null, resetTokenExpiry: null }),
+    });
+  } catch (err) {
+    req.log.error({ err }, "reset-password error");
+    res.status(500).json({ error: "Greška pri resetiranju lozinke" });
   }
 });
 

@@ -234,6 +234,90 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
   }
 }
 
+export async function moderateText(text: string): Promise<{ flagged: boolean; reason?: string }> {
+  const apiKey = getApiKey();
+  if (!apiKey || !text.trim()) return { flagged: false };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/moderations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ input: text, model: "omni-moderation-latest" }),
+    });
+
+    if (!response.ok) return { flagged: false };
+
+    const data = await response.json();
+    const result = data.results?.[0];
+    if (!result?.flagged) return { flagged: false };
+
+    const cats = result.categories as Record<string, boolean>;
+    const reasons: string[] = [];
+    if (cats["hate"] || cats["hate/threatening"]) reasons.push("govor mržnje");
+    if (cats["sexual"] || cats["sexual/minors"]) reasons.push("seksualni sadržaj");
+    if (cats["violence"] || cats["violence/graphic"]) reasons.push("nasilje");
+    if (cats["harassment"] || cats["harassment/threatening"]) reasons.push("uznemiravanje");
+    if (cats["self-harm"]) reasons.push("samoozljeđivanje");
+    if (cats["illicit"] || cats["illicit/violent"]) reasons.push("nezakonit sadržaj");
+
+    return { flagged: true, reason: reasons.join(", ") || "neprimjeren sadržaj" };
+  } catch {
+    return { flagged: false };
+  }
+}
+
+export async function moderateImage(base64Image: string): Promise<{ flagged: boolean; reason?: string }> {
+  const apiKey = getApiKey();
+  if (!apiKey || !base64Image) return { flagged: false };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 30,
+        messages: [
+          {
+            role: "system",
+            content: "Ti si moderator sadržaja. Odgovori SAMO s JSON-om: {\"safe\":true} ili {\"safe\":false,\"reason\":\"opis na hrvatskom\"}. Sadržaj je neprimjeren ako sadrži: golotinju, seksualnost, nasilje, oružje, drogu, extremizam ili ilegalne predmete.",
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "low" },
+              },
+              { type: "text", text: "Je li ova slika prikladna za oglas trampe?" },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) return { flagged: false };
+
+    const data = await response.json();
+    const raw: string = data.choices?.[0]?.message?.content ?? "{}";
+    const match = raw.match(/\{[\s\S]*?\}/);
+    if (!match) return { flagged: false };
+    const parsed = JSON.parse(match[0]) as { safe?: boolean; reason?: string };
+    if (parsed.safe === false) {
+      return { flagged: true, reason: parsed.reason ?? "neprimjeren vizualni sadržaj" };
+    }
+    return { flagged: false };
+  } catch {
+    return { flagged: false };
+  }
+}
+
 export async function suggestTrades(
   newListing: { title: string; category: string; wantedFor: string },
   existingListings: Array<{ id: string; title: string; category: string; wantedFor: string }>

@@ -6,6 +6,7 @@ import React, { useMemo, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -28,26 +29,60 @@ import type { Listing } from "@/context/ListingsContext";
 
 // ─── Ad placeholder components ───────────────────────────────────────────────
 
+const AD_POOL = [
+  { id: "a1", sponsor: "Mall.hr", tagline: "Sve na jednom mjestu", url: "https://www.mall.hr", icon: "shopping-cart" as const, color: "#E53935" },
+  { id: "a2", sponsor: "njuškalo.hr", tagline: "Oglasi koje tražiš", url: "https://www.njuskalo.hr", icon: "search" as const, color: "#1565C0" },
+  { id: "a3", sponsor: "Konzum Online", tagline: "Dostava do vrata", url: "https://www.konzum.hr", icon: "package" as const, color: "#2E7D32" },
+  { id: "a4", sponsor: "Booking.com", tagline: "Putuj povoljnije", url: "https://www.booking.com", icon: "map-pin" as const, color: "#003580" },
+  { id: "a5", sponsor: "Rimac Store", tagline: "Električna budućnost", url: "https://www.rimac.com", icon: "zap" as const, color: "#C62828" },
+  { id: "a6", sponsor: "Superknjižara", tagline: "Knjige na popustu", url: "https://www.superknjizara.hr", icon: "book" as const, color: "#6A1B9A" },
+];
+
+function pickAd(seed: string) {
+  const idx = Math.abs(seed.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % AD_POOL.length;
+  return AD_POOL[idx]!;
+}
+
 /** Card-sized ad — fits in the 3-column grid as a regular cell */
-function AdCardSlot() {
+function AdCardSlot({ seed }: { seed: string }) {
   const colors = useColors();
+  const ad = pickAd(seed);
   return (
-    <View style={[adStyles.card, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
-      <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
-      <Text style={[adStyles.cardLabel, { color: colors.mutedForeground }]}>Oglas</Text>
-    </View>
+    <Pressable
+      onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
+      style={({ pressed }) => [adStyles.card, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88`, opacity: pressed ? 0.8 : 1 }]}
+    >
+      <View style={[adStyles.sponsoredBadge, { backgroundColor: colors.border }]}>
+        <Text style={[adStyles.sponsoredText, { color: colors.mutedForeground }]}>oglas</Text>
+      </View>
+      <View style={[adStyles.cardIconCircle, { backgroundColor: ad.color + "22" }]}>
+        <Feather name={ad.icon} size={16} color={ad.color} />
+      </View>
+      <Text style={[adStyles.cardSponsor, { color: colors.foreground }]} numberOfLines={1}>{ad.sponsor}</Text>
+      <Text style={[adStyles.cardTagline, { color: colors.mutedForeground }]} numberOfLines={2}>{ad.tagline}</Text>
+    </Pressable>
   );
 }
 
 /** Full-width horizontal banner — for header/footer strips */
-function AdBannerSlot({ size = "medium" }: { size?: "small" | "bottom" }) {
+function AdBannerSlot({ size = "small", seed = "banner" }: { size?: "small" | "bottom"; seed?: string }) {
   const colors = useColors();
   const height = size === "bottom" ? 52 : 44;
+  const ad = pickAd(seed);
   return (
-    <View style={[adStyles.banner, { height, backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
-      <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
-      <Text style={[adStyles.bannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
-    </View>
+    <Pressable
+      onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
+      style={({ pressed }) => [adStyles.banner, { height, backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88`, opacity: pressed ? 0.8 : 1 }]}
+    >
+      <View style={[adStyles.cardIconCircle, { backgroundColor: ad.color + "22", width: 26, height: 26 }]}>
+        <Feather name={ad.icon} size={12} color={ad.color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[adStyles.bannerSponsor, { color: colors.foreground }]} numberOfLines={1}>{ad.sponsor}</Text>
+        <Text style={[adStyles.bannerLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{ad.tagline}</Text>
+      </View>
+      <Text style={[adStyles.bannerCta, { color: ad.color }]}>Posjeti →</Text>
+    </Pressable>
   );
 }
 
@@ -56,11 +91,45 @@ const adStyles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    aspectRatio: 0.72, // same proportions as ListingCard
+    gap: 6,
+    aspectRatio: 0.72,
+    padding: 8,
+    position: "relative" as const,
+  },
+  sponsoredBadge: {
+    position: "absolute" as const,
+    top: 6,
+    right: 6,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  sponsoredText: {
+    fontSize: 8,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+  },
+  cardIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  cardSponsor: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center" as const,
+    letterSpacing: -0.2,
+  },
+  cardTagline: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center" as const,
+    lineHeight: 12,
   },
   cardLabel: {
     fontSize: 10,
@@ -71,17 +140,25 @@ const adStyles = StyleSheet.create({
     width: "100%",
     borderRadius: 10,
     borderWidth: 1,
-    borderStyle: "dashed",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
     marginVertical: 2,
+    paddingHorizontal: 12,
+  },
+  bannerSponsor: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
   bannerLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.1,
+  },
+  bannerCta: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 0.3,
+    fontFamily: "Inter_600SemiBold",
   },
 });
 
@@ -129,7 +206,7 @@ function injectAds(listings: Listing[]): FlatItem[] {
 export default function BrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings, isLoaded } = useListings();
+  const { listings, isLoaded, blockedUserNames } = useListings();
   const { user, logout } = useAuth();
   const { unreadCount } = useChat();
   const [searchTrazim, setSearchTrazim] = useState("");
@@ -162,6 +239,7 @@ export default function BrowseScreen() {
 
     return listings.filter((l) => {
       if (l.status !== "active") return false;
+      if (blockedUserNames.includes(l.userName)) return false;
 
       if (!hasTrazim && !hasNudim) return true;
 
@@ -184,7 +262,7 @@ export default function BrowseScreen() {
       // Ako je samo jedan: dovoljno je jedan
       return hasTrazim && hasNudim ? trazimOk && nudimOk : trazimOk && nudimOk;
     });
-  }, [listings, searchTrazim, searchNudim]);
+  }, [listings, blockedUserNames, searchTrazim, searchNudim]);
 
   const flatData = useMemo(() => injectAds(filtered), [filtered]);
 
@@ -194,7 +272,7 @@ export default function BrowseScreen() {
 
   const renderItem = ({ item }: { item: FlatItem }) => {
     if ("type" in item && item.type === "ad") {
-      return <AdCardSlot />;
+      return <AdCardSlot seed={item.id} />;
     }
     return <ListingCard listing={item as Listing} />;
   };
@@ -210,7 +288,7 @@ export default function BrowseScreen() {
         <View style={styles.logoRow}>
           <Pressable
             style={styles.logoBrand}
-            onPress={() => { setSearch(""); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            onPress={() => { searchBus.clearSearch?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           >
             <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Feather name="refresh-cw" size={22} color={colors.primary} />
@@ -313,7 +391,7 @@ export default function BrowseScreen() {
         {/* Fixed ad banner in header — only when logged in */}
         {user && (
           <View style={{ marginHorizontal: 0 }}>
-            <AdBannerSlot size="small" />
+            <AdBannerSlot size="small" seed="header-logged-in" />
           </View>
         )}
 
@@ -376,7 +454,7 @@ export default function BrowseScreen() {
             },
           ]}
         >
-          <AdBannerSlot size="bottom" />
+          <AdBannerSlot size="bottom" seed="guest-bottom" />
         </View>
       )}
     </KeyboardAvoidingView>

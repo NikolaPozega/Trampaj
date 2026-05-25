@@ -315,6 +315,8 @@ export default function ProfileScreen() {
     saveListing,
     unsaveListing,
     deleteAllData,
+    blockedUserNames,
+    unblockUser,
   } = useListings();
   const { user, logout, updateProfile, refreshUser } = useAuth();
   const { conversations, unreadCount } = useChat();
@@ -878,6 +880,43 @@ export default function ProfileScreen() {
         }
         ListFooterComponent={
           <View style={[styles.accountFooter, { borderTopColor: colors.border }]}>
+            {blockedUserNames.length > 0 && (
+              <View style={{ gap: 8 }}>
+                <View style={styles.gdprTitleRow}>
+                  <Feather name="user-x" size={11} color={colors.mutedForeground} />
+                  <Text style={[styles.accountFooterTitle, { color: colors.mutedForeground }]}>Blokirani korisnici</Text>
+                </View>
+                {blockedUserNames.map((name) => (
+                  <View key={name} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.foreground }}>@{name}</Text>
+                    <Pressable
+                      onPress={() => {
+                        Alert.alert(
+                          "Odblokiraj korisnika",
+                          `@${name} će se opet prikazivati u feedu.`,
+                          [
+                            { text: "Odustani", style: "cancel" },
+                            {
+                              text: "Odblokiraj",
+                              onPress: () => { unblockUser(name); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
+                            },
+                          ]
+                        );
+                      }}
+                      style={({ pressed }) => [{
+                        paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8,
+                        borderWidth: 1, borderColor: colors.border,
+                        backgroundColor: colors.muted,
+                        opacity: pressed ? 0.7 : 1,
+                      }]}
+                    >
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.secondary }}>Odblokiraj</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                <View style={[styles.gdprDivider, { width: "100%", height: 1, marginVertical: 4 }]} />
+              </View>
+            )}
             <View style={styles.gdprTitleRow}>
               <Feather name="shield" size={11} color={colors.mutedForeground} />
               <Text style={[styles.accountFooterTitle, { color: colors.mutedForeground }]}>Privatnost i podaci</Text>

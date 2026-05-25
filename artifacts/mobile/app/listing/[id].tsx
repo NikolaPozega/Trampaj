@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   Dimensions,
   Linking,
   Modal,
@@ -252,7 +253,7 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings, myName, reviews, addReview } = useListings();
+  const { listings, myName, reviews, addReview, blockUser } = useListings();
   const { user } = useAuth();
   const [imgIdx, setImgIdx] = useState(0);
   const [heroWidth, setHeroWidth] = useState(0);
@@ -300,6 +301,7 @@ export default function ListingDetailScreen() {
   }
 
   function handleSend() {
+    if (!listing) return;
     if (modalMode === "review") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       addReview(listing.userName, reviewStars, reviewComment);
@@ -314,12 +316,13 @@ export default function ListingDetailScreen() {
   }
 
   function handleCall() {
-    if (listing.phone) {
+    if (listing?.phone) {
       Linking.openURL(`tel:${listing.phone.replace(/\s/g, "")}`);
     }
   }
 
   function goToUser() {
+    if (!listing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/user/${encodeURIComponent(listing.userName)}`);
   }
@@ -561,8 +564,48 @@ export default function ListingDetailScreen() {
                 <Text style={[styles.reviewBtnText, { color: colors.primary }]}>Ocijeni prodavatelja</Text>
               </Pressable>
             )}
-            <Pressable style={styles.reportBtn}>
-              <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi oglas</Text>
+            <Pressable
+              style={styles.reportBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Alert.alert(
+                  listing.title,
+                  "Odaberi akciju",
+                  [
+                    {
+                      text: "Prijavi oglas",
+                      onPress: () => {
+                        Alert.alert("Prijava zaprimljena", "Hvala! Naš tim će pregledati oglas i poduzeti potrebne mjere.", [{ text: "U redu" }]);
+                      },
+                    },
+                    {
+                      text: `Blokiraj korisnika (${listing.userName})`,
+                      style: "destructive",
+                      onPress: () => {
+                        Alert.alert(
+                          "Blokiraj korisnika",
+                          `Korisnik ${listing.userName} neće se više prikazivati u tvom feedu. Možeš ih odblokirat u postavkama profila.`,
+                          [
+                            { text: "Odustani", style: "cancel" },
+                            {
+                              text: "Blokiraj",
+                              style: "destructive",
+                              onPress: () => {
+                                blockUser(listing.userName);
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                router.back();
+                              },
+                            },
+                          ]
+                        );
+                      },
+                    },
+                    { text: "Odustani", style: "cancel" },
+                  ]
+                );
+              }}
+            >
+              <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi / Blokiraj</Text>
             </Pressable>
           </View>
         </View>

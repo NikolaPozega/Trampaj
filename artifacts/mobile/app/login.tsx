@@ -45,6 +45,12 @@ export default function LoginScreen() {
   const [bioConfirmPassword, setBioConfirmPassword] = useState("");
   const [bioConfirmLoading, setBioConfirmLoading] = useState(false);
   const [bioConfirmError, setBioConfirmError] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotDevLink, setForgotDevLink] = useState("");
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
@@ -288,19 +294,11 @@ export default function LoginScreen() {
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  Alert.alert(
-                    "Reset lozinke",
-                    "Upiši svoju email adresu i poslaćemo ti link za postavljanje nove lozinke.",
-                    [
-                      { text: "Odustani", style: "cancel" },
-                      {
-                        text: "Pošalji",
-                        onPress: () => {
-                          Alert.alert("Email poslan", "Ako postoji račun s tim emailom, dobit ćeš link za reset lozinke.");
-                        },
-                      },
-                    ]
-                  );
+                  setForgotEmail("");
+                  setForgotSent(false);
+                  setForgotError("");
+                  setForgotDevLink("");
+                  setShowForgotModal(true);
                 }}
                 hitSlop={8}
               >
@@ -406,6 +404,115 @@ export default function LoginScreen() {
           <Text style={[styles.guestText, { color: colors.mutedForeground }]}>Nastavi bez prijave →</Text>
         </Pressable>
       </ScrollView>
+
+      {/* ── Forgot password modal ──────────────────────────────────────── */}
+      <Modal visible={showForgotModal} transparent animationType="slide" onRequestClose={() => setShowForgotModal(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+          onPress={() => setShowForgotModal(false)}
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+            <Pressable
+              style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.border, padding: 24, paddingBottom: 40, gap: 16 }}
+              onPress={() => {}}
+            >
+              {forgotSent ? (
+                <>
+                  <View style={{ alignItems: "center", gap: 12, paddingVertical: 12 }}>
+                    <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "#1a7a4a", alignItems: "center", justifyContent: "center" }}>
+                      <Feather name="check" size={28} color="#fff" />
+                    </View>
+                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}>Email poslan!</Text>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", lineHeight: 19 }}>
+                      Ako postoji potvrđeni račun s tim emailom, dobit ćeš link za reset lozinke.
+                    </Text>
+                    {forgotDevLink ? (
+                      <Pressable
+                        onPress={() => { import("react-native").then(({ Linking }) => Linking.openURL(forgotDevLink)); }}
+                        style={{ backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, width: "100%" }}
+                      >
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.secondary }}>
+                          [DEV] Reset link:{"\n"}{forgotDevLink}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      onPress={() => setShowForgotModal(false)}
+                      style={({ pressed }) => [{ borderRadius: 12, paddingVertical: 14, alignItems: "center" as const, backgroundColor: colors.primary, width: "100%", opacity: pressed ? 0.85 : 1 }]}
+                    >
+                      <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.primaryForeground }}>Zatvori</Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>Zaboravio lozinku?</Text>
+                    <Pressable onPress={() => setShowForgotModal(false)}>
+                      <Feather name="x" size={22} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 19 }}>
+                    Upiši email adresu svog računa i poslaćemo ti link za postavljanje nove lozinke.
+                  </Text>
+                  <TextInput
+                    value={forgotEmail}
+                    onChangeText={(t) => { setForgotEmail(t); setForgotError(""); }}
+                    placeholder="Email adresa"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                    style={{
+                      borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+                      fontSize: 15, fontFamily: "Inter_400Regular",
+                      borderColor: forgotError ? colors.destructive : colors.border,
+                      color: colors.foreground, backgroundColor: colors.muted,
+                    }}
+                  />
+                  {forgotError ? (
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.destructive, marginTop: -8 }}>{forgotError}</Text>
+                  ) : null}
+                  <Pressable
+                    onPress={async () => {
+                      if (!forgotEmail.trim()) { setForgotError("Upiši email adresu"); return; }
+                      setForgotLoading(true);
+                      try {
+                        const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
+                          ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
+                          : "/api";
+                        const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
+                        });
+                        const json = await res.json() as { devResetLink?: string };
+                        if (json.devResetLink) setForgotDevLink(json.devResetLink);
+                        setForgotSent(true);
+                      } catch {
+                        setForgotError("Greška pri slanju. Provjeri internet vezu.");
+                      } finally {
+                        setForgotLoading(false);
+                      }
+                    }}
+                    disabled={forgotLoading || !forgotEmail.trim()}
+                    style={({ pressed }) => [{
+                      borderRadius: 12, paddingVertical: 14, alignItems: "center" as const,
+                      backgroundColor: colors.primary,
+                      opacity: (!forgotEmail.trim() || forgotLoading) ? 0.5 : pressed ? 0.85 : 1,
+                    }]}
+                  >
+                    {forgotLoading
+                      ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                      : <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.primaryForeground }}>Pošalji link</Text>}
+                  </Pressable>
+                </>
+              )}
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
 
       {/* Bio confirm password modal (web fallback) */}
       <Modal visible={showBioConfirm} transparent animationType="fade" onRequestClose={() => setShowBioConfirm(false)}>
