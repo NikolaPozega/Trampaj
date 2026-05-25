@@ -19,26 +19,49 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings } from "@/context/ListingsContext";
+import {
+  CONDITIONS,
+  CONDITION_COLORS,
+  type Condition,
+  type Deadline,
+  type Flexibility,
+  type Topup,
+  useListings,
+} from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally } from "@/services/openai";
+import {
+  analyzeImageForCategory,
+  detectCategoryFromTitle,
+  detectCategoryLocally,
+} from "@/services/openai";
 
-interface LocationResult { label: string; lat: number; lon: number; }
+interface LocationResult {
+  label: string;
+  lat: number;
+  lon: number;
+}
 
 async function searchLocations(query: string): Promise<LocationResult[]> {
   if (query.trim().length < 2) return [];
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&countrycodes=hr,ba,rs,si,me,mk`;
     const res = await fetch(url, { headers: { "Accept-Language": "hr,en" } });
-    const data: Array<{ display_name: string; address: Record<string, string>; lat: string; lon: string }> = await res.json();
+    const data: Array<{
+      display_name: string;
+      address: Record<string, string>;
+      lat: string;
+      lon: string;
+    }> = await res.json();
     const seen = new Set<string>();
     const results: LocationResult[] = [];
     for (const item of data) {
       const a = item.address;
-      const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
+      const city =
+        a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
       const country = a.country ?? "";
-      const street = a.road ?? a.pedestrian ?? a.footway ?? a.street ?? "";
+      const street =
+        a.road ?? a.pedestrian ?? a.footway ?? a.street ?? "";
       const houseNum = a.house_number ?? "";
       const streetFull = [houseNum, street].filter(Boolean).join(" ");
       const label = streetFull
@@ -48,7 +71,11 @@ async function searchLocations(query: string): Promise<LocationResult[]> {
           : item.display_name.split(",").slice(0, 3).join(",").trim();
       if (label && !seen.has(label)) {
         seen.add(label);
-        results.push({ label, lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
+        results.push({
+          label,
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+        });
       }
     }
     return results;
@@ -56,6 +83,120 @@ async function searchLocations(query: string): Promise<LocationResult[]> {
     return [];
   }
 }
+
+// ─── Generic chip group ───────────────────────────────────────────────────────
+
+interface ChipOption<T> {
+  key: T;
+  label: string;
+}
+
+interface ChipGroupProps<T extends string> {
+  label: string;
+  options: ChipOption<T>[];
+  value: T | null;
+  onSelect: (v: T) => void;
+  required?: boolean;
+  colors: ReturnType<typeof useColors>;
+}
+
+function ChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onSelect,
+  required,
+  colors,
+}: ChipGroupProps<T>) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionLabelRow}>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          {label}
+        </Text>
+        {required && !value && (
+          <Text style={[styles.requiredTag, { color: colors.destructive }]}>
+            obvezno
+          </Text>
+        )}
+      </View>
+      <View style={styles.chipWrap}>
+        {options.map((opt) => {
+          const selected = value === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onSelect(opt.key);
+              }}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: selected ? colors.primary : colors.muted,
+                  borderColor: selected ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color: selected
+                      ? colors.primaryForeground
+                      : colors.mutedForeground,
+                  },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon,
+  title,
+  children,
+  colors,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  children: React.ReactNode;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.cardHeader}>
+        <View
+          style={[
+            styles.cardIconWrap,
+            { backgroundColor: colors.primary + "22" },
+          ]}
+        >
+          <Feather name={icon} size={14} color={colors.primary} />
+        </View>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+          {title}
+        </Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PostScreen() {
   const colors = useColors();
@@ -73,25 +214,47 @@ export default function PostScreen() {
   const [priceText, setPriceText] = useState("");
   const [phone, setPhone] = useState("");
   const [condition, setCondition] = useState<Condition | null>(null);
-  const [locationSuggestions, setLocationSuggestions] = useState<LocationResult[]>([]);
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [topup, setTopup] = useState<Topup | null>(null);
+  const [flexibility, setFlexibility] = useState<Flexibility | null>(null);
+  const [cashFallback, setCashFallback] = useState<boolean | null>(null);
+  const [deadline, setDeadline] = useState<Deadline | null>(null);
+  const [locationSuggestions, setLocationSuggestions] = useState<
+    LocationResult[]
+  >([]);
+  const [locationCoords, setLocationCoords] = useState<{
+    lat: number;
+    lon: number;
+  } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationFocused, setLocationFocused] = useState(false);
-  const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const [showPhone, setShowPhone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wantedDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
 
-  const isValid = title.trim() && description.trim() && wantedFor.trim() && category && location && condition;
+  const requiredFields = [
+    title.trim().length > 0,
+    description.trim().length > 0,
+    wantedFor.trim().length > 0,
+    condition !== null,
+    location.trim().length > 0,
+    topup !== null,
+    cashFallback !== null,
+    deadline !== null,
+    flexibility !== null,
+  ];
+  const filledCount = requiredFields.filter(Boolean).length;
+  const TOTAL_REQUIRED = requiredFields.length;
+  const isValid = filledCount === TOTAL_REQUIRED;
 
-  // Pre-fill location from profile; re-fills after form reset too
   useEffect(() => {
     if (!user || location) return;
     const parts = [user.address, user.city].filter(Boolean);
@@ -107,21 +270,20 @@ export default function PostScreen() {
         const detected = await detectCategoryFromTitle(title);
         if (detected && !categoryManuallySet) {
           setCategory(detected);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
-      } catch {
-        // silent
-      } finally {
+      } catch {}
+      finally {
         setTitleSuggesting(false);
       }
     }, 800);
-    return () => { if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current); };
+    return () => {
+      if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
+    };
   }, [title]);
 
   async function pickImage(fromCamera: boolean) {
     let result;
     const isWeb = Platform.OS === "web";
-
     if (fromCamera && !isWeb) {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
@@ -147,22 +309,22 @@ export default function PostScreen() {
         aspect: [4, 3],
       });
     }
-
     if (!result.canceled && result.assets[0]) {
       const isFirst = imageUris.length === 0;
       const compressed = await compressImage(result.assets[0].uri, 800, 0.65);
-      setImageUris((prev) => (prev.length < MAX_IMAGES ? [...prev, compressed.uri] : prev));
+      setImageUris((prev) =>
+        prev.length < MAX_IMAGES ? [...prev, compressed.uri] : prev
+      );
       if (isFirst && compressed.base64) {
         setAnalyzing(true);
         try {
           const ai = await analyzeImageForCategory(compressed.base64);
-          if (ai.category) setCategory(ai.category);
+          if (ai.category && !categoryManuallySet) setCategory(ai.category);
           if (ai.title && !title) setTitle(ai.title);
           if (ai.description && !description) setDescription(ai.description);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {
-          // silent — user can fill manually
-        } finally {
+        } catch {}
+        finally {
           setAnalyzing(false);
         }
       }
@@ -173,7 +335,6 @@ export default function PostScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setImageUris((prev) => prev.filter((_, i) => i !== index));
   }
-
 
   function showImagePicker() {
     if (Platform.OS === "web") {
@@ -190,8 +351,9 @@ export default function PostScreen() {
   async function handleSubmit() {
     if (!isValid) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const priceNum = priceText.trim() ? parseFloat(priceText.replace(",", ".")) : null;
-
+    const priceNum = priceText.trim()
+      ? parseFloat(priceText.replace(",", "."))
+      : null;
     addListing({
       title: title.trim(),
       description: description.trim(),
@@ -202,54 +364,119 @@ export default function PostScreen() {
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
       imageUris,
       phone: showPhone && phone.trim() ? phone.trim() : null,
+      topup,
+      flexibility,
+      cashFallback,
+      deadline,
     });
-
     setSubmitted(true);
-
     setTimeout(() => {
-      const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";
-      setTitle(""); setDescription(""); setWantedFor("");
-      setCategory(""); setLocation(defaultLoc); setPriceText("");
-      setPhone(""); setShowPhone(false); setImageUris([]);
-      setCondition(null); setLocationSuggestions([]);
-      setCategoryManuallySet(false); setSubmitted(false);
+      const defaultLoc = user
+        ? [user.address, user.city].filter(Boolean).join(", ")
+        : "";
+      setTitle("");
+      setDescription("");
+      setWantedFor("");
+      setCategory("");
+      setLocation(defaultLoc);
+      setPriceText("");
+      setPhone("");
+      setShowPhone(false);
+      setImageUris([]);
+      setCondition(null);
+      setTopup(null);
+      setFlexibility(null);
+      setCashFallback(null);
+      setDeadline(null);
+      setLocationSuggestions([]);
+      setCategoryManuallySet(false);
+      setSubmitted(false);
       router.push("/(tabs)/");
     }, 1500);
   }
 
-  const inputStyle = [styles.input, { backgroundColor: colors.muted, borderColor: colors.border, color: colors.foreground }];
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: colors.muted,
+      borderColor: colors.border,
+      color: colors.foreground,
+    },
+  ];
 
   return (
     <KeyboardAwareScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: topPad, paddingBottom: bottomPad + 80 }]}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: topPad, paddingBottom: bottomPad + 80 },
+      ]}
       bottomOffset={20}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      {/* Header */}
       <View style={styles.headerRow}>
-        <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.logoIcon,
+            { backgroundColor: colors.muted, borderColor: colors.border },
+          ]}
+        >
           <Feather name="refresh-cw" size={20} color={colors.primary} />
         </View>
-        <Text style={[styles.heading, { color: colors.foreground }]}>Objavi oglas</Text>
+        <View>
+          <Text style={[styles.heading, { color: colors.foreground }]}>
+            Objavi oglas
+          </Text>
+          <Text
+            style={[styles.headingSub, { color: colors.mutedForeground }]}
+          >
+            Ispuni sva polja pa objavi
+          </Text>
+        </View>
       </View>
 
-      <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {/* ── Slike ── */}
+      {/* ── Kartica 1: Što nudiš ── */}
+      <SectionCard icon="package" title="Što nudiš" colors={colors}>
+        {/* Slike */}
         <View style={styles.imageSectionHeader}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Slike</Text>
-          <Text style={[styles.imageCountBadge, { color: colors.mutedForeground }]}>{imageUris.length}/{MAX_IMAGES}</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+            Slike
+          </Text>
+          <Text
+            style={[styles.imageCountBadge, { color: colors.mutedForeground }]}
+          >
+            {imageUris.length}/{MAX_IMAGES}
+          </Text>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageStrip}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.imageStrip}
+        >
           {imageUris.map((uri, i) => (
             <View key={i} style={styles.imageThumb}>
-              <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <Image
+                source={{ uri }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
               {i === 0 && (
-                <View style={[styles.mainBadge, { backgroundColor: colors.primary + "DD" }]}>
+                <View
+                  style={[
+                    styles.mainBadge,
+                    { backgroundColor: colors.primary + "DD" },
+                  ]}
+                >
                   <Text style={styles.mainBadgeText}>Naslovna</Text>
                 </View>
               )}
-              <Pressable hitSlop={6} style={styles.removeBtn} onPress={() => removeImage(i)}>
+              <Pressable
+                hitSlop={6}
+                style={styles.removeBtn}
+                onPress={() => removeImage(i)}
+              >
                 <Feather name="x" size={11} color="#fff" />
               </Pressable>
             </View>
@@ -258,14 +485,26 @@ export default function PostScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.imageThumbAdd,
-                { borderColor: analyzing ? colors.primary : colors.secondary, opacity: pressed ? 0.7 : 1 },
+                {
+                  borderColor: analyzing
+                    ? colors.primary
+                    : colors.secondary,
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
               onPress={showImagePicker}
             >
-              {analyzing
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Feather name="plus" size={24} color={colors.secondary} />}
-              <Text style={[styles.imageAddLabel, { color: colors.mutedForeground }]}>
+              {analyzing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Feather name="plus" size={24} color={colors.secondary} />
+              )}
+              <Text
+                style={[
+                  styles.imageAddLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
                 {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
               </Text>
             </Pressable>
@@ -273,158 +512,246 @@ export default function PostScreen() {
         </ScrollView>
 
         {analyzing && (
-          <View style={[styles.aiBanner, { backgroundColor: colors.muted, borderColor: colors.primary }]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.aiText, { color: colors.primary }]}>AI prepoznaje predmet...</Text>
-          </View>
-        )}
-
-        {/* ── Naslov + Opis ── */}
-        <View style={styles.titleWrapper}>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Unesi naslov"
-            placeholderTextColor={colors.mutedForeground}
-            style={[inputStyle, styles.titleInput]}
-            maxLength={80}
-          />
-          {titleSuggesting && (
-            <View style={styles.titleAiDot}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          )}
-        </View>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Opis predmeta..."
-          placeholderTextColor={colors.mutedForeground}
-          style={[inputStyle, styles.descInput]}
-          multiline
-          maxLength={500}
-          textAlignVertical="top"
-        />
-
-        <TextInput
-          value={wantedFor}
-          onChangeText={(t) => { setWantedFor(t); }}
-          placeholder="Što želiš zauzvrat (npr. bicikl, laptop…)"
-          placeholderTextColor={colors.mutedForeground}
-          style={inputStyle}
-          maxLength={120}
-        />
-
-
-        <View style={styles.priceRow}>
-          <View style={[styles.euroPrefix, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Text style={[styles.euroPrefixText, { color: colors.primary }]}>€</Text>
-          </View>
-          <TextInput
-            value={priceText}
-            onChangeText={(t) => setPriceText(t.replace(/[^0-9.,]/g, ""))}
-            placeholder="Vrijednost u € (opcionalno)"
-            placeholderTextColor={colors.mutedForeground}
-            style={[inputStyle, { flex: 1 }]}
-            keyboardType="decimal-pad"
-            maxLength={10}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Stanje predmeta</Text>
-            {!condition && <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.destructive }}>obvezno</Text>}
-          </View>
-          <View style={styles.conditionGrid}>
-            {CONDITIONS.map((cond) => {
-              const col = CONDITION_COLORS[cond];
-              const selected = condition === cond;
-              return (
-                <Pressable
-                  key={cond}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCondition(selected ? null : cond); }}
-                  style={[
-                    styles.conditionChip,
-                    {
-                      backgroundColor: selected ? `${col}22` : colors.muted,
-                      borderColor: selected ? col : colors.border,
-                    },
-                  ]}
-                >
-                  <View style={[styles.conditionDot, { backgroundColor: col }]} />
-                  <Text style={[styles.conditionChipText, { color: selected ? col : colors.mutedForeground }]}>{cond}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <Pressable
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowPhone(!showPhone); }}
-          style={styles.checkboxRow}
-        >
-          <View style={[styles.checkbox, { borderColor: showPhone ? colors.secondary : colors.border, backgroundColor: showPhone ? colors.secondary : "transparent" }]}>
-            {showPhone && <Feather name="check" size={12} color={colors.secondaryForeground} />}
-          </View>
-          <Text style={[styles.checkboxLabel, { color: colors.foreground }]}>Prikaži broj telefona</Text>
-        </Pressable>
-
-        {showPhone && (
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="npr. 091 123 4567"
-            placeholderTextColor={colors.mutedForeground}
-            style={inputStyle}
-            keyboardType="phone-pad"
-            maxLength={20}
-          />
-        )}
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Kategorija</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-            {CATEGORIES.filter((c) => c !== "Sve").map((cat) => (
-              <Pressable
-                key={cat}
-                onPress={() => { setCategory(cat); setCategoryManuallySet(true); }}
-                style={[
-                  styles.chip,
-                  { backgroundColor: category === cat ? colors.primary : colors.muted, borderColor: category === cat ? colors.primary : colors.border },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: category === cat ? colors.primaryForeground : colors.mutedForeground }]}>
-                  {cat}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.section}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
-            {user?.address || user?.city ? (
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-                iz profila
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.locationWrap}>
-            <View style={[
-              styles.locationInputRow,
+          <View
+            style={[
+              styles.aiBanner,
               {
                 backgroundColor: colors.muted,
-                borderColor: location ? colors.primary : locationFocused ? colors.secondary : colors.border,
+                borderColor: colors.primary,
               },
-            ]}>
-              <Feather name="map-pin" size={16} color={location ? colors.primary : colors.mutedForeground} />
+            ]}
+          >
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.aiText, { color: colors.primary }]}>
+              AI prepoznaje predmet…
+            </Text>
+          </View>
+        )}
+
+        {/* Naziv */}
+        <View style={styles.section}>
+          <View style={styles.sectionLabelRow}>
+            <Text
+              style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+            >
+              Naziv predmeta
+            </Text>
+            {!title.trim() && (
+              <Text
+                style={[styles.requiredTag, { color: colors.destructive }]}
+              >
+                obvezno
+              </Text>
+            )}
+          </View>
+          <View style={styles.titleWrapper}>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="npr. Sony slušalice, Bicikl Trek…"
+              placeholderTextColor={colors.mutedForeground}
+              style={[inputStyle, styles.titleInput]}
+              maxLength={80}
+            />
+            {titleSuggesting && (
+              <View style={styles.titleAiDot}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Opis */}
+        <View style={styles.section}>
+          <View style={styles.sectionLabelRow}>
+            <Text
+              style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+            >
+              Opis
+            </Text>
+            {!description.trim() && (
+              <Text
+                style={[styles.requiredTag, { color: colors.destructive }]}
+              >
+                obvezno
+              </Text>
+            )}
+          </View>
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Opiši predmet — stanje, veličina, marka, godište…"
+            placeholderTextColor={colors.mutedForeground}
+            style={[inputStyle, styles.descInput]}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+          />
+        </View>
+
+        {/* Stanje */}
+        <ChipGroup<Condition>
+          label="Stanje predmeta"
+          required
+          value={condition}
+          onSelect={setCondition}
+          colors={colors}
+          options={CONDITIONS.map((c) => ({ key: c, label: c }))}
+        />
+
+        {/* Vrijednost */}
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+          >
+            Procijenjena vrijednost (opcionalno)
+          </Text>
+          <View style={styles.priceRow}>
+            <View
+              style={[
+                styles.euroPrefix,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.euroPrefixText, { color: colors.primary }]}>
+                €
+              </Text>
+            </View>
+            <TextInput
+              value={priceText}
+              onChangeText={(t) => setPriceText(t.replace(/[^0-9.,]/g, ""))}
+              placeholder="0"
+              placeholderTextColor={colors.mutedForeground}
+              style={[inputStyle, { flex: 1 }]}
+              keyboardType="decimal-pad"
+              maxLength={10}
+            />
+          </View>
+        </View>
+      </SectionCard>
+
+      {/* ── Kartica 2: Što tražiš ── */}
+      <SectionCard icon="search" title="Što tražiš" colors={colors}>
+        {/* Što tražiš u zamjenu */}
+        <View style={styles.section}>
+          <View style={styles.sectionLabelRow}>
+            <Text
+              style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+            >
+              Što tražiš u zamjenu
+            </Text>
+            {!wantedFor.trim() && (
+              <Text
+                style={[styles.requiredTag, { color: colors.destructive }]}
+              >
+                obvezno
+              </Text>
+            )}
+          </View>
+          <TextInput
+            value={wantedFor}
+            onChangeText={setWantedFor}
+            placeholder="npr. laptop, bicikl, kuća na moru u kolovozu…"
+            placeholderTextColor={colors.mutedForeground}
+            style={inputStyle}
+            maxLength={200}
+          />
+        </View>
+
+        <WantedSuggestions
+          wantedFor={wantedFor}
+          priceText={priceText}
+          listings={listings}
+          colors={colors}
+        />
+
+        <ChipGroup<Flexibility>
+          label="Koliko si fleksibilan?"
+          required
+          value={flexibility}
+          onSelect={setFlexibility}
+          colors={colors}
+          options={[
+            { key: "tocno", label: "Znam točno što hoću" },
+            { key: "otvoren", label: "Otvoren sam ponudama" },
+          ]}
+        />
+
+        <ChipGroup<Topup>
+          label="Nadoplata"
+          required
+          value={topup}
+          onSelect={setTopup}
+          colors={colors}
+          options={[
+            { key: "primam", label: "Primam nadoplatu" },
+            { key: "dajem", label: "Dajem nadoplatu" },
+            { key: "oboje", label: "Oboje" },
+            { key: "ne", label: "Bez nadoplate" },
+          ]}
+        />
+
+        <ChipGroup<"da" | "ne">
+          label="Prihvaćaš novac ako nema trampe?"
+          required
+          value={
+            cashFallback === null ? null : cashFallback ? "da" : "ne"
+          }
+          onSelect={(v) => setCashFallback(v === "da")}
+          colors={colors}
+          options={[
+            { key: "da", label: "Da, prihvaćam" },
+            { key: "ne", label: "Ne, samo trampa" },
+          ]}
+        />
+      </SectionCard>
+
+      {/* ── Kartica 3: Detalji ── */}
+      <SectionCard icon="map-pin" title="Detalji" colors={colors}>
+        {/* Lokacija */}
+        <View style={styles.section}>
+          <View style={styles.sectionLabelRow}>
+            <Text
+              style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+            >
+              Lokacija predmeta
+            </Text>
+            {!location.trim() && (
+              <Text
+                style={[styles.requiredTag, { color: colors.destructive }]}
+              >
+                obvezno
+              </Text>
+            )}
+          </View>
+          <View style={styles.locationWrap}>
+            <View
+              style={[
+                styles.locationInputRow,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: location
+                    ? colors.primary
+                    : locationFocused
+                      ? colors.secondary
+                      : colors.border,
+                },
+              ]}
+            >
+              <Feather
+                name="map-pin"
+                size={16}
+                color={location ? colors.primary : colors.mutedForeground}
+              />
               <TextInput
                 value={location}
                 onChangeText={(v) => {
                   setLocation(v);
-                  if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+                  if (locationDebounceRef.current)
+                    clearTimeout(locationDebounceRef.current);
                   if (v.trim().length >= 2) {
                     setLocationLoading(true);
                     locationDebounceRef.current = setTimeout(async () => {
@@ -443,23 +770,42 @@ export default function PostScreen() {
                   }
                 }}
                 onFocus={() => setLocationFocused(true)}
-                onBlur={() => setTimeout(() => { setLocationFocused(false); }, 180)}
-                placeholder="Upiši grad ili adresu…"
+                onBlur={() =>
+                  setTimeout(() => {
+                    setLocationFocused(false);
+                  }, 180)
+                }
+                placeholder="Grad ili adresa predmeta…"
                 placeholderTextColor={colors.mutedForeground}
                 style={[styles.locationInput, { color: colors.foreground }]}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
-              {locationLoading
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : location
-                  ? <Pressable hitSlop={8} onPress={() => { setLocation(""); setLocationSuggestions([]); setLocationCoords(null); }}>
-                      <Feather name="x" size={15} color={colors.mutedForeground} />
-                    </Pressable>
-                  : null}
+              {locationLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : location ? (
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    setLocation("");
+                    setLocationSuggestions([]);
+                    setLocationCoords(null);
+                  }}
+                >
+                  <Feather name="x" size={15} color={colors.mutedForeground} />
+                </Pressable>
+              ) : null}
             </View>
             {locationFocused && locationSuggestions.length > 0 && (
-              <View style={[styles.locationDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.locationDropdown,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 {locationSuggestions.map((s, i) => (
                   <Pressable
                     key={i}
@@ -471,55 +817,194 @@ export default function PostScreen() {
                     }}
                     style={({ pressed }) => [
                       styles.locationSuggItem,
-                      i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
+                      i > 0 && {
+                        borderTopWidth: 1,
+                        borderTopColor: colors.border,
+                      },
                       { backgroundColor: pressed ? colors.muted : "transparent" },
                     ]}
                   >
-                    <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.locationSuggText, { color: colors.foreground }]} numberOfLines={1}>{s.label}</Text>
+                    <Feather
+                      name="map-pin"
+                      size={12}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.locationSuggText,
+                        { color: colors.foreground },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {s.label}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
             )}
-
             {locationCoords && !locationFocused && (
               <Pressable
-                onPress={() => Linking.openURL(`https://www.google.com/maps?q=${locationCoords.lat},${locationCoords.lon}`)}
-                style={({ pressed }) => [styles.mapPreview, { opacity: pressed ? 0.85 : 1, borderColor: colors.border }]}
+                onPress={() =>
+                  Linking.openURL(
+                    `https://www.google.com/maps?q=${locationCoords.lat},${locationCoords.lon}`
+                  )
+                }
+                style={({ pressed }) => [
+                  styles.mapPreview,
+                  { opacity: pressed ? 0.85 : 1, borderColor: colors.border },
+                ]}
               >
                 <Image
-                  source={{ uri: `https://staticmap.openstreetmap.de/staticmap.php?center=${locationCoords.lat},${locationCoords.lon}&zoom=13&size=600x180&markers=${locationCoords.lat},${locationCoords.lon},red-marker` }}
+                  source={{
+                    uri: `https://staticmap.openstreetmap.de/staticmap.php?center=${locationCoords.lat},${locationCoords.lon}&zoom=13&size=600x180&markers=${locationCoords.lat},${locationCoords.lon},red-marker`,
+                  }}
                   style={styles.mapImage}
                   contentFit="cover"
                 />
-                <View style={[styles.mapOverlay, { backgroundColor: colors.card + "CC" }]}>
+                <View
+                  style={[
+                    styles.mapOverlay,
+                    { backgroundColor: colors.card + "CC" },
+                  ]}
+                >
                   <Feather name="map" size={13} color={colors.secondary} />
-                  <Text style={[styles.mapOverlayText, { color: colors.secondary }]}>Otvori u Google Maps</Text>
+                  <Text
+                    style={[
+                      styles.mapOverlayText,
+                      { color: colors.secondary },
+                    ]}
+                  >
+                    Otvori u Google Maps
+                  </Text>
                 </View>
               </Pressable>
             )}
           </View>
         </View>
-      </View>
 
-      <Pressable
-        onPress={handleSubmit}
-        disabled={!isValid || submitted}
-        style={({ pressed }) => [
-          styles.submitBtn,
-          {
-            backgroundColor: submitted ? "#2E7D4F" : isValid ? colors.primary : colors.muted,
-            borderColor: submitted ? "#2E7D4F" : isValid ? colors.primary : colors.border,
-            opacity: pressed ? 0.85 : 1,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          },
-        ]}
-      >
-        <Feather name={submitted ? "check" : "plus"} size={18} color={isValid || submitted ? colors.primaryForeground : colors.mutedForeground} />
-        <Text style={[styles.submitText, { color: isValid || submitted ? colors.primaryForeground : colors.mutedForeground }]}>
-          {submitted ? "Oglas objavljen!" : "Objavi oglas"}
-        </Text>
-      </Pressable>
+        <ChipGroup<Deadline>
+          label="Rok trampe"
+          required
+          value={deadline}
+          onSelect={setDeadline}
+          colors={colors}
+          options={[
+            { key: "hitno", label: "Hitno (ovaj tjedan)" },
+            { key: "ovaj-mjesec", label: "Ovaj mjesec" },
+            { key: "bez-roka", label: "Bez roka" },
+          ]}
+        />
+
+        {/* Telefon (opcionalno) */}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowPhone(!showPhone);
+          }}
+          style={styles.checkboxRow}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              {
+                borderColor: showPhone ? colors.secondary : colors.border,
+                backgroundColor: showPhone ? colors.secondary : "transparent",
+              },
+            ]}
+          >
+            {showPhone && (
+              <Feather
+                name="check"
+                size={12}
+                color={colors.secondaryForeground}
+              />
+            )}
+          </View>
+          <Text style={[styles.checkboxLabel, { color: colors.foreground }]}>
+            Prikaži broj telefona (opcionalno)
+          </Text>
+        </Pressable>
+        {showPhone && (
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="npr. 091 123 4567"
+            placeholderTextColor={colors.mutedForeground}
+            style={inputStyle}
+            keyboardType="phone-pad"
+            maxLength={20}
+          />
+        )}
+      </SectionCard>
+
+      {/* ── Submit ── */}
+      <View style={styles.submitArea}>
+        <View style={styles.progressRow}>
+          <View
+            style={[styles.progressTrack, { backgroundColor: colors.muted }]}
+          >
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: isValid ? "#4ADE80" : colors.primary,
+                  width: `${(filledCount / TOTAL_REQUIRED) * 100}%`,
+                },
+              ]}
+            />
+          </View>
+          <Text
+            style={[styles.progressLabel, { color: colors.mutedForeground }]}
+          >
+            {filledCount}/{TOTAL_REQUIRED}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={handleSubmit}
+          disabled={!isValid || submitted}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            {
+              backgroundColor: submitted
+                ? "#2E7D4F"
+                : isValid
+                  ? colors.primary
+                  : colors.muted,
+              borderColor: submitted
+                ? "#2E7D4F"
+                : isValid
+                  ? colors.primary
+                  : colors.border,
+              opacity: pressed ? 0.85 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
+        >
+          <Feather
+            name={submitted ? "check" : "plus"}
+            size={18}
+            color={
+              isValid || submitted
+                ? colors.primaryForeground
+                : colors.mutedForeground
+            }
+          />
+          <Text
+            style={[
+              styles.submitText,
+              {
+                color:
+                  isValid || submitted
+                    ? colors.primaryForeground
+                    : colors.mutedForeground,
+              },
+            ]}
+          >
+            {submitted ? "Oglas objavljen!" : "Objavi oglas"}
+          </Text>
+        </Pressable>
+      </View>
     </KeyboardAwareScrollView>
   );
 }
@@ -533,66 +1018,91 @@ interface WantedSuggestionsProps {
   colors: ReturnType<typeof useColors>;
 }
 
-function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSuggestionsProps) {
-  const [matches, setMatches] = React.useState<import("@/context/ListingsContext").Listing[]>([]);
+function WantedSuggestions({
+  wantedFor,
+  priceText,
+  listings,
+  colors,
+}: WantedSuggestionsProps) {
+  const [matches, setMatches] = React.useState<
+    import("@/context/ListingsContext").Listing[]
+  >([]);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const q = wantedFor.trim();
-      if (q.length < 2) { setMatches([]); return; }
-
+      if (q.length < 2) {
+        setMatches([]);
+        return;
+      }
       const detectedCat = detectCategoryLocally(q);
-      const myPrice = priceText ? parseFloat(priceText.replace(",", ".")) : null;
+      const myPrice = priceText
+        ? parseFloat(priceText.replace(",", "."))
+        : null;
 
-      // Tokenize: split into meaningful words (≥3 chars), strip diacritics for comparison
       function normalize(s: string) {
-        return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return s
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
       }
       function tokenize(text: string): string[] {
-        return normalize(text).split(/[\s,.!?;:()\-\/\\]+/).filter(w => w.length >= 3);
+        return normalize(text)
+          .split(/[\s,.!?;:()\-\/\\]+/)
+          .filter((w) => w.length >= 3);
       }
-      // Two words match only if they share a common root — require length ratio ≥ 0.75
-      // to prevent "stol"(4) matching "stolica"(7): 4/7 ≈ 0.57 < 0.75 → no match
       function wordsSimilar(a: string, b: string): boolean {
         if (a === b) return true;
         const short = a.length <= b.length ? a : b;
-        const long  = a.length <= b.length ? b : a;
+        const long = a.length <= b.length ? b : a;
         if (short.length / long.length < 0.75) return false;
         const prefixLen = short.length - 1;
         return prefixLen >= 2 && a.substring(0, prefixLen) === b.substring(0, prefixLen);
       }
       function textScore(queryTokens: string[], text: string): number {
         const listingTokens = tokenize(text);
-        return queryTokens.reduce((sum, qt) =>
-          sum + (listingTokens.some(lt => wordsSimilar(qt, lt)) ? 1 : 0), 0);
+        return queryTokens.reduce(
+          (sum, qt) =>
+            sum + (listingTokens.some((lt) => wordsSimilar(qt, lt)) ? 1 : 0),
+          0
+        );
       }
 
       const queryTokens = tokenize(q);
-      let candidates = listings.filter((l) => l.status === "active" && !l.isMine);
+      const candidates = listings.filter(
+        (l) => l.status === "active" && !l.isMine
+      );
+      const scored = candidates
+        .map((l) => {
+          const catMatch = detectedCat
+            ? l.category === detectedCat
+              ? 2
+              : 0
+            : 0;
+          const combinedText =
+            l.title + " " + l.description + " " + l.wantedFor;
+          const wordScore = textScore(queryTokens, combinedText);
+          return { l, score: catMatch + wordScore * 3, wordScore };
+        })
+        .filter(({ wordScore }) => wordScore > 0);
 
-      // Score each candidate: word match in title/description is REQUIRED (≥1),
-      // category match is a bonus. Pure category match (0 word overlap) is excluded.
-      const scored = candidates.map((l) => {
-        const catMatch = detectedCat ? (l.category === detectedCat ? 2 : 0) : 0;
-        const combinedText = l.title + " " + l.description + " " + l.wantedFor;
-        const wordScore = textScore(queryTokens, combinedText);
-        return { l, score: catMatch + wordScore * 3, wordScore };
-      }).filter(({ wordScore }) => wordScore > 0);
-
-      // Sort by score desc, then price proximity
       scored.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         if (myPrice == null) return 0;
-        const aDiff = a.l.price != null ? Math.abs(a.l.price - myPrice) : Infinity;
-        const bDiff = b.l.price != null ? Math.abs(b.l.price - myPrice) : Infinity;
+        const aDiff =
+          a.l.price != null ? Math.abs(a.l.price - myPrice) : Infinity;
+        const bDiff =
+          b.l.price != null ? Math.abs(b.l.price - myPrice) : Infinity;
         return aDiff - bDiff;
       });
 
       setMatches(scored.slice(0, 8).map(({ l }) => l));
     }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [wantedFor, priceText, listings]);
 
   if (matches.length === 0) return null;
@@ -616,13 +1126,24 @@ function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSug
             onPress={() => router.push(`/listing/${item.id}`)}
             style={({ pressed }) => [
               wStyles.card,
-              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                opacity: pressed ? 0.8 : 1,
+              },
             ]}
           >
             <View style={[wStyles.catBadge, { backgroundColor: colors.muted }]}>
-              <Text style={[wStyles.catText, { color: colors.mutedForeground }]}>{item.category}</Text>
+              <Text
+                style={[wStyles.catText, { color: colors.mutedForeground }]}
+              >
+                {item.category}
+              </Text>
             </View>
-            <Text style={[wStyles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+            <Text
+              style={[wStyles.cardTitle, { color: colors.foreground }]}
+              numberOfLines={2}
+            >
               {item.title}
             </Text>
             {item.price != null && (
@@ -630,7 +1151,10 @@ function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSug
                 {item.price} €
               </Text>
             )}
-            <Text style={[wStyles.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+            <Text
+              style={[wStyles.cardSub, { color: colors.mutedForeground }]}
+              numberOfLines={1}
+            >
               {item.location}
             </Text>
           </Pressable>
@@ -643,7 +1167,12 @@ function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSug
 const wStyles = StyleSheet.create({
   container: { gap: 8 },
   header: { flexDirection: "row", alignItems: "center", gap: 5 },
-  label: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.3, textTransform: "uppercase" },
+  label: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
   scroll: { gap: 8, paddingRight: 4 },
   card: {
     width: 130,
@@ -652,29 +1181,131 @@ const wStyles = StyleSheet.create({
     padding: 10,
     gap: 5,
   },
-  catBadge: { alignSelf: "flex-start", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
-  catText: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2, textTransform: "uppercase" },
+  catBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  catText: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
+  },
   cardTitle: { fontSize: 12, fontFamily: "Inter_500Medium", lineHeight: 16 },
   cardPrice: { fontSize: 13, fontFamily: "Inter_700Bold" },
   cardSub: { fontSize: 10, fontFamily: "Inter_400Regular" },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 14 },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingBottom: 4 },
-  logoIcon: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  heading: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  formCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 12 },
-  imageSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingBottom: 4,
+  },
+  logoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heading: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  headingSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 14,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  cardIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+  },
+
+  section: { gap: 8 },
+  sectionLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  requiredTag: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+
+  imageSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   imageCountBadge: { fontSize: 12, fontFamily: "Inter_500Medium" },
   imageStrip: { flexDirection: "row", gap: 8, paddingVertical: 2 },
-  imageThumb: { width: 88, height: 88, borderRadius: 12, overflow: "hidden", position: "relative", flexShrink: 0 },
-  mainBadge: { position: "absolute", bottom: 0, left: 0, right: 0, paddingVertical: 3, alignItems: "center" },
-  mainBadgeText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  removeBtn: { position: "absolute", top: 5, right: 5, backgroundColor: "rgba(0,0,0,0.65)", borderRadius: 10, padding: 3 },
+  imageThumb: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    flexShrink: 0,
+  },
+  mainBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 3,
+    alignItems: "center",
+  },
+  mainBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+  removeBtn: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 10,
+    padding: 3,
+  },
   imageThumbAdd: {
     width: 88,
     height: 88,
@@ -686,46 +1317,164 @@ const styles = StyleSheet.create({
     gap: 2,
     flexShrink: 0,
   },
-  imageAddLabel: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center" },
-  aiBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  imageAddLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+  },
+
+  aiBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   aiText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  titleInput: { flex: 0 },
+
   titleWrapper: { position: "relative" },
-  titleAiDot: { position: "absolute", right: 10, top: 0, bottom: 0, justifyContent: "center" },
-  descInput: { minHeight: 52, paddingTop: 10, textAlignVertical: "top" },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
+  titleAiDot: {
+    position: "absolute",
+    right: 10,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
+  titleInput: { flex: 0 },
+  descInput: {
+    minHeight: 72,
+    paddingTop: 12,
+    textAlignVertical: "top",
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+
   priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  euroPrefix: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  euroPrefix: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   euroPrefixText: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  checkboxLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  section: { gap: 8 },
-  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5, textTransform: "uppercase" },
-  chips: { gap: 8, paddingRight: 4 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  locationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
   locationWrap: { position: "relative" },
-  locationInputRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  locationInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
-  locationDropdown: { borderWidth: 1, borderRadius: 10, marginTop: 4, overflow: "hidden" },
-  locationSuggItem: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12 },
-  locationSuggText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
-  mapPreview: { marginTop: 8, borderRadius: 10, overflow: "hidden", borderWidth: 1, height: 140 },
+  locationInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  locationDropdown: {
+    borderWidth: 1,
+    borderRadius: 10,
+    marginTop: 4,
+    overflow: "hidden",
+  },
+  locationSuggItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  locationSuggText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  mapPreview: {
+    marginTop: 8,
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    height: 140,
+  },
   mapImage: { width: "100%", height: "100%" },
-  mapOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+  mapOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
   mapOverlayText: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  conditionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  conditionChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5 },
-  conditionDot: { width: 8, height: 8, borderRadius: 4 },
-  conditionChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  suggestCard: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
-  suggestHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  suggestTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  suggestItem: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 8, borderTopWidth: 1 },
-  suggestItemText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
-  suggestItemSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 14, paddingVertical: 16, gap: 8, borderWidth: 1.5 },
-  submitText: { fontSize: 16, fontFamily: "Inter_700Bold" },
+
+  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
+
+  submitArea: { gap: 10 },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 28,
+    textAlign: "right",
+  },
+  submitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  submitText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
+  },
 });

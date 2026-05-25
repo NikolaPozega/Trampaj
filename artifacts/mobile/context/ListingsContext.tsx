@@ -28,6 +28,10 @@ export const CONDITION_COLORS: Record<Condition, string> = {
   "Prihvatljivo": "#FB923C",
 };
 
+export type Topup = "primam" | "dajem" | "oboje" | "ne";
+export type Flexibility = "tocno" | "otvoren";
+export type Deadline = "hitno" | "ovaj-mjesec" | "bez-roka";
+
 export interface Listing {
   id: string;
   title: string;
@@ -44,6 +48,10 @@ export interface Listing {
   createdAt: number;
   status: "active" | "traded";
   isMine: boolean;
+  topup?: Topup | null;
+  flexibility?: Flexibility | null;
+  cashFallback?: boolean | null;
+  deadline?: Deadline | null;
 }
 
 export interface Review {
