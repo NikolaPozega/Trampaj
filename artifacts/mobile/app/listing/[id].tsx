@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useChat } from "@/context/ChatContext";
 import { useListings, type Listing } from "@/context/ListingsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 // ─── Matching helpers ─────────────────────────────────────────────────────────
@@ -52,7 +53,10 @@ const MATCH_LABEL: Record<MatchType, string> = {
   they_want: "Oni traže što ti imaš",
 };
 
-function computeMatches(listing: Listing, all: Listing[]): MatchResult[] {
+function computeMatches(
+  listing: Listing,
+  candidates: Listing[],
+): MatchResult[] {
   const nudimTokens = [
     ...tokenize(listing.title),
     ...tokenize(listing.description ?? ""),
@@ -63,8 +67,8 @@ function computeMatches(listing: Listing, all: Listing[]): MatchResult[] {
     ...(listing.trazimTags ?? []).flatMap(tokenize),
   ];
 
-  return all
-    .filter((l) => l.id !== listing.id && l.status === "active" && !l.isMine)
+  return candidates
+    .filter((l) => l.id !== listing.id && l.status === "active")
     .map((l) => {
       const theirNudim = [
         ...tokenize(l.title),
@@ -97,20 +101,30 @@ function MatchSection({
   listing,
   all,
   colors,
+  isMyListing,
 }: {
   listing: Listing;
   all: Listing[];
   colors: ReturnType<typeof useColors>;
+  isMyListing: boolean;
 }) {
-  const matches = React.useMemo(() => computeMatches(listing, all), [listing, all]);
+  // Na tuđem oglasu: pokaži samo moje oglase koji se poklapaju s njim
+  // Na svom oglasu: pokaži tuđe oglase koji se poklapaju s njim
+  const candidates = React.useMemo(
+    () => isMyListing ? all.filter((l) => !l.isMine) : all.filter((l) => l.isMine),
+    [all, isMyListing]
+  );
+  const matches = React.useMemo(() => computeMatches(listing, candidates), [listing, candidates]);
   if (matches.length === 0) return null;
+
+  const title = isMyListing ? "Podudaranja za tvoj oglas" : "Poklapa se s tvojim oglasima";
 
   return (
     <View style={mStyles.container}>
       <View style={mStyles.header}>
         <Feather name="zap" size={14} color={colors.primary} />
         <Text style={[mStyles.headerText, { color: colors.primary }]}>
-          Podudaranja za ovaj oglas
+          {title}
         </Text>
         <View style={[mStyles.badge, { backgroundColor: colors.primary + "22" }]}>
           <Text style={[mStyles.badgeText, { color: colors.primary }]}>{matches.length}</Text>
@@ -239,6 +253,7 @@ export default function ListingDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { listings, myName, reviews, addReview } = useListings();
+  const { user } = useAuth();
   const [imgIdx, setImgIdx] = useState(0);
   const [heroWidth, setHeroWidth] = useState(0);
   const [offerModal, setOfferModal] = useState(false);
@@ -481,7 +496,14 @@ export default function ListingDetailScreen() {
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        <MatchSection listing={listing} all={listings} colors={colors} />
+        {user && (
+          <MatchSection
+            listing={listing}
+            all={listings}
+            colors={colors}
+            isMyListing={listing.isMine}
+          />
+        )}
       </ScrollView>
 
       {!listing.isMine && listing.status === "active" && (
