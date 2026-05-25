@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -218,13 +219,13 @@ export default function ChatScreen() {
     otherUser: string;
   }>();
   const insets = useSafeAreaInsets();
-  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead } =
+  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, deleteConversation } =
     useChat();
 
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const prevHsRef = useRef<HsStatus>("idle");
+  const prevHsRef = useRef<HsStatus | null>(null);
 
   const conversation =
     conversations.find((c) => c.listingId === listingId) ??
@@ -244,13 +245,18 @@ export default function ChatScreen() {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, [liveConv.messages.length]);
 
-  // Show deal overlay on acceptance
+  // Show deal overlay only on live transition (not on re-entry if already shown)
   useEffect(() => {
-    if (hsStatus === "accepted" && prevHsRef.current !== "accepted") {
+    if (prevHsRef.current === null) {
+      // First render — sync without triggering overlay
+      prevHsRef.current = hsStatus;
+      return;
+    }
+    if (hsStatus === "accepted" && prevHsRef.current !== "accepted" && !liveConv.dealShown) {
       setShowDeal(true);
     }
     prevHsRef.current = hsStatus;
-  }, [hsStatus]);
+  }, [hsStatus, liveConv.dealShown]);
 
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
@@ -388,7 +394,32 @@ export default function ChatScreen() {
             </View>
           </Pressable>
 
-          {hsStatus === "pending_me" ? <MiniBadge /> : <View style={{ width: 36 }} />}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {hsStatus === "pending_me" && <MiniBadge />}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              Alert.alert(
+                "Obriši razgovor",
+                "Obrisati ovaj razgovor? Ova radnja je trajna.",
+                [
+                  { text: "Odustani", style: "cancel" },
+                  {
+                    text: "Obriši",
+                    style: "destructive",
+                    onPress: () => {
+                      deleteConversation(liveConv.id);
+                      router.back();
+                    },
+                  },
+                ]
+              );
+            }}
+            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="trash-2" size={16} color={C.red} />
+          </Pressable>
+        </View>
         </View>
 
         {/* ── Fixed Handshake Bar (below header, above messages) ── */}
@@ -443,7 +474,14 @@ export default function ChatScreen() {
       </KeyboardAvoidingView>
 
       {/* ── Deal Overlay ── */}
-      {showDeal && <DealOverlay onDismiss={() => setShowDeal(false)} />}
+      {showDeal && (
+        <DealOverlay
+          onDismiss={() => {
+            setShowDeal(false);
+            markDealShown(liveConv.id);
+          }}
+        />
+      )}
     </View>
   );
 }

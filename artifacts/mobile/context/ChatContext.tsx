@@ -21,6 +21,7 @@ export interface Conversation {
   messages: ChatMessage[];
   updatedAt: number;
   lastReadAt: number;
+  dealShown: boolean;
 }
 
 interface ChatContextType {
@@ -29,11 +30,13 @@ interface ChatContextType {
   sendMessage: (conversationId: string, text: string) => void;
   sendSpecialMessage: (conversationId: string, type: Exclude<MessageType, "text">) => void;
   markAsRead: (conversationId: string) => void;
+  markDealShown: (conversationId: string) => void;
+  deleteConversation: (conversationId: string) => void;
   unreadCount: number;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
-const STORAGE_KEY = "@trampaj_chats_v3";
+const STORAGE_KEY = "@trampaj_chats_v4";
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -62,6 +65,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         lastReadAt: now,
         messages: [],
         updatedAt: now,
+        dealShown: false,
       };
       save([newConv, ...conversations]);
       return newConv;
@@ -105,7 +109,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       );
       save(updated);
 
-      // Simulacija: kad šalješ handshake_request, drugi korisnik ga prihvaća nakon 2.5s
       if (type === "handshake_request") {
         setTimeout(() => {
           const replyMsg: ChatMessage = {
@@ -147,6 +150,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const markDealShown = useCallback((conversationId: string) => {
+    setConversations((prev) => {
+      const next = prev.map((c) =>
+        c.id === conversationId ? { ...c, dealShown: true } : c
+      );
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const deleteConversation = useCallback((conversationId: string) => {
+    setConversations((prev) => {
+      const next = prev.filter((c) => c.id !== conversationId);
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const unreadCount = conversations.reduce((total, c) => {
     const unread = c.messages.filter(
       (m) => !m.fromMe && m.createdAt > (c.lastReadAt ?? 0)
@@ -155,7 +176,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, 0);
 
   return (
-    <ChatContext.Provider value={{ conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, unreadCount }}>
+    <ChatContext.Provider value={{
+      conversations,
+      getOrCreateConversation,
+      sendMessage,
+      sendSpecialMessage,
+      markAsRead,
+      markDealShown,
+      deleteConversation,
+      unreadCount,
+    }}>
       {children}
     </ChatContext.Provider>
   );

@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
+import { useChat } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 import { searchBus } from "@/utils/searchBus";
 import { queryMatchesFields } from "@/utils/stemHr";
@@ -141,6 +142,7 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const { listings, isLoaded } = useListings();
   const { user, logout } = useAuth();
+  const { unreadCount } = useChat();
   const [searchTrazim, setSearchTrazim] = useState("");
   const [searchNudim, setSearchNudim] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -243,19 +245,23 @@ export default function BrowseScreen() {
           <View style={{ flex: 1 }} />
           {user ? (
             <View style={styles.authLinks}>
-              {user.avatarBase64 ? (
-                <Image
-                  source={{ uri: user.avatarBase64 }}
-                  style={[styles.userAvatar, { borderColor: colors.primary }]}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={[styles.userAvatar, { borderColor: colors.primary, backgroundColor: `${colors.primary}22` }]}>
-                  <Text style={[styles.userAvatarText, { color: colors.primary }]}>
-                    {user.username.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+              {/* Envelope / inbox circle */}
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/inbox"); }}
+                style={({ pressed }) => [
+                  styles.inboxCircle,
+                  { backgroundColor: colors.muted, borderColor: unreadCount > 0 ? `${colors.secondary}60` : colors.border, opacity: pressed ? 0.75 : 1 },
+                ]}
+              >
+                <Feather name="mail" size={14} color={unreadCount > 0 ? colors.secondary : colors.mutedForeground} />
+                {unreadCount > 0 && (
+                  <View style={[styles.inboxCircleBadge, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.inboxCircleBadgeText, { color: colors.background }]}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
               <Text style={[styles.authLinkText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]} numberOfLines={1}>
                 {user.username}
               </Text>
@@ -468,16 +474,26 @@ const styles = StyleSheet.create({
   authLink: { paddingVertical: 4, paddingHorizontal: 2 },
   authLinkText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   authDot: { fontSize: 11 },
-  userAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  inboxCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
-  userAvatarText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  inboxCircleBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  inboxCircleBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
   logoIcon: {
     width: 40,
     height: 40,

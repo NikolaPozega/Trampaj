@@ -317,7 +317,7 @@ export default function ProfileScreen() {
     deleteAllData,
   } = useListings();
   const { user, logout, updateProfile, refreshUser } = useAuth();
-  const { conversations } = useChat();
+  const { conversations, unreadCount } = useChat();
 
   // Local-only edit (no auth)
   const [editingName, setEditingName] = useState(false);
@@ -573,6 +573,22 @@ export default function ProfileScreen() {
     <View style={[styles.headerSection, { paddingTop: topPad }]}>
       {/* Profile card */}
       <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Envelope button — top-right corner */}
+        <Pressable
+          onPress={() => router.push({ pathname: "/inbox" })}
+          style={({ pressed }) => [
+            styles.inboxBtn,
+            { backgroundColor: colors.muted, borderColor: unreadCount > 0 ? `${colors.secondary}60` : colors.border, opacity: pressed ? 0.75 : 1 },
+          ]}
+        >
+          <Feather name="mail" size={16} color={unreadCount > 0 ? colors.secondary : colors.mutedForeground} />
+          {unreadCount > 0 && (
+            <View style={[styles.inboxBadge, { backgroundColor: colors.secondary }]}>
+              <Text style={styles.inboxBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
+
         <View style={[styles.avatarRing, { borderColor: colors.secondary }]}>
           {user?.avatarBase64 ? (
             <Image source={{ uri: user.avatarBase64 }} style={styles.avatarImg} contentFit="cover" />
@@ -760,84 +776,6 @@ export default function ProfileScreen() {
               />
             ))}
           </ScrollView>
-        </View>
-      )}
-
-      {/* ── Poruke ── */}
-      {conversations.length > 0 && (
-        <View style={styles.suggestSection}>
-          <View style={styles.suggestTitleRow}>
-            <View style={[styles.suggestTitleBadge, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
-              <Feather name="message-circle" size={13} color={colors.secondary} />
-              <Text style={[styles.suggestTitleText, { color: colors.secondary }]}>Poruke</Text>
-            </View>
-            <Text style={[styles.suggestCount, { color: colors.mutedForeground }]}>
-              {conversations.length} {conversations.length === 1 ? "razgovor" : "razgovora"}
-            </Text>
-          </View>
-          <View style={{ gap: 8, paddingHorizontal: 16, marginTop: 4 }}>
-            {conversations.map((conv) => {
-              const lastMsg = conv.messages[conv.messages.length - 1];
-              const unread = conv.messages.filter(
-                (m) => !m.fromMe && m.createdAt > (conv.lastReadAt ?? 0)
-              ).length;
-              const lastText = !lastMsg
-                ? "Nema poruka"
-                : lastMsg.type === "handshake_accepted"
-                ? "🤝 Trampa zaključena!"
-                : lastMsg.type === "handshake_request"
-                ? "🫱 Zahtjev za zamjenu"
-                : lastMsg.type === "handshake_rejected"
-                ? "Trampa odbijena"
-                : lastMsg.text;
-              return (
-                <Pressable
-                  key={conv.id}
-                  onPress={() => router.push({
-                    pathname: "/chat/[listingId]",
-                    params: { listingId: conv.listingId, listingTitle: conv.listingTitle, otherUser: conv.otherUserName },
-                  })}
-                  style={({ pressed }) => [
-                    styles.convRow,
-                    { backgroundColor: colors.card, borderColor: unread > 0 ? `${colors.secondary}50` : colors.border, opacity: pressed ? 0.8 : 1 },
-                  ]}
-                >
-                  <View style={[styles.convAvatar, { backgroundColor: colors.muted, borderColor: unread > 0 ? colors.secondary : colors.border }]}>
-                    <Text style={[styles.convAvatarText, { color: unread > 0 ? colors.secondary : colors.primary }]}>
-                      {(conv.otherUserName || "?").charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <Text style={[styles.convName, { color: colors.foreground }]} numberOfLines={1}>
-                        {conv.otherUserName}
-                      </Text>
-                      {lastMsg && (
-                        <Text style={[styles.convTime, { color: colors.mutedForeground }]}>
-                          {new Date(lastMsg.createdAt).toLocaleTimeString("hr", { hour: "2-digit", minute: "2-digit" })}
-                        </Text>
-                      )}
-                    </View>
-                    <Text style={[styles.convSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {conv.listingTitle}
-                    </Text>
-                    <Text
-                      style={[styles.convLastMsg, { color: unread > 0 ? colors.foreground : colors.mutedForeground, fontFamily: unread > 0 ? "Inter_600SemiBold" : "Inter_400Regular" }]}
-                      numberOfLines={1}
-                    >
-                      {lastMsg?.fromMe ? "Ti: " : ""}{lastText}
-                    </Text>
-                  </View>
-                  {unread > 0 && (
-                    <View style={[styles.convBadge, { backgroundColor: colors.secondary }]}>
-                      <Text style={styles.convBadgeText}>{unread > 9 ? "9+" : unread}</Text>
-                    </View>
-                  )}
-                  <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
       )}
 
@@ -1578,7 +1516,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   headerSection: { paddingHorizontal: 16, gap: 16, paddingBottom: 8 },
-  profileCard: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: "center", gap: 10 },
+  profileCard: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: "center", gap: 10, position: "relative" },
+  inboxBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inboxBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  inboxBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#08152E" },
   avatarRing: {
     width: 82,
     height: 82,
