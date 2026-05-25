@@ -52,8 +52,8 @@ function getHsStatus(messages: ChatMessage[]): HsStatus {
   return "idle";
 }
 
-// ─── Handshake Banner ────────────────────────────────────────────────────────
-function HandshakeBanner({ onPress }: { onPress: () => void }) {
+// ─── Compact fixed Handshake Bar ─────────────────────────────────────────────
+function HandshakeBar({ onPress }: { onPress: () => void }) {
   const offsetL = useRef(new Animated.Value(0)).current;
   const offsetR = useRef(new Animated.Value(0)).current;
 
@@ -61,12 +61,12 @@ function HandshakeBanner({ onPress }: { onPress: () => void }) {
     const a = Animated.loop(
       Animated.sequence([
         Animated.parallel([
-          Animated.timing(offsetL, { toValue: 10, duration: 650, useNativeDriver: true }),
-          Animated.timing(offsetR, { toValue: -10, duration: 650, useNativeDriver: true }),
+          Animated.timing(offsetL, { toValue: 7, duration: 700, useNativeDriver: true }),
+          Animated.timing(offsetR, { toValue: -7, duration: 700, useNativeDriver: true }),
         ]),
         Animated.parallel([
-          Animated.timing(offsetL, { toValue: 0, duration: 650, useNativeDriver: true }),
-          Animated.timing(offsetR, { toValue: 0, duration: 650, useNativeDriver: true }),
+          Animated.timing(offsetL, { toValue: 0, duration: 700, useNativeDriver: true }),
+          Animated.timing(offsetR, { toValue: 0, duration: 700, useNativeDriver: true }),
         ]),
       ])
     );
@@ -80,18 +80,11 @@ function HandshakeBanner({ onPress }: { onPress: () => void }) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         onPress();
       }}
-      style={({ pressed }) => [styles.hsBanner, { opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [styles.hsBar, { opacity: pressed ? 0.75 : 1 }]}
     >
-      <View style={styles.hsFistsRow}>
-        <Animated.Text style={[styles.hsFist, { transform: [{ translateX: offsetL }] }]}>
-          🫱
-        </Animated.Text>
-        <Animated.Text style={[styles.hsFist, { transform: [{ translateX: offsetR }] }]}>
-          🫲
-        </Animated.Text>
-      </View>
-      <Text style={styles.hsBannerTitle}>Zaključi trampu</Text>
-      <Text style={styles.hsBannerSub}>Pritisni za potvrdu dogovora</Text>
+      <Animated.Text style={[styles.hsBarFist, { transform: [{ translateX: offsetL }] }]}>🫱</Animated.Text>
+      <Animated.Text style={[styles.hsBarFist, { transform: [{ translateX: offsetR }] }]}>🫲</Animated.Text>
+      <Text style={styles.hsBarLabel}>Zaključi trampu</Text>
     </Pressable>
   );
 }
@@ -231,7 +224,6 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const bannerOpacity = useRef(new Animated.Value(1)).current;
   const prevHsRef = useRef<HsStatus>("idle");
 
   const conversation =
@@ -269,13 +261,8 @@ export default function ChatScreen() {
   }, [text, liveConv.id, sendMessage]);
 
   const handleHandshake = useCallback(() => {
-    Animated.timing(bannerOpacity, {
-      toValue: 0,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
     sendSpecialMessage(liveConv.id, "handshake_request");
-  }, [bannerOpacity, liveConv.id, sendSpecialMessage]);
+  }, [liveConv.id, sendSpecialMessage]);
 
   const handleAccept = useCallback(() => {
     sendSpecialMessage(liveConv.id, "handshake_accepted");
@@ -365,98 +352,99 @@ export default function ChatScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: topPad }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}
-        >
-          <Feather name="arrow-left" size={18} color={C.text} />
-        </Pressable>
+    <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        {/* ── Header ── */}
+        <View style={[styles.header, { paddingTop: topPad }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="arrow-left" size={18} color={C.text} />
+          </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.headerCenter, { opacity: pressed ? 0.75 : 1 }]}
-          onPress={() =>
-            router.push(`/user/${encodeURIComponent(liveConv.otherUserName)}`)
+          <Pressable
+            style={({ pressed }) => [styles.headerCenter, { opacity: pressed ? 0.75 : 1 }]}
+            onPress={() =>
+              router.push(`/user/${encodeURIComponent(liveConv.otherUserName)}`)
+            }
+          >
+            <View style={styles.headerAvatar}>
+              <Text style={styles.headerAvatarText}>
+                {(liveConv.otherUserName || "?").charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerName} numberOfLines={1}>
+                {liveConv.otherUserName}
+              </Text>
+              <Text style={styles.headerSub} numberOfLines={1}>
+                {liveConv.listingTitle}
+              </Text>
+            </View>
+          </Pressable>
+
+          {hsStatus === "pending_me" ? <MiniBadge /> : <View style={{ width: 36 }} />}
+        </View>
+
+        {/* ── Fixed Handshake Bar (below header, above messages) ── */}
+        {(hsStatus === "idle" || hsStatus === "rejected") && (
+          <HandshakeBar onPress={handleHandshake} />
+        )}
+
+        {/* ── Messages ── */}
+        <FlatList
+          ref={flatListRef}
+          data={liveConv.messages}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.msgList}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          renderItem={renderMessage}
+          ListEmptyComponent={
+            <View style={styles.emptyChat}>
+              <Text style={styles.emptyChatText}>Nema poruka — započni razgovor</Text>
+            </View>
           }
-        >
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>
-              {(liveConv.otherUserName || "?").charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {liveConv.otherUserName}
-            </Text>
-            <Text style={styles.headerSub} numberOfLines={1}>
-              {liveConv.listingTitle}
-            </Text>
-          </View>
-        </Pressable>
-
-        {hsStatus === "pending_me" ? <MiniBadge /> : <View style={{ width: 36 }} />}
-      </View>
-
-      {/* ── Messages ── */}
-      <FlatList
-        ref={flatListRef}
-        data={liveConv.messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.msgList}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        renderItem={renderMessage}
-        ListHeaderComponent={
-          (hsStatus === "idle" || hsStatus === "rejected") ? (
-            <Animated.View style={{ opacity: bannerOpacity }}>
-              <HandshakeBanner onPress={handleHandshake} />
-            </Animated.View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyChat}>
-            <Text style={styles.emptyChatText}>Nema poruka — započni razgovor</Text>
-          </View>
-        }
-      />
-
-      {/* ── Input Bar ── */}
-      <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Napiši poruku..."
-          placeholderTextColor={C.muted}
-          style={styles.input}
-          multiline
-          maxLength={500}
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
-          blurOnSubmit={false}
         />
-        <Pressable
-          onPress={handleSend}
-          disabled={!text.trim()}
-          style={({ pressed }) => [
-            styles.sendBtn,
-            {
-              backgroundColor: text.trim() ? C.primary : C.mutedBg,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <Feather name="send" size={17} color={text.trim() ? "#08152E" : C.muted} />
-        </Pressable>
-      </View>
+
+        {/* ── Input Bar ── */}
+        <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder="Napiši poruku..."
+            placeholderTextColor={C.muted}
+            style={styles.input}
+            multiline
+            maxLength={500}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+          />
+          <Pressable
+            onPress={handleSend}
+            disabled={!text.trim()}
+            style={({ pressed }) => [
+              styles.sendBtn,
+              {
+                backgroundColor: text.trim() ? C.primary : C.mutedBg,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Feather name="send" size={17} color={text.trim() ? "#08152E" : C.muted} />
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
 
       {/* ── Deal Overlay ── */}
       {showDeal && <DealOverlay onDismiss={() => setShowDeal(false)} />}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -560,23 +548,26 @@ const styles = StyleSheet.create({
   emptyChat: { flex: 1, alignItems: "center", paddingTop: 40 },
   emptyChatText: { fontSize: 13, fontFamily: "Inter_400Regular", color: C.muted },
 
-  // Handshake Banner
-  hsBanner: {
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 16,
-    backgroundColor: "rgba(245,193,0,0.07)",
-    borderWidth: 1.5,
-    borderColor: "rgba(245,193,0,0.28)",
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+  // Handshake Bar (compact, fixed between header and messages)
+  hsBar: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(245,193,0,0.06)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(245,193,0,0.18)",
   },
-  hsFistsRow: { flexDirection: "row", gap: 6, marginBottom: 2 },
-  hsFist: { fontSize: 38 },
-  hsBannerTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.primary },
-  hsBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.muted },
+  hsBarFist: { fontSize: 20 },
+  hsFist: { fontSize: 30 },
+  hsBarLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: C.primary,
+    opacity: 0.9,
+  },
 
   // Reaching hand (from them)
   reachBox: {
