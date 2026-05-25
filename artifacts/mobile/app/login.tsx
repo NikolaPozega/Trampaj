@@ -197,7 +197,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: topPad, borderBottomColor: colors.border }]}>
