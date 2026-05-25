@@ -67,9 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await res.json() as { user: AuthUser };
             setToken(stored);
             setUser(data.user);
-          } else {
+          } else if (res.status === 401) {
+            // Token genuinely expired/invalid — remove it
             await AsyncStorage.removeItem(TOKEN_KEY);
           }
+          // 5xx or other errors: keep token, user stays unauthenticated until retry
         } catch {
           // offline — keep token but clear user
         }

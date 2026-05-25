@@ -20,6 +20,7 @@ import { ListingCard } from "@/components/ListingCard";
 import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { searchBus } from "@/utils/searchBus";
 
 const FILTER_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Sve: "grid",
@@ -41,6 +42,11 @@ export default function BrowseScreen() {
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+
+  React.useEffect(() => {
+    searchBus.clearSearch = () => setSearch("");
+    return () => { searchBus.clearSearch = null; };
+  }, []);
 
   async function onRefresh() {
     setRefreshing(true);

@@ -4,6 +4,7 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { searchBus } from "@/utils/searchBus";
 
 export default function TabLayout() {
   const colors = useColors();
@@ -43,6 +44,7 @@ export default function TabLayout() {
             <Feather name="home" size={size} color={color} />
           ),
         }}
+        listeners={{ tabPress: () => searchBus.clearSearch?.() }}
       />
       <Tabs.Screen
         name="post"

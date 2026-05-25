@@ -298,12 +298,6 @@ export default function PostScreen() {
           maxLength={120}
         />
 
-        <WantedSuggestions
-          wantedFor={wantedFor}
-          priceText={priceText}
-          listings={listings}
-          colors={colors}
-        />
 
         <View style={styles.priceRow}>
           <View style={[styles.euroPrefix, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -551,13 +545,14 @@ function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSug
       const queryTokens = tokenize(q);
       let candidates = listings.filter((l) => l.status === "active" && !l.isMine);
 
-      // Score each candidate: category match + word overlap in title/description
+      // Score each candidate: word match in title/description is REQUIRED (≥1),
+      // category match is a bonus. Pure category match (0 word overlap) is excluded.
       const scored = candidates.map((l) => {
         const catMatch = detectedCat ? (l.category === detectedCat ? 2 : 0) : 0;
         const combinedText = l.title + " " + l.description + " " + l.wantedFor;
-        const wordScore = textScore(queryTokens, combinedText) * 3;
-        return { l, score: catMatch + wordScore };
-      }).filter(({ score }) => score > 0);
+        const wordScore = textScore(queryTokens, combinedText);
+        return { l, score: catMatch + wordScore * 3, wordScore };
+      }).filter(({ wordScore }) => wordScore > 0);
 
       // Sort by score desc, then price proximity
       scored.sort((a, b) => {

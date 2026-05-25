@@ -22,6 +22,8 @@ import { useListings } from "@/context/ListingsContext";
 
 const BIO_ASKED_KEY = "@trampaj_bio_asked_v1";
 const BIO_ENABLED_KEY = "@trampaj_bio_enabled_v1";
+const BIO_CREDS_KEY = "@trampaj_bio_creds_v1";
+const SAVED_USERNAME_KEY = "@trampaj_saved_username_v1";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -41,10 +43,16 @@ export default function LoginScreen() {
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
   useEffect(() => {
-    AsyncStorage.getItem(BIO_ENABLED_KEY).then((v) => setBioEnabled(v === "yes"));
+    Promise.all([
+      AsyncStorage.getItem(BIO_ENABLED_KEY),
+      AsyncStorage.getItem(SAVED_USERNAME_KEY),
+    ]).then(([bio, savedUser]) => {
+      setBioEnabled(bio === "yes");
+      if (savedUser) setUsername(savedUser);
+    });
   }, []);
 
-  async function checkBiometricAfterLogin() {
+  async function checkBiometricAfterLogin(savedUser: string, savedPass: string) {
     const asked = await AsyncStorage.getItem(BIO_ASKED_KEY);
     if (asked) return;
     await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
@@ -63,6 +71,7 @@ export default function LoginScreen() {
           text: "Da, aktiviraj",
           onPress: async () => {
             await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
+            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: savedPass }));
             setBioEnabled(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
@@ -79,14 +88,27 @@ export default function LoginScreen() {
       disableDeviceFallback: false,
     });
     if (!result.success) return;
+
+    const savedCredsRaw = await AsyncStorage.getItem(BIO_CREDS_KEY);
+    if (!savedCredsRaw) {
+      Alert.alert("Postavi biometriju", "Odjavi se i prijavi ponovo da aktiviraš biometrijsku prijavu.");
+      return;
+    }
+    const { username: savedUser, password: savedPass } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+
     setLoading(true);
-    const r = await tryAutoLogin();
+    const r = await login(savedUser, savedPass);
     setLoading(false);
+
     if (r.ok) {
+      await setMyName(savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
-      Alert.alert("Sesija istekla", "Prijavi se korisničkim imenom i lozinkom.");
+      // Credentials changed — disable biometrics, ask user to re-login
+      await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
+      setBioEnabled(false);
+      Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
     }
   }
 
@@ -103,9 +125,14 @@ export default function LoginScreen() {
 
     if (result.ok) {
       await setMyName(username.trim());
+      if (rememberMe) {
+        await AsyncStorage.setItem(SAVED_USERNAME_KEY, username.trim());
+      } else {
+        await AsyncStorage.removeItem(SAVED_USERNAME_KEY);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
-      setTimeout(() => checkBiometricAfterLogin(), 800);
+      setTimeout(() => checkBiometricAfterLogin(username.trim(), password), 800);
     } else if (result.notVerified) {
       setNotVerified(true);
       setNotVerifiedEmail(result.email ?? "");
