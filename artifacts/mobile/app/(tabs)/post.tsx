@@ -363,11 +363,19 @@ export default function PostScreen() {
     console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim() });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim());
     console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
+    // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
+    let resolvedCategory = category;
+    if (!resolvedCategory && tags.nudimTags.length > 0) {
+      resolvedCategory = detectCategoryLocally(tags.nudimTags.join(" "));
+      if (resolvedCategory) {
+        console.log("[KATEGORIJA] Oporavak iz AI tagova →", resolvedCategory);
+      }
+    }
     const listing = {
       title: title.trim(),
       description: description.trim(),
       wantedFor: wantedFor.trim(),
-      category,
+      category: resolvedCategory,
       location,
       condition,
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
