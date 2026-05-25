@@ -360,8 +360,19 @@ export default function PostScreen() {
     const priceNum = priceText.trim()
       ? parseFloat(priceText.replace(",", "."))
       : null;
-    console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim() });
-    const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim());
+    // Komprimiraj prvu sliku za vision AI (ako postoji)
+    let imageBase64: string | undefined;
+    if (imageUris.length > 0) {
+      try {
+        const compressed = await compressImage(imageUris[0], 512, 0.6);
+        imageBase64 = compressed.base64 ?? undefined;
+        console.log("[SUBMIT] Slika komprimirana za AI, base64 dužina:", imageBase64?.length ?? 0);
+      } catch {
+        console.log("[SUBMIT] Kompresija slike nije uspjela, nastavljam bez slike");
+      }
+    }
+    console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), imaSliku: !!imageBase64 });
+    const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim(), imageBase64);
     console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
     // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
     let resolvedCategory = category;

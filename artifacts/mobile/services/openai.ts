@@ -136,11 +136,11 @@ Elektronika, Odjeća, Knjige, Sport, Nakit, Namještaj, Igračke, Ostalo`,
 export async function generateListingTags(
   title: string,
   description: string,
-  wantedFor: string
+  wantedFor: string,
+  base64Image?: string
 ): Promise<{ nudimTags: string[]; trazimTags: string[] }> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    // Fallback: simple local tokenization
     const normalize = (s: string) =>
       s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const tokenize = (s: string) =>
@@ -151,6 +151,26 @@ export async function generateListingTags(
     };
   }
 
+  const userPromptText = `Naslov: "${title}"
+Opis: "${description}"
+Što traži: "${wantedFor}"
+
+Vrati SAMO ovaj JSON:
+{"nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
+
+nudimTags = ključne riječi koje opisuju što osoba NUDI — kombiniraj tekst I ono što vidiš na slici (boja, materijal, stil, marka, stanje...), max 20 riječi na hrvatskom
+trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10 riječi`;
+
+  const userContent: unknown[] = base64Image
+    ? [
+        {
+          type: "image_url",
+          image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "low" },
+        },
+        { type: "text", text: userPromptText },
+      ]
+    : userPromptText;
+
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -160,23 +180,15 @@ export async function generateListingTags(
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 150,
+        max_tokens: 250,
         messages: [
           {
             role: "system",
-            content: `Generiraj ključne riječi za oglas trampe na hrvatskom. Vrati SAMO JSON bez ikakvog teksta oko njega.`,
+            content: `Generiraj ključne riječi za oglas trampe na hrvatskom. ${base64Image ? "Analiziraj i sliku — dodaj vizualne detalje: boja, materijal, stil, marka, dimenzije, stanje." : ""} Vrati SAMO JSON bez ikakvog teksta oko njega.`,
           },
           {
             role: "user",
-            content: `Naslov: "${title}"
-Opis: "${description}"
-Što traži: "${wantedFor}"
-
-Vrati SAMO ovaj JSON:
-{"nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
-
-nudimTags = ključne riječi koje opisuju što osoba NUDI (iz naslova i opisa, max 12 riječi)
-trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži", max 10 riječi)`,
+            content: userContent,
           },
         ],
       }),
@@ -188,7 +200,7 @@ trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži", max 10 
     const match = text.match(/\{[\s\S]*?\}/);
     const parsed = match ? JSON.parse(match[0]) : {};
     return {
-      nudimTags: Array.isArray(parsed.nudimTags) ? parsed.nudimTags.slice(0, 12) : [],
+      nudimTags: Array.isArray(parsed.nudimTags) ? parsed.nudimTags.slice(0, 20) : [],
       trazimTags: Array.isArray(parsed.trazimTags) ? parsed.trazimTags.slice(0, 10) : [],
     };
   } catch {
