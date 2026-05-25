@@ -78,12 +78,18 @@ export default function BrowseScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad, backgroundColor: colors.background }]}>
         <View style={styles.logoRow}>
-          <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Feather name="refresh-cw" size={22} color={colors.primary} />
-          </View>
-          <Text style={[styles.logoText, { color: colors.foreground }]}>
-            Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
-          </Text>
+          <Pressable
+            style={styles.logoBrand}
+            onPress={() => { setSearch(""); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          >
+            <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Feather name="refresh-cw" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.logoText, { color: colors.foreground }]}>
+              Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
+            </Text>
+          </Pressable>
+          <View style={{ flex: 1 }} />
           {user ? (
             <View style={styles.authLinks}>
               {user.avatarBase64 ? (
@@ -246,6 +252,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 4,
+  },
+  logoBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   authLinks: {
     marginLeft: "auto",

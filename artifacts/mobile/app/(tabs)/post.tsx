@@ -21,7 +21,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
-import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally, suggestTrades } from "@/services/openai";
+import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally } from "@/services/openai";
 
 interface LocationResult { label: string; lat: number; lon: number; }
 
@@ -73,8 +73,6 @@ export default function PostScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wantedDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,26 +190,14 @@ export default function PostScreen() {
 
     setSubmitted(true);
 
-    // AI prijedlozi zamjene u pozadini
-    setLoadingSuggestions(true);
-    try {
-      const others = listings.filter((l) => l.status === "active" && !l.isMine);
-      const ids = await suggestTrades({ title: title.trim(), category, wantedFor: wantedFor.trim() }, others);
-      setAiSuggestions(ids);
-    } catch {
-      // silent
-    } finally {
-      setLoadingSuggestions(false);
-    }
-
     setTimeout(() => {
       setTitle(""); setDescription(""); setWantedFor("");
       setCategory(""); setLocation(""); setPriceText("");
       setPhone(""); setShowPhone(false); setImageUris([]);
       setCondition(null); setLocationSuggestions([]);
-      setSubmitted(false); setAiSuggestions([]);
+      setSubmitted(false);
       router.push("/(tabs)/");
-    }, aiSuggestions.length > 0 ? 3000 : 1500);
+    }, 1500);
   }
 
   const inputStyle = [styles.input, { backgroundColor: colors.muted, borderColor: colors.border, color: colors.foreground }];
@@ -421,9 +407,14 @@ export default function PostScreen() {
                   if (v.trim().length >= 2) {
                     setLocationLoading(true);
                     locationDebounceRef.current = setTimeout(async () => {
-                      const results = await searchLocations(v);
-                      setLocationSuggestions(results);
-                      setLocationLoading(false);
+                      try {
+                        const results = await searchLocations(v);
+                        setLocationSuggestions(results);
+                      } catch {
+                        setLocationSuggestions([]);
+                      } finally {
+                        setLocationLoading(false);
+                      }
                     }, 420);
                   } else {
                     setLocationSuggestions([]);
@@ -490,35 +481,6 @@ export default function PostScreen() {
         </View>
       </View>
 
-      {submitted && aiSuggestions.length > 0 && (
-        <View style={[styles.suggestCard, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-          <View style={styles.suggestHeader}>
-            <Feather name="zap" size={14} color={colors.primary} />
-            <Text style={[styles.suggestTitle, { color: colors.primary }]}>AI prijedlozi zamjene</Text>
-          </View>
-          {aiSuggestions.map((id) => {
-            const l = listings.find((x) => x.id === id);
-            if (!l) return null;
-            return (
-              <View key={id} style={[styles.suggestItem, { borderColor: colors.border }]}>
-                <Feather name="refresh-cw" size={12} color={colors.secondary} />
-                <Text style={[styles.suggestItemText, { color: colors.foreground }]} numberOfLines={1}>{l.title}</Text>
-                <Text style={[styles.suggestItemSub, { color: colors.mutedForeground }]}>{l.location}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {submitted && loadingSuggestions && (
-        <View style={[styles.suggestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.suggestHeader}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.suggestTitle, { color: colors.mutedForeground }]}>AI traži prijedloge zamjene...</Text>
-          </View>
-        </View>
-      )}
-
       <Pressable
         onPress={handleSubmit}
         disabled={!isValid || submitted}
@@ -563,30 +525,50 @@ function WantedSuggestions({ wantedFor, priceText, listings, colors }: WantedSug
       const detectedCat = detectCategoryLocally(q);
       const myPrice = priceText ? parseFloat(priceText.replace(",", ".")) : null;
 
-      let candidates = listings.filter((l) => l.status === "active" && !l.isMine);
-
-      if (detectedCat) {
-        candidates = candidates.filter((l) => l.category === detectedCat);
-      } else {
-        // fallback: text search in title + description + category
-        const lower = q.toLowerCase();
-        candidates = candidates.filter(
-          (l) =>
-            l.title.toLowerCase().includes(lower) ||
-            l.description.toLowerCase().includes(lower) ||
-            l.wantedFor.toLowerCase().includes(lower)
-        );
+      // Tokenize: split into meaningful words (≥3 chars), strip diacritics for comparison
+      function normalize(s: string) {
+        return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      }
+      function tokenize(text: string): string[] {
+        return normalize(text).split(/[\s,.!?;:()\-\/\\]+/).filter(w => w.length >= 3);
+      }
+      // Two words match only if they share a common root — require length ratio ≥ 0.75
+      // to prevent "stol"(4) matching "stolica"(7): 4/7 ≈ 0.57 < 0.75 → no match
+      function wordsSimilar(a: string, b: string): boolean {
+        if (a === b) return true;
+        const short = a.length <= b.length ? a : b;
+        const long  = a.length <= b.length ? b : a;
+        if (short.length / long.length < 0.75) return false;
+        const prefixLen = short.length - 1;
+        return prefixLen >= 2 && a.substring(0, prefixLen) === b.substring(0, prefixLen);
+      }
+      function textScore(queryTokens: string[], text: string): number {
+        const listingTokens = tokenize(text);
+        return queryTokens.reduce((sum, qt) =>
+          sum + (listingTokens.some(lt => wordsSimilar(qt, lt)) ? 1 : 0), 0);
       }
 
-      // Sort by price similarity
-      candidates.sort((a, b) => {
+      const queryTokens = tokenize(q);
+      let candidates = listings.filter((l) => l.status === "active" && !l.isMine);
+
+      // Score each candidate: category match + word overlap in title/description
+      const scored = candidates.map((l) => {
+        const catMatch = detectedCat ? (l.category === detectedCat ? 2 : 0) : 0;
+        const combinedText = l.title + " " + l.description + " " + l.wantedFor;
+        const wordScore = textScore(queryTokens, combinedText) * 3;
+        return { l, score: catMatch + wordScore };
+      }).filter(({ score }) => score > 0);
+
+      // Sort by score desc, then price proximity
+      scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
         if (myPrice == null) return 0;
-        const aDiff = a.price != null ? Math.abs(a.price - myPrice) : Infinity;
-        const bDiff = b.price != null ? Math.abs(b.price - myPrice) : Infinity;
+        const aDiff = a.l.price != null ? Math.abs(a.l.price - myPrice) : Infinity;
+        const bDiff = b.l.price != null ? Math.abs(b.l.price - myPrice) : Infinity;
         return aDiff - bDiff;
       });
 
-      setMatches(candidates.slice(0, 8));
+      setMatches(scored.slice(0, 8).map(({ l }) => l));
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [wantedFor, priceText, listings]);

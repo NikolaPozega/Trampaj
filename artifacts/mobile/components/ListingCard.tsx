@@ -73,8 +73,9 @@ export function ListingCard({ listing }: Props) {
           </View>
         )}
         {listing.condition && listing.status !== "traded" && (
-          <View style={[styles.conditionBadge, { backgroundColor: `${conditionColor}22`, borderColor: `${conditionColor}55` }]}>
-            <Text style={[styles.conditionText, { color: conditionColor! }]}>{listing.condition}</Text>
+          <View style={[styles.conditionBadge, { backgroundColor: "rgba(8,21,46,0.72)", borderColor: conditionColor + "99" }]}>
+            <View style={[styles.conditionDot, { backgroundColor: conditionColor! }]} />
+            <Text style={[styles.conditionText, { color: "#fff" }]}>{listing.condition}</Text>
           </View>
         )}
       </View>
@@ -134,6 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
+  conditionDot: { width: 6, height: 6, borderRadius: 3, marginRight: 3 },
   conditionBadge: {
     position: "absolute",
     top: 6,
