@@ -21,6 +21,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORIES, CONDITIONS, CONDITION_COLORS, type Condition, useListings } from "@/context/ListingsContext";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { analyzeImageForCategory, detectCategoryFromTitle, detectCategoryLocally } from "@/services/openai";
 
 interface LocationResult { label: string; lat: number; lon: number; }
@@ -37,7 +38,14 @@ async function searchLocations(query: string): Promise<LocationResult[]> {
       const a = item.address;
       const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
       const country = a.country ?? "";
-      const label = city && country ? `${city}, ${country}` : item.display_name.split(",").slice(0, 2).join(",").trim();
+      const street = a.road ?? a.pedestrian ?? a.footway ?? a.street ?? "";
+      const houseNum = a.house_number ?? "";
+      const streetFull = [houseNum, street].filter(Boolean).join(" ");
+      const label = streetFull
+        ? `${streetFull}, ${city}`.trim().replace(/^,\s*/, "")
+        : city && country
+          ? `${city}, ${country}`
+          : item.display_name.split(",").slice(0, 3).join(",").trim();
       if (label && !seen.has(label)) {
         seen.add(label);
         results.push({ label, lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
@@ -53,6 +61,7 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addListing, listings } = useListings();
+  const { user } = useAuth();
 
   const MAX_IMAGES = 5;
   const [imageUris, setImageUris] = useState<string[]>([]);
@@ -80,7 +89,14 @@ export default function PostScreen() {
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
 
-  const isValid = title.trim() && description.trim() && wantedFor.trim() && category && location;
+  const isValid = title.trim() && description.trim() && wantedFor.trim() && category && location && condition;
+
+  // Pre-fill location from profile; re-fills after form reset too
+  useEffect(() => {
+    if (!user || location) return;
+    const parts = [user.address, user.city].filter(Boolean);
+    if (parts.length) setLocation(parts.join(", "));
+  }, [user, location]);
 
   useEffect(() => {
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
@@ -191,11 +207,12 @@ export default function PostScreen() {
     setSubmitted(true);
 
     setTimeout(() => {
+      const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";
       setTitle(""); setDescription(""); setWantedFor("");
-      setCategory(""); setLocation(""); setPriceText("");
+      setCategory(""); setLocation(defaultLoc); setPriceText("");
       setPhone(""); setShowPhone(false); setImageUris([]);
       setCondition(null); setLocationSuggestions([]);
-      setSubmitted(false);
+      setCategoryManuallySet(false); setSubmitted(false);
       router.push("/(tabs)/");
     }, 1500);
   }
@@ -315,7 +332,10 @@ export default function PostScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Stanje predmeta</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Stanje predmeta</Text>
+            {!condition && <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.destructive }}>obvezno</Text>}
+          </View>
           <View style={styles.conditionGrid}>
             {CONDITIONS.map((cond) => {
               const col = CONDITION_COLORS[cond];
@@ -383,7 +403,14 @@ export default function PostScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
+            {user?.address || user?.city ? (
+              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                iz profila
+              </Text>
+            ) : null}
+          </View>
           <View style={styles.locationWrap}>
             <View style={[
               styles.locationInputRow,

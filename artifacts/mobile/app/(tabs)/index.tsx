@@ -64,16 +64,20 @@ export default function BrowseScreen() {
     );
   }
 
+  function normSearch(s: string) {
+    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
   const filtered = useMemo(() => {
     return listings.filter((l) => {
       const matchesCategory =
         selectedCategories.length === 0 || selectedCategories.includes(l.category);
-      const q = search.toLowerCase();
+      const q = normSearch(search);
       const matchesSearch =
         !q ||
-        l.title.toLowerCase().includes(q) ||
-        l.description.toLowerCase().includes(q) ||
-        l.wantedFor.toLowerCase().includes(q);
+        normSearch(l.title).includes(q) ||
+        normSearch(l.description).includes(q) ||
+        normSearch(l.wantedFor).includes(q);
       return matchesCategory && matchesSearch && l.status === "active";
     });
   }, [listings, selectedCategories, search]);

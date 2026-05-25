@@ -731,6 +731,7 @@ export default function ProfileScreen() {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         ListHeaderComponent={ListHeader}
+        keyboardShouldPersistTaps="always"
         scrollEnabled={listScrollEnabled}
         refreshControl={
           <RefreshControl
