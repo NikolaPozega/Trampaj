@@ -21,6 +21,7 @@ import { CATEGORIES, useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { searchBus } from "@/utils/searchBus";
+import { queryMatchesFields } from "@/utils/stemHr";
 import type { Listing } from "@/context/ListingsContext";
 
 // ─── Ad placeholder components ───────────────────────────────────────────────
@@ -169,15 +170,9 @@ export default function BrowseScreen() {
     return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  // Provjeri sadrži li polje tekstualne tokene iz upita (min 2 slova)
+  // Provjeri sadrži li polje tekstualne tokene iz upita (s HR stemmerjem)
   function matchesQuery(q: string, fields: string[]): boolean {
-    const nq = normSearch(q.trim());
-    if (!nq) return true;
-    const words = nq.split(/[\s,+]+/).filter((w) => w.length >= 2);
-    if (!words.length) return true;
-    const fullMatch = fields.some((f) => f.includes(nq));
-    const wordMatch = words.every((w) => fields.some((f) => f.includes(w)));
-    return fullMatch || wordMatch;
+    return queryMatchesFields(q, fields);
   }
 
   const filtered = useMemo(() => {

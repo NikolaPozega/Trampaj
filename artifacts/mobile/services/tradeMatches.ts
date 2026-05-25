@@ -1,5 +1,6 @@
 import type { Listing } from "@/context/ListingsContext";
 import { detectCategoryLocally } from "@/services/openai";
+import { queryMatchesFields, stemTokens } from "@/utils/stemHr";
 
 export interface TradeMatch {
   myListing: Listing;
@@ -8,31 +9,17 @@ export interface TradeMatch {
   matchType: "both" | "i_want" | "they_want";
 }
 
-function norm(s: string) {
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// Preklapa li se slobodan tekst s listom polja (s HR stemmerjem)
+function textMatchesFields(text: string, fields: string[]): boolean {
+  return queryMatchesFields(text, fields);
 }
 
-function keywordsOverlap(a: string, b: string): boolean {
-  const aWords = norm(a).split(/\s+/).filter((w) => w.length > 3);
-  const bNorm = norm(b);
-  return aWords.some((w) => bNorm.includes(w));
-}
-
-// Provjeri preklapa li se slobodni tekst (wantedFor) s tagovima drugog oglasa
-function textMatchesTags(text: string, tags: string[]): boolean {
-  if (!tags.length) return false;
-  const words = norm(text).split(/[\s,+]+/).filter((w) => w.length > 3);
-  if (!words.length) return false;
-  const tagNorms = tags.map(norm);
-  return words.some((w) => tagNorms.some((t) => t.includes(w) || w.includes(t)));
-}
-
-// Preklapa li se jedan set tagova s drugim
+// Preklapa li se jedan set tagova s drugim (stem usporedba)
 function tagsOverlap(a: string[], b: string[]): boolean {
   if (!a.length || !b.length) return false;
-  const aNorms = a.map(norm);
-  const bNorms = b.map(norm);
-  return aNorms.some((at) => bNorms.some((bt) => at.includes(bt) || bt.includes(at)));
+  const aStems = a.flatMap(stemTokens);
+  const bStems = b.flatMap(stemTokens);
+  return aStems.some((at) => bStems.some((bt) => at.startsWith(bt) || bt.startsWith(at)));
 }
 
 export function findTradeMatches(
@@ -55,20 +42,16 @@ export function findTradeMatches(
 
       const theyWantCat = detectCategoryLocally(theirs.wantedFor);
 
-      // Ja tražim njih: kategorija, slobodan tekst, ili tagovi
+      // Ja tražim njih: kategorija, slobodan tekst, ili tagovi (s HR stemmerjem)
       const iWantThem =
         (iWantCat && iWantCat === theirs.category) ||
-        keywordsOverlap(mine.wantedFor, theirs.title) ||
-        keywordsOverlap(mine.wantedFor, theirs.description) ||
-        textMatchesTags(mine.wantedFor, theirs.nudimTags ?? []) ||
+        textMatchesFields(mine.wantedFor, [theirs.title, theirs.description, ...(theirs.nudimTags ?? [])]) ||
         tagsOverlap(mine.trazimTags ?? [], theirs.nudimTags ?? []);
 
-      // Oni traže mene: kategorija, slobodan tekst, ili tagovi
+      // Oni traže mene: kategorija, slobodan tekst, ili tagovi (s HR stemmerjem)
       const theyWantMe =
         (theyWantCat && theyWantCat === myCat) ||
-        keywordsOverlap(theirs.wantedFor, mine.title) ||
-        keywordsOverlap(theirs.wantedFor, mine.description) ||
-        textMatchesTags(theirs.wantedFor, mine.nudimTags ?? []) ||
+        textMatchesFields(theirs.wantedFor, [mine.title, mine.description, ...(mine.nudimTags ?? [])]) ||
         tagsOverlap(theirs.trazimTags ?? [], mine.nudimTags ?? []);
 
       if (!iWantThem && !theyWantMe) continue;
