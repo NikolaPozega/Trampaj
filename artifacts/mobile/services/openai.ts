@@ -165,7 +165,7 @@ trazimTags = ključne riječi što osoba TRAŽI (iz polja "što traži"), max 10
     ? [
         {
           type: "image_url",
-          image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "low" },
+          image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "auto" },
         },
         { type: "text", text: userPromptText },
       ]

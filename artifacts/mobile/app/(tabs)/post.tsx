@@ -364,7 +364,7 @@ export default function PostScreen() {
     let imageBase64: string | undefined;
     if (imageUris.length > 0) {
       try {
-        const compressed = await compressImage(imageUris[0], 512, 0.6);
+        const compressed = await compressImage(imageUris[0], 900, 0.82);
         imageBase64 = compressed.base64 ?? undefined;
         console.log("[SUBMIT] Slika komprimirana za AI, base64 dužina:", imageBase64?.length ?? 0);
       } catch {
