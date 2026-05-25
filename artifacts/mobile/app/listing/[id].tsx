@@ -43,7 +43,16 @@ function overlap(tokensA: string[], tokensB: string[]): number {
   );
 }
 
-function computeMatches(listing: Listing, all: Listing[]): Listing[] {
+type MatchType = "both" | "i_want" | "they_want";
+type MatchResult = { listing: Listing; matchType: MatchType };
+
+const MATCH_LABEL: Record<MatchType, string> = {
+  both: "Obostrana zamjena ✦",
+  i_want: "Ti tražiš ovo",
+  they_want: "Oni traže što ti imaš",
+};
+
+function computeMatches(listing: Listing, all: Listing[]): MatchResult[] {
   const nudimTokens = [
     ...tokenize(listing.title),
     ...tokenize(listing.description ?? ""),
@@ -66,15 +75,20 @@ function computeMatches(listing: Listing, all: Listing[]): Listing[] {
         ...tokenize(l.wantedFor),
         ...(l.trazimTags ?? []).flatMap(tokenize),
       ];
-      // Bidirectional: they want what I offer + I want what they offer
       const theyWantMine = overlap(nudimTokens, theirTrazim);
       const iWantTheirs = overlap(trazimTokens, theirNudim);
-      return { l, score: theyWantMine * 2 + iWantTheirs * 2, theyWantMine, iWantTheirs };
+      const matchType: MatchType =
+        theyWantMine > 0 && iWantTheirs > 0
+          ? "both"
+          : theyWantMine > 0
+          ? "they_want"
+          : "i_want";
+      return { l, score: theyWantMine * 2 + iWantTheirs * 2, theyWantMine, iWantTheirs, matchType };
     })
     .filter(({ theyWantMine, iWantTheirs }) => theyWantMine > 0 || iWantTheirs > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8)
-    .map(({ l }) => l);
+    .map(({ l, matchType }) => ({ listing: l, matchType }));
 }
 
 // ─── Match section component ──────────────────────────────────────────────────
@@ -103,8 +117,11 @@ function MatchSection({
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={mStyles.scroll}>
-        {matches.map((item) => {
+        {matches.map(({ listing: item, matchType }) => {
           const imgs = (item.imageUris?.length ?? 0) > 0 ? item.imageUris : item.imageUri ? [item.imageUri] : [];
+          const isBoth = matchType === "both";
+          const badgeColor = isBoth ? colors.primary : colors.secondary;
+          const badgeBg = isBoth ? colors.primary + "22" : colors.secondary + "22";
           return (
             <Pressable
               key={item.id}
@@ -121,11 +138,16 @@ function MatchSection({
                   <Feather name="package" size={22} color={colors.mutedForeground} />
                 </View>
               )}
+              <View style={[mStyles.typeBadge, { backgroundColor: badgeBg, borderColor: badgeColor }]}>
+                <Text style={[mStyles.typeBadgeText, { color: badgeColor }]}>
+                  {MATCH_LABEL[matchType]}
+                </Text>
+              </View>
               <View style={mStyles.cardBody}>
                 <Text style={[mStyles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
                   {item.title}
                 </Text>
-                <Text style={[mStyles.cardWanted, { color: colors.primary }]} numberOfLines={1}>
+                <Text style={[mStyles.cardWanted, { color: colors.mutedForeground }]} numberOfLines={1}>
                   ↔ {item.wantedFor}
                 </Text>
                 {item.price != null && (
@@ -152,7 +174,17 @@ const mStyles = StyleSheet.create({
   card: { width: 150, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   cardImg: { width: "100%", height: 100 },
   cardImgPlaceholder: { width: "100%", height: 100, alignItems: "center", justifyContent: "center" },
-  cardBody: { padding: 10, gap: 4 },
+  typeBadge: {
+    marginHorizontal: 8,
+    marginTop: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  typeBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  cardBody: { padding: 8, paddingTop: 6, gap: 3 },
   cardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
   cardWanted: { fontSize: 11, fontFamily: "Inter_400Regular" },
   cardPrice: { fontSize: 11, fontFamily: "Inter_500Medium" },
