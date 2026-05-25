@@ -330,19 +330,29 @@ export default function PostScreen() {
         setAnalyzing(true);
         try {
           const ai = await analyzeImageForCategory(compressed.base64);
+          console.log("[AI] analyzeImageForCategory rezultat:", JSON.stringify(ai));
           if (ai.category && !categoryManuallySet) setCategory(ai.category);
-          if (ai.title) {
+          // Samo upiši ako korisnik još nije ništa utipkao — ne pregazi ručni unos
+          if (ai.title && !title.trim()) {
             setTitle(ai.title);
             titleFromAI.current = true;
             setTitleAIBadge(true);
+            console.log("[AI] Naslov iz slike:", ai.title);
+          } else if (ai.title && title.trim()) {
+            console.log("[AI] Naslov preskočen (korisnik već upisao):", title.trim());
+          } else {
+            console.log("[AI] Naslov nije vraćen od AI");
           }
-          if (ai.description) {
+          if (ai.description && !description.trim()) {
             setDescription(ai.description);
             descriptionFromAI.current = true;
             setDescriptionAIBadge(true);
+            console.log("[AI] Opis iz slike:", ai.description);
           }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {}
+        } catch (err) {
+          console.log("[AI] analyzeImageForCategory greška:", String(err));
+        }
         finally {
           setAnalyzing(false);
         }
