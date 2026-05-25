@@ -153,19 +153,20 @@ export async function generateListingTags(
     };
   }
 
-  const userPromptText = `Naslov: "${title}"
+  const userPromptText = `Korisnik je tipkao brzo na mobitelu i napravio tipfelere. Tvoj zadatak:
+
+1. ISPRAVI TIPFELERE u naslovu i opisu — zamijeni pogrešno upisana slova ispravnom hrvatskom riječju (npr. "Dtolica"→"Stolica", "Volica"→"Stolica", "Modevna"→"Moderna", "apecirana"→"tapecirana"). Ako je riječ besmislena, zaključi što je korisnik htio napisati.
+
+2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI.${base64Image ? " OBAVEZNO analiziraj sliku i dodaj vizualne opise: boju (npr. 'smeđa', 'bijela'), materijal ('drvo', 'metal', 'plastika', 'tkanina'), stil ('moderna', 'skandinavska', 'industrijska'), stanje i sve vidljive detalje." : ""} Max 20 riječi na hrvatskom.
+
+3. GENERIRAJ trazimTags — ključne riječi što osoba TRAŽI (iz polja "Što traži"). Max 10.
+
+Naslov: "${title}"
 Opis: "${description}"
 Što traži: "${wantedFor}"
 
-Ispravi sve pravopisne greške u naslovu i opisu (hrvatski jezik). Generiraj ključne riječi.${base64Image ? " Analiziraj i sliku — dodaj vizualne detalje u nudimTags: boja, materijal, stil, marka, dimenzije." : ""}
-
-Vrati SAMO ovaj JSON:
-{"correctedTitle":"...","correctedDescription":"...","nudimTags":["tag1","tag2",...],"trazimTags":["tag1","tag2",...]}
-
-correctedTitle = ispravljen naslov (samo ispravi greške, ne mijenjaj sadržaj)
-correctedDescription = ispravljen opis (samo ispravi greške, ne mijenjaj sadržaj)
-nudimTags = ključne riječi što osoba NUDI, max 20 na hrvatskom
-trazimTags = ključne riječi što osoba TRAŽI, max 10`;
+Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
+{"correctedTitle":"...","correctedDescription":"...","nudimTags":["..."],"trazimTags":["..."]}`;
 
   const userContent: unknown = base64Image
     ? [
@@ -190,7 +191,7 @@ trazimTags = ključne riječi što osoba TRAŽI, max 10`;
         messages: [
           {
             role: "system",
-            content: `Ti si asistent za oglas trampe na hrvatskom. Ispravljaš pravopisne greške i generiraš ključne riječi. Vrati SAMO JSON bez ikakvog teksta oko njega.`,
+            content: `Ti si asistent za oglas trampe. Uvijek ispravljaš tipfelere s mobitela (besmislene riječi zamijeni logičnom hrvatskom riječju) i generiraš bogate ključne riječi. Vrati SAMO validan JSON, bez ikakvog teksta oko njega.`,
           },
           {
             role: "user",
