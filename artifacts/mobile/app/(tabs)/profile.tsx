@@ -815,6 +815,14 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Fixed top ad banner ─────────────────────────────────────────────── */}
+      <View style={[styles.fixedAdTop, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
+          <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
+        </View>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={filteredMyListings}
@@ -887,7 +895,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.list,
           myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) },
+          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) + 60 },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -954,6 +962,14 @@ export default function ProfileScreen() {
           </View>
         }
       />
+
+      {/* ── Fixed bottom ad banner ──────────────────────────────────────────── */}
+      <View style={[styles.fixedAdBottom, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: insets.bottom + 4 }]}>
+        <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
+          <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
+        </View>
+      </View>
 
       {/* Name modal (guest / no-auth) */}
       <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
@@ -1500,6 +1516,36 @@ const statStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  fixedAdTop: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+  },
+  fixedAdBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    borderTopWidth: 1,
+  },
+  adBanner: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  adBannerLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.3,
+  },
   headerSection: { paddingHorizontal: 16, gap: 16, paddingBottom: 8 },
   profileCard: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: "center", gap: 10 },
   avatarRing: {

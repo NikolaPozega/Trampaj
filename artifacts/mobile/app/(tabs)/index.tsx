@@ -23,29 +23,48 @@ import { useColors } from "@/hooks/useColors";
 import { searchBus } from "@/utils/searchBus";
 import type { Listing } from "@/context/ListingsContext";
 
-// ─── Ad banner placeholder ────────────────────────────────────────────────────
-function AdBannerSlot({ size = "medium" }: { size?: "small" | "medium" | "bottom" }) {
+// ─── Ad placeholder components ───────────────────────────────────────────────
+
+/** Card-sized ad — fits in the 3-column grid as a regular cell */
+function AdCardSlot() {
   const colors = useColors();
-  const height = size === "bottom" ? 52 : size === "small" ? 44 : 72;
   return (
-    <View
-      style={[
-        adStyles.wrap,
-        {
-          height,
-          backgroundColor: `${colors.muted}CC`,
-          borderColor: `${colors.border}88`,
-        },
-      ]}
-    >
+    <View style={[adStyles.card, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
+      <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
+      <Text style={[adStyles.cardLabel, { color: colors.mutedForeground }]}>Oglas</Text>
+    </View>
+  );
+}
+
+/** Full-width horizontal banner — for header/footer strips */
+function AdBannerSlot({ size = "medium" }: { size?: "small" | "bottom" }) {
+  const colors = useColors();
+  const height = size === "bottom" ? 52 : 44;
+  return (
+    <View style={[adStyles.banner, { height, backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
       <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
-      <Text style={[adStyles.label, { color: colors.mutedForeground }]}>Google Oglas</Text>
+      <Text style={[adStyles.bannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
     </View>
   );
 }
 
 const adStyles = StyleSheet.create({
-  wrap: {
+  card: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    aspectRatio: 0.72, // same proportions as ListingCard
+  },
+  cardLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.3,
+  },
+  banner: {
     width: "100%",
     borderRadius: 10,
     borderWidth: 1,
@@ -54,54 +73,40 @@ const adStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginVertical: 4,
+    marginVertical: 2,
   },
-  label: {
+  bannerLabel: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     letterSpacing: 0.3,
   },
 });
 
-// ─── Row type used by FlatList ────────────────────────────────────────────────
-type ItemRow = { type: "row"; id: string; items: Listing[] };
-type AdRow   = { type: "ad";  id: string };
-type Row     = ItemRow | AdRow;
+// ─── Ad injection into flat listing array ────────────────────────────────────
+type AdSlot = { type: "ad"; id: string };
+type FlatItem = Listing | AdSlot;
 
 /**
- * Injects full-width ad rows into listing rows.
- * Pattern: 3 rows (9 listings), AD, 2 rows (6 listings), AD, repeat.
+ * Injects card-sized ad slots into the flat data array.
+ * Pattern: after 8 real items → AD (position 9), after 6 more → AD (position 7 of next group), repeat.
  */
-function buildRows(listings: Listing[]): Row[] {
-  const COLS = 3;
-  // Split listings into rows of 3
-  const itemRows: ItemRow[] = [];
-  for (let i = 0; i < listings.length; i += COLS) {
-    itemRows.push({
-      type: "row",
-      id: `row_${i}`,
-      items: listings.slice(i, i + COLS),
-    });
-  }
-
-  // Inject ads: first ad after 3 rows, then every 2 rows, then every 3 rows (alternates)
-  const result: Row[] = [];
-  const adPattern = [3, 2]; // rows between ads: 3, 2, 3, 2, ...
-  let patternIdx = 0;
-  let rowIdx = 0;
-  let adIdx = 0;
-
-  while (rowIdx < itemRows.length) {
-    const take = adPattern[patternIdx % adPattern.length];
-    const chunk = itemRows.slice(rowIdx, rowIdx + take);
+function injectAds(listings: Listing[]): FlatItem[] {
+  const result: FlatItem[] = [];
+  const pattern = [8, 6]; // real items before each ad, alternating
+  let pIdx = 0;
+  let i = 0;
+  let adCount = 0;
+  while (i < listings.length) {
+    const take = pattern[pIdx % pattern.length];
+    const chunk = listings.slice(i, i + take);
     result.push(...chunk);
-    rowIdx += take;
-    if (rowIdx < itemRows.length || chunk.length === take) {
-      result.push({ type: "ad", id: `ad_${adIdx++}` });
+    i += take;
+    // Insert ad after full chunk, or after the last chunk if it was exactly `take`
+    if (i < listings.length || chunk.length === take) {
+      result.push({ type: "ad", id: `ad_${adCount++}` });
     }
-    patternIdx++;
+    pIdx++;
   }
-
   return result;
 }
 
@@ -165,32 +170,17 @@ export default function BrowseScreen() {
     });
   }, [listings, selectedCategories, search]);
 
-  const rows = useMemo(() => buildRows(filtered), [filtered]);
+  const flatData = useMemo(() => injectAds(filtered), [filtered]);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   // Guest: bottom inset for the fixed ad banner (52px banner + safe area)
   const guestBottomAd = !user ? 52 : 0;
 
-  const renderRow = ({ item }: { item: Row }) => {
-    if (item.type === "ad") {
-      return (
-        <View style={{ paddingHorizontal: 10 }}>
-          <AdBannerSlot size="medium" />
-        </View>
-      );
+  const renderItem = ({ item }: { item: FlatItem }) => {
+    if ("type" in item && item.type === "ad") {
+      return <AdCardSlot />;
     }
-    return (
-      <View style={styles.rowWrap}>
-        {item.items.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-        {/* Fill empty cells so the row always has 3 columns */}
-        {item.items.length < 3 &&
-          Array.from({ length: 3 - item.items.length }).map((_, i) => (
-            <View key={`empty_${i}`} style={styles.emptyCell} />
-          ))}
-      </View>
-    );
+    return <ListingCard listing={item as Listing} />;
   };
 
   return (
@@ -350,9 +340,11 @@ export default function BrowseScreen() {
         </View>
       ) : (
         <FlatList
-          data={rows}
-          keyExtractor={(item) => item.id}
-          renderItem={renderRow}
+          data={flatData}
+          keyExtractor={(item) => ("type" in item ? item.id : item.id)}
+          renderItem={renderItem}
+          numColumns={3}
+          columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={[
             styles.list,
             {
@@ -481,14 +473,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 8,
   },
-  rowWrap: {
-    flexDirection: "row",
+  columnWrapper: {
     gap: 6,
     paddingHorizontal: 2,
     marginBottom: 6,
-  },
-  emptyCell: {
-    flex: 1,
   },
   loadingContainer: {
     flex: 1,
