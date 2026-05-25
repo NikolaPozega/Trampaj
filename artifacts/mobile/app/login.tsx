@@ -82,18 +82,29 @@ export default function LoginScreen() {
 
   async function handleBioLogin() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Prijavi se biometricom",
-      fallbackLabel: "Koristi lozinku",
-      disableDeviceFallback: false,
-    });
-    if (!result.success) return;
 
     const savedCredsRaw = await AsyncStorage.getItem(BIO_CREDS_KEY);
     if (!savedCredsRaw) {
-      Alert.alert("Postavi biometriju", "Odjavi se i prijavi ponovo da aktiviraš biometrijsku prijavu.");
+      Alert.alert("Postavi biometriju", "Idi na Profil i aktiviraj biometrijsku prijavu.");
       return;
     }
+
+    // Try native biometrics if available; fall back silently on web
+    try {
+      const hasHw = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHw && enrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Prijavi se biometricom",
+          fallbackLabel: "Koristi lozinku",
+          disableDeviceFallback: false,
+        });
+        if (!result.success) return;
+      }
+    } catch {
+      // Not supported (web) — skip hardware check, proceed with stored credentials
+    }
+
     const { username: savedUser, password: savedPass } = JSON.parse(savedCredsRaw) as { username: string; password: string };
 
     setLoading(true);

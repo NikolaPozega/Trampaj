@@ -376,18 +376,14 @@ export default function ProfileScreen() {
   const [bioPasswordInput, setBioPasswordInput] = useState("");
   const [showBioPasswordModal, setShowBioPasswordModal] = useState(false);
   const [bioActivating, setBioActivating] = useState(false);
+  const [showBioDisableModal, setShowBioDisableModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(BIO_ENABLED_KEY).then((v) => setBioEnabled(v === "yes"));
   }, []);
 
-  async function handleBioEnable() {
-    const hasHw = await LocalAuthentication.hasHardwareAsync();
-    const enrolled = await LocalAuthentication.isEnrolledAsync();
-    if (!hasHw || !enrolled) {
-      Alert.alert("Nije podržano", "Uređaj ne podržava biometrijsku prijavu.");
-      return;
-    }
+  function handleBioEnable() {
     setBioPasswordInput("");
     setShowBioPasswordModal(true);
   }
@@ -396,9 +392,8 @@ export default function ProfileScreen() {
     if (!bioPasswordInput || !user) return;
     setBioActivating(true);
     try {
-      const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
-        ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
-        : "/api";
+      const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+      const API_BASE = domain ? `https://${domain}/api` : "/api";
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -406,14 +401,10 @@ export default function ProfileScreen() {
       });
       if (!res.ok) {
         setBioActivating(false);
-        Alert.alert("Pogrešna lozinka", "Unesi ispravnu lozinku za aktivaciju biometrije.");
+        setBioPasswordInput("");
+        Alert.alert("Pogrešna lozinka", "Unesi ispravnu lozinku za aktivaciju.");
         return;
       }
-      const auth = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Potvrdi biometrijsku prijavu",
-        fallbackLabel: "Koristi lozinku",
-      });
-      if (!auth.success) { setBioActivating(false); return; }
       await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
       await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
       await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username, password: bioPasswordInput }));
@@ -421,25 +412,21 @@ export default function ProfileScreen() {
       setShowBioPasswordModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Greška", "Provjeri internetsku vezu i pokušaj ponovo.");
+      Alert.alert("Greška", "Provjeri vezu i pokušaj ponovo.");
     } finally {
       setBioActivating(false);
     }
   }
 
-  async function handleBioDisable() {
-    Alert.alert("Deaktiviraj biometriju", "Isključuješ prijavu otiskom/licem?", [
-      { text: "Odustani", style: "cancel" },
-      {
-        text: "Deaktiviraj",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
-          setBioEnabled(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        },
-      },
-    ]);
+  function handleBioDisable() {
+    setShowBioDisableModal(true);
+  }
+
+  async function confirmBioDisable() {
+    await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
+    setBioEnabled(false);
+    setShowBioDisableModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   const [editState, setEditState] = useState<EditState | null>(null);
@@ -688,12 +675,7 @@ export default function ProfileScreen() {
           </Pressable>
           {user && (
             <Pressable
-              onPress={async () => {
-                Alert.alert("Odjava", "Odjaviš se s profila?", [
-                  { text: "Odustani", style: "cancel" },
-                  { text: "Odjava", style: "destructive", onPress: () => logout() },
-                ]);
-              }}
+              onPress={() => setShowLogoutModal(true)}
               style={({ pressed }) => [
                 styles.editBtn,
                 { borderColor: `${colors.destructive}40`, backgroundColor: `${colors.destructive}10`, opacity: pressed ? 0.7 : 1 },
@@ -999,6 +981,63 @@ export default function ProfileScreen() {
               </Pressable>
               <Pressable onPress={handleSaveName} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
                 <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>Spremi</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Logout confirmation modal */}
+      <Modal visible={showLogoutModal} transparent animationType="fade" onRequestClose={() => setShowLogoutModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowLogoutModal(false)}>
+          <Pressable style={[styles.editModal, { backgroundColor: colors.card, borderColor: colors.border, gap: 14 }]} onPress={() => {}}>
+            <View style={styles.editModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Odjava</Text>
+              <Pressable onPress={() => setShowLogoutModal(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+              Odjaviš se s profila?
+            </Text>
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => setShowLogoutModal(false)} style={[styles.modalBtn, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { setShowLogoutModal(false); logout(); }}
+                style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
+              >
+                <Feather name="log-out" size={14} color={colors.destructive} />
+                <Text style={[styles.modalBtnText, { color: colors.destructive }]}>Odjava</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Bio disable confirmation modal */}
+      <Modal visible={showBioDisableModal} transparent animationType="fade" onRequestClose={() => setShowBioDisableModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowBioDisableModal(false)}>
+          <Pressable style={[styles.editModal, { backgroundColor: colors.card, borderColor: colors.border, gap: 14 }]} onPress={() => {}}>
+            <View style={styles.editModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Deaktiviraj biometriju</Text>
+              <Pressable onPress={() => setShowBioDisableModal(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+              Isključuješ prijavu otiskom / licem?
+            </Text>
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => setShowBioDisableModal(false)} style={[styles.modalBtn, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmBioDisable}
+                style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.destructive }]}>Deaktiviraj</Text>
               </Pressable>
             </View>
           </Pressable>
