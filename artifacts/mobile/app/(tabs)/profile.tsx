@@ -13,7 +13,6 @@ import {
   Animated,
   FlatList,
   Modal,
-  PanResponder,
   Platform,
   Pressable,
   RefreshControl,
@@ -58,82 +57,37 @@ const MATCH_LABEL: Record<TradeMatch["matchType"], string> = {
   they_want: "Oni traže što ti imaš",
 };
 
-// ─── Swipeable Match Card ──────────────────────────────────────────────────────
-
-const SWIPE_THRESHOLD = 65;
+// ─── Match Card (tap buttons) ──────────────────────────────────────────────────
 
 function MatchCard({
   match,
   colors,
   onDismiss,
   onSave,
-  onSwipeStart,
-  onSwipeEnd,
 }: {
   match: TradeMatch;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   onDismiss: () => void;
   onSave: () => void;
-  onSwipeStart: () => void;
-  onSwipeEnd: () => void;
 }) {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
 
-  const dismissOverlayOpacity = translateY.interpolate({
-    inputRange: [-SWIPE_THRESHOLD, -10, 0],
-    outputRange: [1, 0.3, 0],
-    extrapolate: "clamp",
-  });
-  const saveOverlayOpacity = translateY.interpolate({
-    inputRange: [0, 10, SWIPE_THRESHOLD],
-    outputRange: [0, 0.3, 1],
-    extrapolate: "clamp",
-  });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      // Only claim vertical gestures so the parent horizontal ScrollView can still scroll
-      onStartShouldSetPanResponder: () => false,
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
-      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
-      onPanResponderGrant: () => {
-        onSwipeStart();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      },
-      onPanResponderMove: (_, g) => {
-        translateY.setValue(g.dy);
-      },
-      onPanResponderRelease: (_, g) => {
-        onSwipeEnd();
-        if (g.dy < -SWIPE_THRESHOLD) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          Animated.parallel([
-            Animated.timing(translateY, { toValue: -300, duration: 220, useNativeDriver: true }),
-            Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-          ]).start(onDismiss);
-        } else if (g.dy > SWIPE_THRESHOLD) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Animated.parallel([
-            Animated.timing(translateY, { toValue: 300, duration: 220, useNativeDriver: true }),
-            Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-          ]).start(onSave);
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 120,
-            friction: 8,
-          }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        onSwipeEnd();
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
+  function animateOut(dir: "up" | "down", cb: () => void) {
+    Haptics.notificationAsync(
+      dir === "up"
+        ? Haptics.NotificationFeedbackType.Warning
+        : Haptics.NotificationFeedbackType.Success
+    );
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: dir === "up" ? -260 : 260,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]).start(cb);
+  }
 
   const isBoth = match.matchType === "both";
   const badgeColor = isBoth ? colors.primary : colors.secondary;
@@ -151,40 +105,14 @@ function MatchCard({
         },
       ]}
     >
-      {/* Swipe area — captures ALL touches, page never scrolls */}
-      <View {...panResponder.panHandlers} style={mcStyles.swipeArea}>
-        {/* Dismiss overlay (swipe up) */}
-        <Animated.View
-          pointerEvents="none"
-          style={[mcStyles.actionOverlay, mcStyles.dismissOverlay, { opacity: dismissOverlayOpacity }]}
-        >
-          <Feather name="x-circle" size={22} color="#fff" />
-          <Text style={mcStyles.overlayText}>Odbaci</Text>
-        </Animated.View>
-
-        {/* Save overlay (swipe down) */}
-        <Animated.View
-          pointerEvents="none"
-          style={[mcStyles.actionOverlay, mcStyles.saveOverlay, { opacity: saveOverlayOpacity }]}
-        >
-          <Feather name="bookmark" size={22} color="#fff" />
-          <Text style={mcStyles.overlayText}>Spremi</Text>
-        </Animated.View>
-
-        {/* Permanent swipe hints */}
-        <View style={mcStyles.hintsRow}>
-          <View style={[mcStyles.hintPill, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}30` }]}>
-            <Feather name="chevron-up" size={11} color={colors.destructive} />
-            <Text style={[mcStyles.hintText, { color: colors.destructive }]}>odbaci</Text>
-          </View>
+      {/* Card body */}
+      <View style={mcStyles.cardBody}>
+        {/* Badge row */}
+        <View style={mcStyles.badgeRow}>
           <View style={[mcStyles.typeBadge, { backgroundColor: badgeBg, borderColor: badgeColor }]}>
             <Text style={[mcStyles.typeBadgeText, { color: badgeColor }]}>
               {MATCH_LABEL[match.matchType]}
             </Text>
-          </View>
-          <View style={[mcStyles.hintPill, { backgroundColor: `#22c55e18`, borderColor: `#22c55e30` }]}>
-            <Text style={[mcStyles.hintText, { color: "#22c55e" }]}>spremi</Text>
-            <Feather name="chevron-down" size={11} color="#22c55e" />
           </View>
         </View>
 
@@ -222,39 +150,68 @@ function MatchCard({
             )}
           </View>
         </View>
+
+        {/* Action buttons — X (odbaci) i ✓ (spremi) */}
+        <View style={mcStyles.actionRow}>
+          <Pressable
+            onPress={() => animateOut("up", onDismiss)}
+            style={({ pressed }) => [
+              mcStyles.actionBtn,
+              mcStyles.dismissBtn,
+              { opacity: pressed ? 0.75 : 1 },
+            ]}
+            hitSlop={8}
+          >
+            <Feather name="x" size={22} color="#fff" />
+            <Text style={mcStyles.actionBtnLabel}>Odbaci</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push(`/listing/${match.theirListing.id}`);
+            }}
+            style={({ pressed }) => [mcStyles.viewBtn, { backgroundColor: colors.muted, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Text style={[mcStyles.viewBtnText, { color: colors.foreground }]}>Otvori</Text>
+            <Feather name="arrow-right" size={12} color={colors.foreground} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => animateOut("down", onSave)}
+            style={({ pressed }) => [
+              mcStyles.actionBtn,
+              mcStyles.saveBtn,
+              { opacity: pressed ? 0.75 : 1 },
+            ]}
+            hitSlop={8}
+          >
+            <Feather name="check" size={22} color="#fff" />
+            <Text style={mcStyles.actionBtnLabel}>Spremi</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Footer — outside PanResponder, freely pressable */}
+      {/* Footer — user & location */}
       <Pressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push(`/listing/${match.theirListing.id}`);
+          router.push(`/user/${encodeURIComponent(match.theirListing.userName)}`);
         }}
         style={({ pressed }) => [
           mcStyles.footer,
           { borderTopColor: colors.border, backgroundColor: pressed ? colors.muted : "transparent" },
         ]}
       >
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/user/${encodeURIComponent(match.theirListing.userName)}`);
-          }}
-          style={mcStyles.footerLeft}
-        >
-          <Feather name="user" size={11} color={colors.mutedForeground} />
-          <Text style={[mcStyles.footerUser, { color: colors.secondary }]}>
-            {match.theirListing.userName}
-          </Text>
-          <Text style={[mcStyles.footerDot, { color: colors.mutedForeground }]}>·</Text>
-          <Feather name="map-pin" size={11} color={colors.mutedForeground} />
-          <Text style={[mcStyles.footerUser, { color: colors.mutedForeground }]}>
-            {match.theirListing.location}
-          </Text>
-        </Pressable>
-        <View style={[mcStyles.viewBtn, { backgroundColor: colors.primary }]}>
-          <Text style={[mcStyles.viewBtnText, { color: colors.primaryForeground }]}>Otvori →</Text>
-        </View>
+        <Feather name="user" size={11} color={colors.mutedForeground} />
+        <Text style={[mcStyles.footerUser, { color: colors.secondary }]}>
+          {match.theirListing.userName}
+        </Text>
+        <Text style={[mcStyles.footerDot, { color: colors.mutedForeground }]}>·</Text>
+        <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+        <Text style={[mcStyles.footerUser, { color: colors.mutedForeground }]}>
+          {match.theirListing.location}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -433,7 +390,6 @@ export default function ProfileScreen() {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const { width: screenWidth } = useWindowDimensions();
   const snapPad = Math.max(0, (screenWidth - 32 - 296) / 2);
-  const [listScrollEnabled, setListScrollEnabled] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   async function onRefresh() {
@@ -769,8 +725,6 @@ export default function ProfileScreen() {
                 colors={colors}
                 onDismiss={() => handleDismiss(match.theirListing.id)}
                 onSave={() => handleSaveMatch(match.theirListing.id)}
-                onSwipeStart={() => setListScrollEnabled(false)}
-                onSwipeEnd={() => setListScrollEnabled(true)}
               />
             ))}
           </ScrollView>
@@ -831,7 +785,6 @@ export default function ProfileScreen() {
         columnWrapperStyle={styles.columnWrapper}
         ListHeaderComponent={ListHeader}
         keyboardShouldPersistTaps="always"
-        scrollEnabled={listScrollEnabled}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1384,27 +1337,17 @@ const mcStyles = StyleSheet.create({
     borderWidth: 1.5,
     overflow: "hidden",
   },
-  swipeArea: {
+  cardBody: {
     padding: 14,
     gap: 12,
   },
-  hintsRow: {
+  badgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
-  hintPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  hintText: { fontSize: 10, fontFamily: "Inter_500Medium" },
   typeBadge: {
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
@@ -1437,47 +1380,55 @@ const mcStyles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  footer: {
+  // Dva gumba + "Otvori"
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingBottom: 2,
+    gap: 10,
+    marginTop: 2,
   },
-  footerLeft: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
-  footerUser: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  footerDot: { fontSize: 11 },
-  viewBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  viewBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  actionOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 52,
+  actionBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  dismissBtn: {
+    backgroundColor: "#ef4444",
+  },
+  saveBtn: {
+    backgroundColor: "#22c55e",
+  },
+  actionBtnLabel: {
+    color: "#fff",
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
+  },
+  viewBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    zIndex: 10,
-    borderRadius: 14,
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  dismissOverlay: {
-    top: 0,
-    backgroundColor: "#ef4444cc",
+  viewBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderTopWidth: 1,
   },
-  saveOverlay: {
-    bottom: 0,
-    backgroundColor: "#22c55ecc",
-  },
-  overlayText: {
-    color: "#fff",
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
+  footerUser: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  footerDot: { fontSize: 11 },
 });
 
 const savedStyles = StyleSheet.create({
