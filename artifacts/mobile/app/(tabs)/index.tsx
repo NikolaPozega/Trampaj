@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { ListingCard } from "@/components/ListingCard";
-import { CATEGORIES, useListings } from "@/context/ListingsContext";
+import { useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
@@ -125,17 +125,6 @@ function injectAds(listings: Listing[]): FlatItem[] {
   return result;
 }
 
-const FILTER_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
-  Sve: "grid",
-  Elektronika: "cpu",
-  Odjeća: "shopping-bag",
-  Knjige: "book",
-  Sport: "activity",
-  Nakit: "star",
-  Namještaj: "home",
-  Igračke: "gift",
-  Ostalo: "package",
-};
 
 export default function BrowseScreen() {
   const colors = useColors();
@@ -145,7 +134,6 @@ export default function BrowseScreen() {
   const { unreadCount } = useChat();
   const [searchTrazim, setSearchTrazim] = useState("");
   const [searchNudim, setSearchNudim] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   React.useEffect(() => {
@@ -157,16 +145,6 @@ export default function BrowseScreen() {
     setRefreshing(true);
     await new Promise((r) => setTimeout(r, 700));
     setRefreshing(false);
-  }
-
-  function toggleCategory(cat: string) {
-    if (cat === "Sve") {
-      setSelectedCategories([]);
-      return;
-    }
-    setSelectedCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    );
   }
 
   function normSearch(s: string) {
@@ -184,7 +162,6 @@ export default function BrowseScreen() {
 
     return listings.filter((l) => {
       if (l.status !== "active") return false;
-      if (selectedCategories.length > 0 && !selectedCategories.includes(l.category)) return false;
 
       if (!hasTrazim && !hasNudim) return true;
 
@@ -207,7 +184,7 @@ export default function BrowseScreen() {
       // Ako je samo jedan: dovoljno je jedan
       return hasTrazim && hasNudim ? trazimOk && nudimOk : trazimOk && nudimOk;
     });
-  }, [listings, selectedCategories, searchTrazim, searchNudim]);
+  }, [listings, searchTrazim, searchNudim]);
 
   const flatData = useMemo(() => injectAds(filtered), [filtered]);
 
@@ -340,45 +317,6 @@ export default function BrowseScreen() {
           </View>
         )}
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categories}
-        >
-          {CATEGORIES.map((cat) => {
-            const isAll = cat === "Sve";
-            const selected = isAll ? selectedCategories.length === 0 : selectedCategories.includes(cat);
-            const icon = FILTER_ICONS[cat] ?? "package";
-            return (
-              <Pressable
-                key={cat}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleCategory(cat); }}
-                style={({ pressed }) => [
-                  styles.categoryChip,
-                  {
-                    backgroundColor: selected ? colors.primary : colors.muted,
-                    borderColor: selected ? colors.primary : colors.border,
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
-              >
-                <Feather
-                  name={icon}
-                  size={13}
-                  color={selected ? colors.primaryForeground : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.categoryText,
-                    { color: selected ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
 
       {/* ── Content ────────────────────────────────────────────────────────── */}

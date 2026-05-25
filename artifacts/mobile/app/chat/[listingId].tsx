@@ -227,13 +227,15 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const prevHsRef = useRef<HsStatus | null>(null);
 
-  const conversation =
-    conversations.find((c) => c.listingId === listingId) ??
-    getOrCreateConversation(listingId ?? "", listingTitle ?? "", otherUser ?? "");
-  const liveConv =
-    conversations.find((c) => c.listingId === listingId) ?? conversation;
+  // Create conversation in effect (not during render) to avoid ChatProvider update-during-render warning
+  useEffect(() => {
+    if (listingId && !conversations.find((c) => c.listingId === listingId)) {
+      getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
+    }
+  }, [listingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hsStatus = getHsStatus(liveConv.messages);
+  const liveConv = conversations.find((c) => c.listingId === listingId);
+  const hsStatus = liveConv ? getHsStatus(liveConv.messages) : "idle";
 
   // Mark as read
   useEffect(() => {
@@ -242,13 +244,14 @@ export default function ChatScreen() {
 
   // Scroll to end
   useEffect(() => {
+    if (!liveConv) return;
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [liveConv.messages.length]);
+  }, [liveConv?.messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show deal overlay only on live transition (not on re-entry if already shown)
   useEffect(() => {
+    if (!liveConv) return;
     if (prevHsRef.current === null) {
-      // First render — sync without triggering overlay
       prevHsRef.current = hsStatus;
       return;
     }
@@ -256,33 +259,39 @@ export default function ChatScreen() {
       setShowDeal(true);
     }
     prevHsRef.current = hsStatus;
-  }, [hsStatus, liveConv.dealShown]);
+  }, [hsStatus, liveConv?.dealShown]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const convId = liveConv?.id ?? "";
 
   const handleSend = useCallback(() => {
-    if (!text.trim()) return;
+    if (!text.trim() || !convId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    sendMessage(liveConv.id, text.trim());
+    sendMessage(convId, text.trim());
     setText("");
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
-  }, [text, liveConv.id, sendMessage]);
+  }, [text, convId, sendMessage]);
 
   const handleHandshake = useCallback(() => {
-    sendSpecialMessage(liveConv.id, "handshake_request");
-  }, [liveConv.id, sendSpecialMessage]);
+    if (!convId) return;
+    sendSpecialMessage(convId, "handshake_request");
+  }, [convId, sendSpecialMessage]);
 
   const handleAccept = useCallback(() => {
-    sendSpecialMessage(liveConv.id, "handshake_accepted");
-  }, [liveConv.id, sendSpecialMessage]);
+    if (!convId) return;
+    sendSpecialMessage(convId, "handshake_accepted");
+  }, [convId, sendSpecialMessage]);
 
   const handleReject = useCallback(() => {
-    sendSpecialMessage(liveConv.id, "handshake_rejected");
-  }, [liveConv.id, sendSpecialMessage]);
+    if (!convId) return;
+    sendSpecialMessage(convId, "handshake_rejected");
+  }, [convId, sendSpecialMessage]);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 12 : 6);
 
   const renderMessage = useCallback(
     ({ item, index }: { item: ChatMessage; index: number }) => {
+      if (!liveConv) return null;
       const prev = liveConv.messages[index - 1];
       const showAvatar = !item.fromMe && (!prev || prev.fromMe || prev.type !== "text");
 
@@ -356,6 +365,14 @@ export default function ChatScreen() {
     },
     [liveConv, handleAccept, handleReject]
   );
+
+  if (!liveConv) {
+    return (
+      <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
+        <Text style={{ color: C.muted, fontSize: 13 }}>Učitavanje...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
