@@ -1,0 +1,2 @@
+- [Feed ordering & ad logic](feed-ordering.md) — newest-first feed; logged-in users get personalized ranking by own-listing keywords + search history.
+- [Ad injection pattern](ad-injection.md) — ads at row3col3, row6col1, row9col3, row12col1... (every 3 rows, alternating col); must be infinite (dynamic, not fixed count).
