@@ -1,14 +1,16 @@
 import { Feather } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { useChat } from "@/context/ChatContext";
 import { searchBus } from "@/utils/searchBus";
 
 export default function TabLayout() {
   const colors = useColors();
   const { user, isLoading } = useAuth();
+  const { unreadCount } = useChat();
   const wasLoggedIn = useRef(false);
 
   // Track if user was ever logged in; on logout go back to browse (not login)
@@ -76,7 +78,16 @@ export default function TabLayout() {
           title: "Profil",
           tabBarButton: user ? undefined : () => null,
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+            <View>
+              <Feather name="user" size={size} color={color} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -92,5 +103,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    backgroundColor: "#E85D25",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "700",
+    lineHeight: 13,
   },
 });

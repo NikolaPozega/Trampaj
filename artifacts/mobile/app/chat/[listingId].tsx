@@ -24,7 +24,7 @@ export default function ChatScreen() {
   }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getOrCreateConversation, sendMessage, conversations } = useChat();
+  const { getOrCreateConversation, sendMessage, markAsRead, conversations } = useChat();
   const [text, setText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
@@ -32,6 +32,10 @@ export default function ChatScreen() {
     ?? getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
 
   const liveConversation = conversations.find((c) => c.listingId === listingId) ?? conversation;
+
+  useEffect(() => {
+    if (liveConversation?.id) markAsRead(liveConversation.id);
+  }, [liveConversation?.id, markAsRead]);
 
   useEffect(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
