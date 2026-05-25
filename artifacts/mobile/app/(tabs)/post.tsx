@@ -377,8 +377,11 @@ export default function PostScreen() {
     ]);
   }
 
+  const submittingRef = useRef(false);
+
   async function handleSubmit() {
-    if (!isValid) return;
+    if (!isValid || submittingRef.current) return;
+    submittingRef.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const priceNum = priceText.trim()
       ? parseFloat(priceText.replace(",", "."))
@@ -454,6 +457,7 @@ export default function PostScreen() {
       setTitleAIBadge(false);
       setDescriptionAIBadge(false);
       setSubmitted(false);
+      submittingRef.current = false;
       router.push("/(tabs)/");
     }, 1500);
   }
