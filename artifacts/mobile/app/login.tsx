@@ -407,11 +407,11 @@ export default function LoginScreen() {
 
       {/* ── Forgot password modal ──────────────────────────────────────── */}
       <Modal visible={showForgotModal} transparent animationType="slide" onRequestClose={() => setShowForgotModal(false)}>
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
-          onPress={() => setShowForgotModal(false)}
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "padding"}>
+          <Pressable
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+            onPress={() => setShowForgotModal(false)}
+          >
             <Pressable
               style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.border, padding: 24, paddingBottom: 40, gap: 16 }}
               onPress={() => {}}
@@ -447,7 +447,7 @@ export default function LoginScreen() {
               ) : (
                 <>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>Zaboravio lozinku?</Text>
+                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>Zaboravljena lozinka?</Text>
                     <Pressable onPress={() => setShowForgotModal(false)}>
                       <Feather name="x" size={22} color={colors.mutedForeground} />
                     </Pressable>
@@ -510,8 +510,8 @@ export default function LoginScreen() {
                 </>
               )}
             </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Bio confirm password modal (web fallback) */}
