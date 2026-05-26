@@ -115,6 +115,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_2",
@@ -131,6 +133,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 5,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_3",
@@ -147,6 +151,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 4,
   },
   {
     id: "sample_4",
@@ -163,6 +169,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 3,
     status: "active",
     isMine: false,
+    packageSize: "large",
   },
   {
     id: "sample_5",
@@ -179,6 +186,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 7,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 3,
   },
   {
     id: "sample_6",
@@ -195,6 +204,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "L",
   },
   {
     id: "sample_7",
@@ -211,6 +222,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_8",
@@ -227,6 +240,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 4,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_9",
@@ -243,6 +258,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_10",
@@ -259,6 +276,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_11",
@@ -275,6 +294,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 3,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_12",
@@ -291,6 +312,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 4,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 2,
   },
   {
     id: "sample_13",
@@ -307,6 +330,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 5,
     status: "active",
     isMine: false,
+    packageSize: "large",
   },
   {
     id: "sample_14",
@@ -323,6 +347,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 6,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 7,
   },
   {
     id: "sample_15",
@@ -339,6 +365,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "large",
   },
   {
     id: "sample_16",
@@ -355,6 +382,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 3,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_17",
@@ -371,6 +400,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 6,
   },
   {
     id: "sample_18",
@@ -387,6 +418,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 10,
     status: "active",
     isMine: false,
+    packageSize: "large",
   },
   {
     id: "sample_19",
@@ -403,6 +435,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 4,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_20",
@@ -419,6 +453,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 5,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 2,
   },
   {
     id: "sample_21",
@@ -435,6 +471,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 7,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 8,
   },
   {
     id: "sample_22",
@@ -451,6 +489,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 8,
     status: "active",
     isMine: false,
+    packageSize: "large",
   },
   {
     id: "sample_23",
@@ -467,6 +506,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 4,
   },
   {
     id: "sample_24",
@@ -483,6 +524,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 3,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_25",
@@ -499,6 +542,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 6,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 1,
   },
   {
     id: "sample_26",
@@ -515,6 +560,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "S",
   },
   {
     id: "sample_27",
@@ -531,6 +578,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 9,
     status: "active",
     isMine: false,
+    packageSize: "medium",
+    packageWeight: 3,
   },
   {
     id: "sample_28",
@@ -547,6 +596,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: false,
+    packageSize: "small",
+    packageBoxSize: "L",
   },
   {
     id: "sample_mine_1",
@@ -563,6 +614,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 1,
     status: "active",
     isMine: true,
+    packageSize: "small",
+    packageBoxSize: "M",
   },
   {
     id: "sample_mine_2",
@@ -579,6 +632,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 2,
     status: "active",
     isMine: true,
+    packageSize: "large",
   },
   {
     id: "sample_mine_3",
@@ -595,6 +649,8 @@ const SAMPLE_LISTINGS: Listing[] = [
     createdAt: Date.now() - 86400000 * 3,
     status: "active",
     isMine: true,
+    packageSize: "medium",
+    packageWeight: 2,
   },
   {
     id: "sample_30",
@@ -613,6 +669,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     isMine: false,
     nudimTags: ["stolica", "namještaj", "blagovaonica"],
     trazimTags: ["stol", "fotelja", "namještaj"],
+    packageSize: "large",
   },
   {
     id: "sample_31",
@@ -631,6 +688,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     isMine: false,
     nudimTags: ["stolica", "uredska stolica", "ergonomska"],
     trazimTags: ["monitor", "laptop", "uredska oprema"],
+    packageSize: "large",
   },
   {
     id: "sample_32",
@@ -649,6 +707,7 @@ const SAMPLE_LISTINGS: Listing[] = [
     isMine: false,
     nudimTags: ["sofa", "kauč", "namještaj", "dnevna soba"],
     trazimTags: ["sofa", "fotelja", "kauč"],
+    packageSize: "large",
   },
   {
     id: "sample_33",
@@ -667,6 +726,26 @@ const SAMPLE_LISTINGS: Listing[] = [
     isMine: false,
     nudimTags: ["ormar", "garderober", "namještaj", "spavaća soba"],
     trazimTags: ["komoda", "polica", "namještaj"],
+    packageSize: "large",
+  },
+  {
+    id: "sample_kauc",
+    title: "Kauč ugaona garnitura, antracit",
+    description: "Ugaona garnitura u dobrom stanju, antracit boja. Bez fleka. Demontira se na dva dijela za transport. Dostupna Rijeka.",
+    category: "Namještaj",
+    condition: "Dobro",
+    wantedFor: "Dvosjedna sofa, fotelja ili veća polica",
+    price: 300,
+    imageUris: ["https://picsum.photos/seed/ugaona_kauč/400/300"],
+    phone: "091 500 6677",
+    userName: "Robert K.",
+    location: "Rijeka",
+    createdAt: Date.now() - 86400000 * 1,
+    status: "active",
+    isMine: false,
+    nudimTags: ["kauč", "ugaona", "sofa", "garnitura", "namještaj"],
+    trazimTags: ["sofa", "fotelja", "polica"],
+    packageSize: "large",
   },
 ];
 
