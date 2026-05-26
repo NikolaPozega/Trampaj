@@ -31,6 +31,7 @@ export const CONDITION_COLORS: Record<Condition, string> = {
 export type Topup = "primam" | "dajem" | "oboje" | "ne";
 export type Flexibility = "tocno" | "otvoren";
 export type Deadline = "hitno" | "ovaj-mjesec" | "bez-roka";
+export type PackageSize = "small" | "medium" | "large";
 
 export interface Listing {
   id: string;
@@ -54,6 +55,7 @@ export interface Listing {
   deadline?: Deadline | null;
   nudimTags?: string[];
   trazimTags?: string[];
+  packageSize?: PackageSize | null;
 }
 
 export interface Review {

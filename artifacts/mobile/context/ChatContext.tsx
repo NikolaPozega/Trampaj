@@ -13,6 +13,13 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+export interface DeliveryInfo {
+  myShipping: "paketomat" | "gls" | "osobno";
+  theirShipping: "paketomat" | "gls" | "osobno";
+  whoPays: "each_own" | "sender" | "agreement";
+  escrowActive: boolean;
+}
+
 export interface Conversation {
   id: string;
   listingId: string;
@@ -22,6 +29,8 @@ export interface Conversation {
   updatedAt: number;
   lastReadAt: number;
   dealShown: boolean;
+  disclaimerAccepted?: boolean;
+  deliveryInfo?: DeliveryInfo;
 }
 
 interface ChatContextType {
@@ -31,12 +40,14 @@ interface ChatContextType {
   sendSpecialMessage: (conversationId: string, type: Exclude<MessageType, "text">) => void;
   markAsRead: (conversationId: string) => void;
   markDealShown: (conversationId: string) => void;
+  acceptDisclaimer: (conversationId: string) => void;
+  saveDeliveryInfo: (conversationId: string, info: DeliveryInfo) => void;
   deleteConversation: (conversationId: string) => void;
   unreadCount: number;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
-const STORAGE_KEY = "@trampaj_chats_v4";
+const STORAGE_KEY = "@trampaj_chats_v5";
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -66,6 +77,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         messages: [],
         updatedAt: now,
         dealShown: false,
+        disclaimerAccepted: false,
       };
       save([newConv, ...conversations]);
       return newConv;
@@ -160,6 +172,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const acceptDisclaimer = useCallback((conversationId: string) => {
+    setConversations((prev) => {
+      const next = prev.map((c) =>
+        c.id === conversationId ? { ...c, disclaimerAccepted: true } : c
+      );
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const saveDeliveryInfo = useCallback((conversationId: string, info: DeliveryInfo) => {
+    setConversations((prev) => {
+      const next = prev.map((c) =>
+        c.id === conversationId ? { ...c, deliveryInfo: info } : c
+      );
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const deleteConversation = useCallback((conversationId: string) => {
     setConversations((prev) => {
       const next = prev.filter((c) => c.id !== conversationId);
@@ -183,6 +215,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       sendSpecialMessage,
       markAsRead,
       markDealShown,
+      acceptDisclaimer,
+      saveDeliveryInfo,
       deleteConversation,
       unreadCount,
     }}>

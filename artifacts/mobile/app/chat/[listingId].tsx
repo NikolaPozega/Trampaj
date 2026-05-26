@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,7 +19,7 @@ import {
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { ChatMessage, MessageType } from "@/context/ChatContext";
+import type { ChatMessage, DeliveryInfo, MessageType } from "@/context/ChatContext";
 import { useChat } from "@/context/ChatContext";
 
 const { width: SW } = Dimensions.get("window");
@@ -167,6 +168,179 @@ function MiniBadge() {
   );
 }
 
+// ─── Disclaimer modal ────────────────────────────────────────────────────────
+function DisclaimerModal({ onAccept, onSkip }: { onAccept: () => void; onSkip: () => void }) {
+  return (
+    <View style={styles.overlay}>
+      <View style={[styles.dealCard, { padding: 24, gap: 0, maxHeight: "82%" }]}>
+        <Text style={styles.modalLabel}>UVJETI TRAMPE</Text>
+        <Text style={styles.modalTitle}>Odricanje odgovornosti</Text>
+        <ScrollView style={{ maxHeight: 280, marginTop: 8 }} showsVerticalScrollIndicator={false}>
+          <Text style={styles.disclaimerBody}>
+            <Text style={styles.disclaimerBold}>Trampaj.hr</Text>
+            {" posreduje isključivo u oglašavanju i međusobnom povezivanju korisnika koji žele izvršiti razmjenu (trampu) predmeta.\n\n"}
+            <Text style={styles.disclaimerBold}>Trampaj.hr nije stranka ovog dogovora</Text>
+            {" i ne preuzima nikakvu odgovornost za:\n\n"}
+            {"• Stanje, ispravnost ili točnost opisa predmeta\n"}
+            {"• Gubitak ili oštećenje predmeta u dostavi\n"}
+            {"• Postupke, propuste ili prijevarno ponašanje ikoje stranke\n"}
+            {"• Sporove nastale između korisnika platforme\n\n"}
+            {"Trampu obavljate "}
+            <Text style={styles.disclaimerBold}>na vlastitu odgovornost</Text>
+            {". Savjetujemo snimanje predmeta pri pakiranju i čuvanje potvrda o slanju."}
+          </Text>
+        </ScrollView>
+        <Pressable
+          onPress={onAccept}
+          style={({ pressed }) => [styles.dealBtn, { marginTop: 20, width: "100%", opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Text style={styles.dealBtnText}>Razumijem i prihvaćam ✓</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSkip}
+          style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+        >
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Zatvori</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ─── Delivery modal ───────────────────────────────────────────────────────────
+const SHIPPING_OPTIONS: { key: DeliveryInfo["myShipping"]; label: string; sub: string }[] = [
+  { key: "paketomat", label: "📦 Paketomat", sub: "do 5 kg, Box Now / Overseas" },
+  { key: "gls", label: "🚐 GLS kućna dostava", sub: "do 31 kg, po dogovoru" },
+  { key: "osobno", label: "🤝 Osobno preuzimanje", sub: "bez dostave" },
+];
+const PAY_OPTIONS: { key: DeliveryInfo["whoPays"]; label: string; sub: string }[] = [
+  { key: "each_own", label: "👐 Svaki svoju", sub: "plaća dostavu svog paketa" },
+  { key: "sender", label: "📤 Pošiljatelj", sub: "onaj tko šalje plaća oboje" },
+  { key: "agreement", label: "🗣️ Dogovor", sub: "sami se dogovorite direktno" },
+];
+
+function DeliveryModal({
+  otherName,
+  onDone,
+  onSkip,
+}: {
+  otherName: string;
+  onDone: (info: DeliveryInfo) => void;
+  onSkip: () => void;
+}) {
+  const [myShipping, setMyShipping] = useState<DeliveryInfo["myShipping"] | null>(null);
+  const [theirShipping, setTheirShipping] = useState<DeliveryInfo["theirShipping"] | null>(null);
+  const [whoPays, setWhoPays] = useState<DeliveryInfo["whoPays"] | null>(null);
+  const isComplete = myShipping !== null && theirShipping !== null && whoPays !== null;
+
+  return (
+    <View style={styles.overlay}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.dealCard, { padding: 22, gap: 0, width: "100%" }]}>
+          <Text style={styles.modalLabel}>ORGANIZACIJA DOSTAVE</Text>
+          <Text style={styles.modalTitle}>Kako šaljete pakete?</Text>
+
+          <Text style={styles.deliverySection}>Kako šalješ <Text style={{ color: C.primary }}>svoju</Text> stvar?</Text>
+          {SHIPPING_OPTIONS.map((o) => (
+            <Pressable
+              key={o.key}
+              onPress={() => setMyShipping(o.key)}
+              style={[styles.deliveryOption, myShipping === o.key && styles.deliveryOptionSelected]}
+            >
+              <Text style={[styles.deliveryOptionLabel, myShipping === o.key && { color: C.primary }]}>{o.label}</Text>
+              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
+            </Pressable>
+          ))}
+
+          <Text style={[styles.deliverySection, { marginTop: 16 }]}>
+            Kako očekuješ da <Text style={{ color: C.secondary }}>{otherName}</Text> šalje?
+          </Text>
+          {SHIPPING_OPTIONS.map((o) => (
+            <Pressable
+              key={`their-${o.key}`}
+              onPress={() => setTheirShipping(o.key)}
+              style={[styles.deliveryOption, theirShipping === o.key && styles.deliveryOptionSelected]}
+            >
+              <Text style={[styles.deliveryOptionLabel, theirShipping === o.key && { color: C.secondary }]}>{o.label}</Text>
+              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
+            </Pressable>
+          ))}
+
+          <Text style={[styles.deliverySection, { marginTop: 16 }]}>Tko plaća dostavu?</Text>
+          {PAY_OPTIONS.map((o) => (
+            <Pressable
+              key={o.key}
+              onPress={() => setWhoPays(o.key)}
+              style={[styles.deliveryOption, whoPays === o.key && styles.deliveryOptionSelected]}
+            >
+              <Text style={[styles.deliveryOptionLabel, whoPays === o.key && { color: C.primary }]}>{o.label}</Text>
+              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
+            </Pressable>
+          ))}
+
+          <Pressable
+            onPress={() =>
+              isComplete
+                ? onDone({ myShipping: myShipping!, theirShipping: theirShipping!, whoPays: whoPays!, escrowActive: false })
+                : null
+            }
+            style={({ pressed }) => [
+              styles.dealBtn,
+              { marginTop: 22, width: "100%", opacity: isComplete ? (pressed ? 0.85 : 1) : 0.4 },
+            ]}
+          >
+            <Text style={styles.dealBtnText}>Potvrdi dogovor →</Text>
+          </Pressable>
+          <Pressable
+            onPress={onSkip}
+            style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+          >
+            <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── Escrow modal ─────────────────────────────────────────────────────────────
+function EscrowModal({ onActivate, onSkip }: { onActivate: () => void; onSkip: () => void }) {
+  return (
+    <View style={styles.overlay}>
+      <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
+        <Text style={{ fontSize: 36, marginBottom: 8 }}>🔒</Text>
+        <Text style={styles.modalLabel}>ZAŠTITA TRAMPE</Text>
+        <Text style={styles.modalTitle}>Sigurnosni depozit</Text>
+        <Text style={[styles.disclaimerBody, { marginTop: 12 }]}>
+          {"Rezerviraj mali iznos na kartici koji se otpušta kada obje strane potvrde primitak paketa.\n\n"}
+          {"Ako jedna strana ne pošalje paket u dogovorenom roku, iznos se vraća drugoj strani.\n\n"}
+          <Text style={styles.disclaimerBold}>Dostupno uskoro</Text>
+          {" — trenutno radimo na integraciji sigurnosnog plaćanja."}
+        </Text>
+        <Pressable
+          onPress={onActivate}
+          style={({ pressed }) => [
+            styles.dealBtn,
+            { marginTop: 20, width: "100%", backgroundColor: C.secondary, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Obavijesti me kada bude dostupno</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSkip}
+          style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+        >
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 // ─── Deal overlay (confetti + card) ─────────────────────────────────────────
 function DealOverlay({ onDismiss }: { onDismiss: () => void }) {
   const cardScale = useRef(new Animated.Value(0)).current;
@@ -219,11 +393,12 @@ export default function ChatScreen() {
     otherUser: string;
   }>();
   const insets = useSafeAreaInsets();
-  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, deleteConversation } =
+  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation } =
     useChat();
 
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
+  const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "delivery" | "escrow">(null);
   const flatListRef = useRef<FlatList>(null);
   const prevHsRef = useRef<HsStatus | null>(null);
 
@@ -495,6 +670,59 @@ export default function ChatScreen() {
         <DealOverlay
           onDismiss={() => {
             setShowDeal(false);
+            if (!liveConv.disclaimerAccepted) {
+              setPostDealStep("disclaimer");
+            } else if (!liveConv.deliveryInfo) {
+              setPostDealStep("delivery");
+            } else {
+              markDealShown(liveConv.id);
+            }
+          }}
+        />
+      )}
+
+      {/* ── Disclaimer Modal ── */}
+      {postDealStep === "disclaimer" && (
+        <DisclaimerModal
+          onAccept={() => {
+            acceptDisclaimer(convId);
+            setPostDealStep("delivery");
+          }}
+          onSkip={() => {
+            setPostDealStep(null);
+            markDealShown(liveConv.id);
+          }}
+        />
+      )}
+
+      {/* ── Delivery Modal ── */}
+      {postDealStep === "delivery" && (
+        <DeliveryModal
+          otherName={liveConv.otherUserName}
+          onDone={(info) => {
+            saveDeliveryInfo(convId, info);
+            setPostDealStep("escrow");
+          }}
+          onSkip={() => {
+            setPostDealStep("escrow");
+          }}
+        />
+      )}
+
+      {/* ── Escrow Modal ── */}
+      {postDealStep === "escrow" && (
+        <EscrowModal
+          onActivate={() => {
+            Alert.alert(
+              "Uskoro dostupno!",
+              "Obavijestit ćemo te kada sigurnosni depozit bude aktiviran.",
+              [{ text: "U redu" }]
+            );
+            setPostDealStep(null);
+            markDealShown(liveConv.id);
+          }}
+          onSkip={() => {
+            setPostDealStep(null);
             markDealShown(liveConv.id);
           }}
         />
@@ -761,5 +989,63 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+  },
+
+  // Modal shared
+  modalLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: C.secondary,
+    letterSpacing: 1.6,
+    marginBottom: 6,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+    marginBottom: 4,
+  },
+  disclaimerBody: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: C.muted,
+    lineHeight: 20,
+  },
+  disclaimerBold: {
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+  },
+
+  // Delivery modal
+  deliverySection: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: C.muted,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  deliveryOption: {
+    borderWidth: 1,
+    borderColor: "rgba(56,189,248,0.22)",
+    borderRadius: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    marginBottom: 6,
+    backgroundColor: "#0D2045",
+  },
+  deliveryOptionSelected: {
+    borderColor: C.primary,
+    backgroundColor: "rgba(245,193,0,0.07)",
+  },
+  deliveryOptionLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
+  },
+  deliveryOptionSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: C.muted,
+    marginTop: 2,
   },
 });

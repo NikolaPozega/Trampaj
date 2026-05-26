@@ -25,6 +25,7 @@ import {
   type Condition,
   type Deadline,
   type Flexibility,
+  type PackageSize,
   type Topup,
   useListings,
 } from "@/context/ListingsContext";
@@ -221,6 +222,7 @@ export default function PostScreen() {
   const [flexibility, setFlexibility] = useState<Flexibility | null>(null);
   const [cashFallback, setCashFallback] = useState<boolean | null>(null);
   const [deadline, setDeadline] = useState<Deadline | null>(null);
+  const [packageSize, setPackageSize] = useState<PackageSize | null>(null);
   const [locationSuggestions, setLocationSuggestions] = useState<
     LocationResult[]
   >([]);
@@ -465,6 +467,7 @@ export default function PostScreen() {
       deadline,
       nudimTags: tags.nudimTags,
       trazimTags: tags.trazimTags,
+      packageSize,
     };
     console.log("[SUBMIT] Novi oglas:", JSON.stringify(listing));
     addListing(listing);
@@ -487,6 +490,7 @@ export default function PostScreen() {
       setFlexibility(null);
       setCashFallback(null);
       setDeadline(null);
+      setPackageSize(null);
       setLocationSuggestions([]);
       setCategoryManuallySet(false);
       titleFromAI.current = false;
@@ -720,6 +724,48 @@ export default function PostScreen() {
           colors={colors}
           options={CONDITIONS.map((c) => ({ key: c, label: c }))}
         />
+
+        {/* Veličina paketa */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+            Veličina paketa (za dostavu)
+          </Text>
+          <View style={{ gap: 8, marginTop: 4 }}>
+            {([
+              { key: "small" as PackageSize, emoji: "📦", label: "Mali paket", sub: "≤ 5 kg — može u paketomat" },
+              { key: "medium" as PackageSize, emoji: "🚐", label: "Srednji paket", sub: "5 – 31 kg — GLS kućna dostava" },
+              { key: "large" as PackageSize, emoji: "🚛", label: "Veliki / nestandardan", sub: "> 31 kg — osobni dogovor" },
+            ] as const).map((opt) => {
+              const selected = packageSize === opt.key;
+              return (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => setPackageSize(selected ? null : opt.key)}
+                  style={[
+                    styles.pkgOption,
+                    {
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected ? "rgba(245,193,0,0.08)" : colors.muted,
+                    },
+                  ]}
+                >
+                  <Text style={styles.pkgEmoji}>{opt.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pkgLabel, { color: selected ? colors.primary : colors.foreground }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.pkgSub, { color: colors.mutedForeground }]}>{opt.sub}</Text>
+                  </View>
+                  {selected && (
+                    <View style={[styles.pkgCheck, { backgroundColor: colors.primary }]}>
+                      <Text style={{ color: "#08152E", fontSize: 10, fontFamily: "Inter_700Bold" }}>✓</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         {/* Vrijednost */}
         <View style={styles.section}>
@@ -1391,6 +1437,35 @@ const styles = StyleSheet.create({
   },
 
   section: { gap: 8 },
+
+  // Package size selector
+  pkgOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  pkgEmoji: { fontSize: 22 },
+  pkgLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  pkgSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  pkgCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   sectionLabelRow: {
     flexDirection: "row",
     alignItems: "center",
