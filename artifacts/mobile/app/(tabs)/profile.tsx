@@ -390,6 +390,34 @@ export default function ProfileScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
+  async function handleDeleteAccount() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      "Izbriši račun i sve podatke",
+      "Ovo će trajno izbrisati tvoj profil, sve oglase, poruke i osobne podatke. Ova radnja je nepovratna.\n\nJesi li siguran?",
+      [
+        { text: "Odustani", style: "cancel" },
+        {
+          text: "Izbriši sve",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (user) {
+                await logout();
+              }
+              await deleteAllData();
+              await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.replace("/(tabs)");
+            } catch {
+              Alert.alert("Greška", "Nije uspjelo brisanje. Pokušaj ponovo.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const { width: screenWidth } = useWindowDimensions();
@@ -689,6 +717,40 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </Pressable>
+        )}
+
+        {/* GDPR / Legal section */}
+        {user && (
+          <View style={[styles.gdprSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.gdprTitleRow}>
+              <Feather name="shield" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.gdprTitle, { color: colors.mutedForeground }]}>Privatnost i pravni uvjeti</Text>
+            </View>
+            <View style={styles.gdprLinks}>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/privacy"); }}
+                style={styles.gdprLink}
+              >
+                <Feather name="lock" size={12} color={colors.secondary} />
+                <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Politika privatnosti</Text>
+              </Pressable>
+              <View style={[styles.gdprDivider, { backgroundColor: colors.border }]} />
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/terms"); }}
+                style={styles.gdprLink}
+              >
+                <Feather name="file-text" size={12} color={colors.secondary} />
+                <Text style={[styles.gdprLinkText, { color: colors.secondary }]}>Uvjeti korištenja</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={handleDeleteAccount}
+              style={({ pressed }) => [styles.gdprDeleteBtn, { borderColor: `${colors.destructive}40`, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Feather name="trash-2" size={13} color={colors.destructive} />
+              <Text style={[styles.gdprDeleteText, { color: colors.destructive }]}>Izbriši račun i sve podatke</Text>
+            </Pressable>
+          </View>
         )}
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />

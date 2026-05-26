@@ -264,6 +264,9 @@ export default function ListingDetailScreen() {
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
+  const [reportModal, setReportModal] = useState(false);
+  const [reportCategory, setReportCategory] = useState<string | null>(null);
+  const [reportSent, setReportSent] = useState(false);
   const { getOrCreateConversation } = useChat();
 
   const listing = listings.find((l) => l.id === id);
@@ -572,41 +575,9 @@ export default function ListingDetailScreen() {
               style={styles.reportBtn}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                Alert.alert(
-                  listing.title,
-                  "Odaberi akciju",
-                  [
-                    {
-                      text: "Prijavi oglas",
-                      onPress: () => {
-                        Alert.alert("Prijava zaprimljena", "Hvala! Naš tim će pregledati oglas i poduzeti potrebne mjere.", [{ text: "U redu" }]);
-                      },
-                    },
-                    {
-                      text: `Blokiraj korisnika (${listing.userName})`,
-                      style: "destructive",
-                      onPress: () => {
-                        Alert.alert(
-                          "Blokiraj korisnika",
-                          `Korisnik ${listing.userName} neće se više prikazivati u tvom feedu. Možeš ih odblokirat u postavkama profila.`,
-                          [
-                            { text: "Odustani", style: "cancel" },
-                            {
-                              text: "Blokiraj",
-                              style: "destructive",
-                              onPress: () => {
-                                blockUser(listing.userName);
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                router.back();
-                              },
-                            },
-                          ]
-                        );
-                      },
-                    },
-                    { text: "Odustani", style: "cancel" },
-                  ]
-                );
+                setReportCategory(null);
+                setReportSent(false);
+                setReportModal(true);
               }}
             >
               <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi / Blokiraj</Text>
@@ -698,6 +669,114 @@ export default function ListingDetailScreen() {
                 >
                   <Text style={[styles.modalBtnText, { color: (modalMode === "barter" && !offerText.trim()) ? colors.mutedForeground : colors.primaryForeground }]}>
                     {modalMode === "buy" ? "Pošalji zahtjev" : "Pošalji ponudu"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Report / Block modal */}
+      <Modal visible={reportModal} transparent animationType="slide" onRequestClose={() => setReportModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setReportModal(false)}>
+          <Pressable style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
+            {reportSent ? (
+              <View style={styles.sentContainer}>
+                <View style={[styles.sentIcon, { backgroundColor: "#2E7D4F" }]}>
+                  <Feather name="check" size={28} color="#fff" />
+                </View>
+                <Text style={[styles.sentTitle, { color: colors.foreground }]}>Prijava zaprimljena</Text>
+                <Text style={[styles.sentSub, { color: colors.mutedForeground }]}>
+                  Naš tim će pregledati oglas unutar 72 sata (sukladno DSA uredbi).
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Prijavi oglas</Text>
+                <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+                  Odaberi razlog prijave za: {listing.title}
+                </Text>
+
+                {[
+                  { key: "lazni", label: "Lažan ili obmanjujuć oglas", icon: "alert-triangle" },
+                  { key: "zabranjeno", label: "Zabranjeni predmet ili ilegalna roba", icon: "slash" },
+                  { key: "spam", label: "Spam ili višestruko objavljivanje", icon: "copy" },
+                  { key: "uvredljivo", label: "Uvredljiv ili neprikladan sadržaj", icon: "flag" },
+                  { key: "ostalo", label: "Ostalo", icon: "more-horizontal" },
+                ].map(({ key, label, icon }) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => setReportCategory(key)}
+                    style={({ pressed }) => [{
+                      flexDirection: "row" as const,
+                      alignItems: "center" as const,
+                      gap: 10,
+                      paddingVertical: 11,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: reportCategory === key ? colors.primary : colors.border,
+                      backgroundColor: reportCategory === key ? `${colors.primary}18` : colors.muted,
+                      opacity: pressed ? 0.75 : 1,
+                    }]}
+                  >
+                    <Feather name={icon as keyof typeof Feather.glyphMap} size={15} color={reportCategory === key ? colors.primary : colors.mutedForeground} />
+                    <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: reportCategory === key ? colors.primary : colors.foreground }}>
+                      {label}
+                    </Text>
+                    {reportCategory === key && <Feather name="check" size={14} color={colors.primary} />}
+                  </Pressable>
+                ))}
+
+                <Pressable
+                  onPress={() => {
+                    if (!reportCategory) return;
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    setReportSent(true);
+                  }}
+                  style={({ pressed }) => [
+                    styles.modalBtn,
+                    { backgroundColor: reportCategory ? colors.primary : colors.muted, opacity: pressed ? 0.8 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.modalBtnText, { color: reportCategory ? colors.primaryForeground : colors.mutedForeground }]}>
+                    Prijavi oglas
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Blokiraj korisnika",
+                      `Korisnik ${listing.userName} neće se više prikazivati u tvom feedu. Možeš ih odblokirati u postavkama profila.`,
+                      [
+                        { text: "Odustani", style: "cancel" },
+                        {
+                          text: "Blokiraj",
+                          style: "destructive",
+                          onPress: () => {
+                            blockUser(listing.userName);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            setReportModal(false);
+                            router.back();
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  style={({ pressed }) => [{
+                    flexDirection: "row" as const,
+                    alignItems: "center" as const,
+                    justifyContent: "center" as const,
+                    gap: 6,
+                    paddingVertical: 10,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Feather name="user-x" size={13} color={colors.destructive} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.destructive }}>
+                    Blokiraj korisnika ({listing.userName})
                   </Text>
                 </Pressable>
               </>

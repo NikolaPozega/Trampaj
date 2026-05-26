@@ -5,6 +5,27 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
+const UPDATED = "26. svibnja 2025.";
+const CONTACT = "privacy@trampaj.hr";
+
+function Section({ title, children, colors }: {
+  title: string; children: React.ReactNode;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text>
+      {typeof children === "string"
+        ? <Text style={[styles.sectionBody, { color: colors.mutedForeground }]}>{children}</Text>
+        : children}
+    </View>
+  );
+}
+
+function Body({ children, colors }: { children: string; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+  return <Text style={[styles.sectionBody, { color: colors.mutedForeground }]}>{children}</Text>;
+}
+
 export default function PrivacyScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -28,74 +49,84 @@ export default function PrivacyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.updated, { color: colors.mutedForeground }]}>
-          Zadnja izmjena: 24. svibnja 2025.
+          Zadnja izmjena: {UPDATED}
         </Text>
 
-        <Section title="1. Voditelj obrade" colors={colors}>
-          Trampaj.hr (dalje: „Platforma") je platforma za razmjenu dobara između fizičkih osoba na području Republike Hrvatske i šire regije. Voditelj obrade osobnih podataka je operater platforme sukladno Uredbi (EU) 2016/679 (GDPR) i Zakonu o provedbi Opće uredbe o zaštiti podataka (NN 42/2018).
+        <View style={[styles.gdprBadge, { backgroundColor: `${colors.secondary}14`, borderColor: `${colors.secondary}30` }]}>
+          <Feather name="shield" size={14} color={colors.secondary} />
+          <Text style={[styles.gdprBadgeText, { color: colors.secondary }]}>
+            Sukladno Uredbi EU 2016/679 (GDPR) i Zakonu o provedbi Opće uredbe (NN 42/2018)
+          </Text>
+        </View>
+
+        <Section title="1. Voditelj obrade podataka" colors={colors}>
+          <Body colors={colors}>
+            {"Voditelj obrade osobnih podataka je Trampaj.hr, Hrvatska (dalje: \"Platforma\").\n\nKontakt za zaštitu podataka: " + CONTACT + "\n\nNadzorno tijelo: Agencija za zaštitu osobnih podataka (AZOP), Martićeva 14, Zagreb — www.azop.hr"}
+          </Body>
         </Section>
 
-        <Section title="2. Koje podatke prikupljamo" colors={colors}>
-          • Korisničko ime (nadimak koji sami unesete){"\n"}
-          • Broj telefona (opcionalno, vidljiv samo u vašim oglasima ako ga unesete){"\n"}
-          • Sadržaj oglasa: naslov, opis, kategorija, lokacija, fotografija{"\n"}
-          • Poruke razmijenjene između korisnika unutar Platforme{"\n"}
-          • Tehničke informacije: vrsta uređaja, verzija OS-a (samo za tehničku podršku)
+        <Section title="2. Koje osobne podatke prikupljamo" colors={colors}>
+          <Body colors={colors}>
+            {"• Korisničko ime i e-mail adresa (pri registraciji)\n• Lozinka (pohranjena isključivo kriptirana — bcrypt)\n• Broj mobitela (opcionalno — vidljiv samo u oglasima gdje ga sami objavite)\n• Adresa / lokacija (opcionalno — za prikaz oglasa u blizini)\n• Profilna fotografija (opcionalno)\n• Slike predmeta u oglasima (vidljive svim posjetiteljima)\n• Chat poruke između korisnika\n• Aktivnost: objavljeni oglasi, ocjene, status zamjena"}
+          </Body>
         </Section>
 
         <Section title="3. Svrha i pravna osnova obrade" colors={colors}>
-          Vaši se podaci obrađuju isključivo radi:{"\n"}
-          • Pružanja usluge posredovanja u trampi (izvršenje ugovora — čl. 6. st. 1. t. b) GDPR){"\n"}
-          • Zaštite sigurnosti korisnika i sprječavanja zlouporabe (legitimni interes — čl. 6. st. 1. t. f) GDPR){"\n"}
-          • Ispunjenja zakonskih obveza (čl. 6. st. 1. t. c) GDPR){"\n\n"}
-          Podaci se NE koriste za izravni marketing bez vaše izričite privole.
+          <Body colors={colors}>
+            {"• Izvršenje ugovora (čl. 6/1/b GDPR) — pružanje usluge trampe\n• Legitimni interes (čl. 6/1/f GDPR) — zaštita od prijevare i zlouporabe\n• Privola (čl. 6/1/a GDPR) — marketinške komunikacije (samo uz privolu)\n• Pravna obveza (čl. 6/1/c GDPR) — ispunjenje zakonskih zahtjeva\n\nPodaci se NE koriste za profiliranje niti izravni marketing bez vaše izričite privole."}
+          </Body>
         </Section>
 
         <Section title="4. Pohrana i sigurnost" colors={colors}>
-          Svi podaci pohranjuju se lokalno na vašem uređaju (AsyncStorage). Platforma ne prenosi osobne podatke na vanjske poslužitelje bez vaše privole. Podaci se ne dijele s trećim stranama u komercijalne svrhe.
+          <Body colors={colors}>
+            {"Podaci se pohranjuju lokalno na vašem uređaju (AsyncStorage) i na sigurnim poslužiteljima unutar EU. Primjenjujemo sljedeće mjere zaštite:\n\n• Enkripcija lozinki (bcrypt)\n• HTTPS/TLS za svu komunikaciju\n• Ograničen pristup podacima — samo autorizirano osoblje\n• Redovite sigurnosne provjere\n\nPodaci se NE dijele s trećim stranama u komercijalne svrhe. Kurirskim službama (GLS, Box Now) dostavljaju se samo podaci za dostavu koje sami unesete."}
+          </Body>
         </Section>
 
         <Section title="5. Vaša prava (GDPR)" colors={colors}>
-          Sukladno GDPR-u imate pravo:{"\n"}
-          • Pristupa — zatražiti uvid u vaše podatke{"\n"}
-          • Ispravka — ispraviti netočne podatke{"\n"}
-          • Brisanja — zatražiti brisanje svih podataka („pravo na zaborav"){"\n"}
-          • Prijenosa — dobiti kopiju podataka u strojno čitljivom formatu{"\n"}
-          • Prigovora — prigovoriti obradi temeljnoj na legitimnom interesu{"\n"}
-          • Opoziva privole — opozvati privolu u svakom trenutku{"\n\n"}
-          Brisanje svih lokalnih podataka dostupno je u postavkama profila → „Izbriši sve podatke".{"\n\n"}
-          Za ostale zahtjeve pišite na: privacy@trampaj.hr
+          <Body colors={colors}>
+            {"• Pravo na pristup — zatražite uvid u sve vaše podatke\n• Pravo na ispravak — ispravite netočne podatke u postavkama profila\n• Pravo na brisanje — \"Izbriši račun\" u profilu briše sve podatke unutar 30 dana\n• Pravo na prenosivost — zatražite izvoz podataka u JSON formatu\n• Pravo na ograničenje obrade — možete privremeno suspendirati obradu\n• Pravo na prigovor — protivite se obradi na temelju legitimnog interesa\n• Pravo na opoziv privole — u svakom trenutku bez posljedica\n\nZa zahtjeve pišite na: " + CONTACT}
+          </Body>
         </Section>
 
-        <Section title="6. Zadržavanje podataka" colors={colors}>
-          Podaci se čuvaju dok koristite Platformu ili dok ih sami ne obrišete. Neaktivni oglasi automatski se arhiviraju nakon 90 dana.
+        <Section title="6. Rokovi pohrane" colors={colors}>
+          <Body colors={colors}>
+            {"• Osobni podaci čuvaju se dok je račun aktivan\n• Nakon brisanja računa — podaci se brišu unutar 30 dana\n• Objavljeni oglasi anonimiziraju se (uklanja se korisničko ime i kontakt)\n• Log podaci za sigurnost čuvaju se do 12 mjeseci\n• Neaktivni oglasi arhiviraju se nakon 90 dana"}
+          </Body>
         </Section>
 
         <Section title="7. Maloljetnici" colors={colors}>
-          Platforma nije namijenjena osobama mlađim od 18 godina. Korištenjem platforme potvrđujete da imate najmanje 18 godina.
+          <Body colors={colors}>
+            {"Platforma nije namijenjena osobama mlađim od 18 godina. Korištenjem platforme potvrđujete da imate najmanje 18 godina. Ako saznamo da je maloljetna osoba koristila platformu, odmah ćemo obrisati njene podatke."}
+          </Body>
         </Section>
 
-        <Section title="8. Nadzorno tijelo" colors={colors}>
-          Ako smatrate da je obrada vaših podataka u suprotnosti s GDPR-om, imate pravo podnijeti pritužbu Agenciji za zaštitu osobnih podataka (AZOP), Selska cesta 136, 10 000 Zagreb, www.azop.hr.
+        <Section title="8. Kolačići i analitika" colors={colors}>
+          <Body colors={colors}>
+            {"Mobilna aplikacija ne koristi kolačiće niti analitičke alate koji bi prikupljali podatke bez privole. Ako budemo uveli analitiku, zatražit ćemo vašu privolu unaprijed uz jasno objašnjenje svrhe."}
+          </Body>
         </Section>
 
-        <Section title="9. Izmjene politike" colors={colors}>
-          Ova politika privatnosti može se mijenjati. O bitnim izmjenama bit ćete obaviješteni unutar Platforme. Nastavak korištenja after obavijesti smatra se prihvaćanjem.
+        <Section title="9. Prigovori — AZOP" colors={colors}>
+          <Body colors={colors}>
+            {"Ako smatrate da obrađujemo vaše podatke protivno GDPR-u, možete podnijeti pritužbu:\n\nAgencija za zaštitu osobnih podataka (AZOP)\nMartićeva ulica 14, 10 000 Zagreb\nwww.azop.hr | azop@azop.hr"}
+          </Body>
         </Section>
+
+        <Section title="10. Izmjene politike" colors={colors}>
+          <Body colors={colors}>
+            {"Ovu politiku možemo ažurirati. O značajnim izmjenama obavijestit ćemo vas unutar aplikacije ili e-mailom najmanje 30 dana unaprijed. Nastavak korištenja smatra se prihvaćanjem izmjena."}
+          </Body>
+        </Section>
+
+        <View style={[styles.contactCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="mail" size={15} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.contactTitle, { color: colors.foreground }]}>Kontakt za zaštitu podataka</Text>
+            <Text style={[styles.contactEmail, { color: colors.secondary }]}>{CONTACT}</Text>
+          </View>
+        </View>
       </ScrollView>
-    </View>
-  );
-}
-
-function Section({ title, children, colors }: {
-  title: string;
-  children: React.ReactNode;
-  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text>
-      <Text style={[styles.sectionBody, { color: colors.mutedForeground }]}>{children}</Text>
     </View>
   );
 }
@@ -107,7 +138,12 @@ const styles = StyleSheet.create({
   topTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   content: { padding: 20, gap: 20 },
   updated: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  gdprBadge: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderWidth: 1, borderRadius: 10, padding: 10 },
+  gdprBadgeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
   section: { gap: 8 },
   sectionTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
   sectionBody: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  contactCard: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 12, padding: 14 },
+  contactTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  contactEmail: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });
