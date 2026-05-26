@@ -28,24 +28,30 @@ if (Notifications) {
 export async function setupNotifications(): Promise<boolean> {
   if (!Notifications || !Device) return false;
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("poruke", {
-      name: "Poruke",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 200, 100, 200],
-      lightColor: "#F5C100",
-      sound: "default",
-      showBadge: true,
-    });
+  try {
+    if (Platform.OS === "android") {
+      const AndroidImportance = Notifications.AndroidImportance;
+      await Notifications.setNotificationChannelAsync("poruke", {
+        name: "Poruke",
+        importance: AndroidImportance?.HIGH ?? 4,
+        vibrationPattern: [0, 200, 100, 200],
+        lightColor: "#F5C100",
+        sound: "default",
+        showBadge: true,
+      });
+    }
+
+    if (!Device.isDevice) return false;
+
+    const existing = await Notifications.getPermissionsAsync();
+    if (existing?.granted || existing?.status === "granted") return true;
+
+    const result = await Notifications.requestPermissionsAsync();
+    return result?.granted || result?.status === "granted";
+  } catch {
+    // Notifications not available or permission API threw (e.g. emulator/web)
+    return false;
   }
-
-  if (!Device.isDevice) return false;
-
-  const existing = await Notifications.getPermissionsAsync();
-  if (existing.granted || existing.status === "granted") return true;
-
-  const result = await Notifications.requestPermissionsAsync();
-  return result.granted || result.status === "granted";
 }
 
 export async function sendLocalNotification(
