@@ -21,6 +21,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { ChatMessage, DeliveryInfo, MessageType } from "@/context/ChatContext";
 import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
+import { useListings } from "@/context/ListingsContext";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -208,101 +210,97 @@ function DisclaimerModal({ onAccept, onSkip }: { onAccept: () => void; onSkip: (
 }
 
 // ─── Delivery modal ───────────────────────────────────────────────────────────
-const SHIPPING_OPTIONS: { key: DeliveryInfo["myShipping"]; label: string; sub: string }[] = [
-  { key: "paketomat", label: "📦 Paketomat", sub: "do 5 kg, Box Now / Overseas" },
-  { key: "gls", label: "🚐 GLS kućna dostava", sub: "do 31 kg, po dogovoru" },
-  { key: "osobno", label: "🤝 Osobno preuzimanje", sub: "bez dostave" },
-];
-const PAY_OPTIONS: { key: DeliveryInfo["whoPays"]; label: string; sub: string }[] = [
-  { key: "each_own", label: "👐 Svaki svoju", sub: "plaća dostavu svog paketa" },
-  { key: "sender", label: "📤 Pošiljatelj", sub: "onaj tko šalje plaća oboje" },
-  { key: "agreement", label: "🗣️ Dogovor", sub: "sami se dogovorite direktno" },
-];
-
 function DeliveryModal({
   otherName,
+  isLargeItem,
   onDone,
   onSkip,
 }: {
   otherName: string;
+  isLargeItem?: boolean;
   onDone: (info: DeliveryInfo) => void;
   onSkip: () => void;
 }) {
-  const [myShipping, setMyShipping] = useState<DeliveryInfo["myShipping"] | null>(null);
-  const [theirShipping, setTheirShipping] = useState<DeliveryInfo["theirShipping"] | null>(null);
-  const [whoPays, setWhoPays] = useState<DeliveryInfo["whoPays"] | null>(null);
-  const isComplete = myShipping !== null && theirShipping !== null && whoPays !== null;
+  const [method, setMethod] = useState<DeliveryInfo["method"] | null>(null);
+
+  // Veliki predmeti → automatski osobno preuzimanje
+  if (isLargeItem) {
+    return (
+      <View style={styles.overlay}>
+        <View style={[styles.dealCard, { padding: 28, gap: 0 }]}>
+          <Text style={{ fontSize: 36, marginBottom: 8 }}>🤝</Text>
+          <Text style={styles.modalLabel}>DOSTAVA</Text>
+          <Text style={styles.modalTitle}>Osobno preuzimanje</Text>
+          <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
+            {"Predmet je velik pa se dogovarate direktno o terminu i načinu preuzimanja.\n\nDogovorite se u chatu gdje i kada."}
+          </Text>
+          <Pressable
+            onPress={() => onDone({ method: "personal", escrowActive: false })}
+            style={({ pressed }) => [styles.dealBtn, { marginTop: 20, width: "100%", opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={styles.dealBtnText}>Razumijemo →</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.overlay}>
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.dealCard, { padding: 22, gap: 0, width: "100%" }]}>
-          <Text style={styles.modalLabel}>ORGANIZACIJA DOSTAVE</Text>
-          <Text style={styles.modalTitle}>Kako šaljete pakete?</Text>
+      <View style={[styles.dealCard, { padding: 24, gap: 0, width: SW - 40 }]}>
+        <Text style={styles.modalLabel}>ORGANIZACIJA DOSTAVE</Text>
+        <Text style={styles.modalTitle}>Kako šaljete pakete?</Text>
 
-          <Text style={styles.deliverySection}>Kako šalješ <Text style={{ color: C.primary }}>svoju</Text> stvar?</Text>
-          {SHIPPING_OPTIONS.map((o) => (
-            <Pressable
-              key={o.key}
-              onPress={() => setMyShipping(o.key)}
-              style={[styles.deliveryOption, myShipping === o.key && styles.deliveryOptionSelected]}
-            >
-              <Text style={[styles.deliveryOptionLabel, myShipping === o.key && { color: C.primary }]}>{o.label}</Text>
-              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
-            </Pressable>
-          ))}
+        <Text style={[styles.deliverySection, { marginTop: 14 }]}>Odaberite način dostave:</Text>
 
-          <Text style={[styles.deliverySection, { marginTop: 16 }]}>
-            Kako očekuješ da <Text style={{ color: C.secondary }}>{otherName}</Text> šalje?
+        <Pressable
+          onPress={() => setMethod("courier")}
+          style={[styles.deliveryOption, method === "courier" && styles.deliveryOptionSelected]}
+        >
+          <Text style={[styles.deliveryOptionLabel, method === "courier" && { color: C.primary }]}>
+            🚐 Kurirska dostava
           </Text>
-          {SHIPPING_OPTIONS.map((o) => (
-            <Pressable
-              key={`their-${o.key}`}
-              onPress={() => setTheirShipping(o.key)}
-              style={[styles.deliveryOption, theirShipping === o.key && styles.deliveryOptionSelected]}
-            >
-              <Text style={[styles.deliveryOptionLabel, theirShipping === o.key && { color: C.secondary }]}>{o.label}</Text>
-              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
-            </Pressable>
-          ))}
+          <Text style={styles.deliveryOptionSub}>Paketomat ili GLS kućna dostava</Text>
+        </Pressable>
 
-          <Text style={[styles.deliverySection, { marginTop: 16 }]}>Tko plaća dostavu?</Text>
-          {PAY_OPTIONS.map((o) => (
-            <Pressable
-              key={o.key}
-              onPress={() => setWhoPays(o.key)}
-              style={[styles.deliveryOption, whoPays === o.key && styles.deliveryOptionSelected]}
-            >
-              <Text style={[styles.deliveryOptionLabel, whoPays === o.key && { color: C.primary }]}>{o.label}</Text>
-              <Text style={styles.deliveryOptionSub}>{o.sub}</Text>
-            </Pressable>
-          ))}
+        <Pressable
+          onPress={() => setMethod("personal")}
+          style={[styles.deliveryOption, method === "personal" && styles.deliveryOptionSelected]}
+        >
+          <Text style={[styles.deliveryOptionLabel, method === "personal" && { color: C.primary }]}>
+            🤝 Osobno preuzimanje
+          </Text>
+          <Text style={styles.deliveryOptionSub}>Dogovorite se u chatu gdje i kada</Text>
+        </Pressable>
 
-          <Pressable
-            onPress={() =>
-              isComplete
-                ? onDone({ myShipping: myShipping!, theirShipping: theirShipping!, whoPays: whoPays!, escrowActive: false })
-                : null
-            }
-            style={({ pressed }) => [
-              styles.dealBtn,
-              { marginTop: 22, width: "100%", opacity: isComplete ? (pressed ? 0.85 : 1) : 0.4 },
-            ]}
-          >
-            <Text style={styles.dealBtnText}>Potvrdi dogovor →</Text>
-          </Pressable>
-          <Pressable
-            onPress={onSkip}
-            style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
-          >
-            <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+        {method === "courier" && (
+          <View style={styles.deliveryInfoBox}>
+            <Text style={styles.deliveryInfoText}>
+              💡 <Text style={{ color: C.text }}>Plaćanje kao na Vintedu</Text>
+              {" — svaki plaća dostavu paketa koji prima. "}
+              {"Vi platite kuru za paket koji dobivate, "}
+              {otherName}
+              {" plati kuru za paket koji dobiva. Nema dijeljenja troškova."}
+            </Text>
+          </View>
+        )}
+
+        <Pressable
+          onPress={() => method ? onDone({ method, escrowActive: false }) : null}
+          style={({ pressed }) => [
+            styles.dealBtn,
+            { marginTop: 20, width: "100%", opacity: method ? (pressed ? 0.85 : 1) : 0.4 },
+          ]}
+        >
+          <Text style={styles.dealBtnText}>Potvrdi →</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSkip}
+          style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+        >
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -393,8 +391,20 @@ export default function ChatScreen() {
     otherUser: string;
   }>();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { listings } = useListings();
   const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation } =
     useChat();
+
+  // Auth guard — redirect to login if not logged in
+  useEffect(() => {
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [user]);
+
+  const listing = listings.find((l) => l.id === listingId);
+  const isLargeItem = listing?.packageSize === "large";
 
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
@@ -699,6 +709,7 @@ export default function ChatScreen() {
       {postDealStep === "delivery" && (
         <DeliveryModal
           otherName={liveConv.otherUserName}
+          isLargeItem={isLargeItem}
           onDone={(info) => {
             saveDeliveryInfo(convId, info);
             setPostDealStep("escrow");
@@ -1028,9 +1039,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(56,189,248,0.22)",
     borderRadius: 12,
-    paddingVertical: 11,
+    paddingVertical: 13,
     paddingHorizontal: 14,
-    marginBottom: 6,
+    marginBottom: 8,
     backgroundColor: "#0D2045",
   },
   deliveryOptionSelected: {
@@ -1038,7 +1049,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(245,193,0,0.07)",
   },
   deliveryOptionLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: C.text,
   },
@@ -1046,6 +1057,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: C.muted,
-    marginTop: 2,
+    marginTop: 3,
+  },
+  deliveryInfoBox: {
+    backgroundColor: "rgba(56,189,248,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(56,189,248,0.2)",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+  deliveryInfoText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: C.muted,
+    lineHeight: 18,
   },
 });

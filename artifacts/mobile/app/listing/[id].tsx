@@ -515,6 +515,10 @@ export default function ListingDetailScreen() {
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (!user) {
+                  router.push("/login");
+                  return;
+                }
                 getOrCreateConversation(listing.id, listing.title, listing.userName);
                 router.push(`/chat/${listing.id}?listingTitle=${encodeURIComponent(listing.title)}&otherUser=${encodeURIComponent(listing.userName)}`);
               }}

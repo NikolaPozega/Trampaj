@@ -32,6 +32,7 @@ export type Topup = "primam" | "dajem" | "oboje" | "ne";
 export type Flexibility = "tocno" | "otvoren";
 export type Deadline = "hitno" | "ovaj-mjesec" | "bez-roka";
 export type PackageSize = "small" | "medium" | "large";
+export type PackageBoxSize = "S" | "M" | "L";
 
 export interface Listing {
   id: string;
@@ -56,6 +57,8 @@ export interface Listing {
   nudimTags?: string[];
   trazimTags?: string[];
   packageSize?: PackageSize | null;
+  packageBoxSize?: PackageBoxSize | null;
+  packageWeight?: number | null;
 }
 
 export interface Review {

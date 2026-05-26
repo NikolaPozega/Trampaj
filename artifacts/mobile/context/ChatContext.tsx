@@ -14,9 +14,7 @@ export interface ChatMessage {
 }
 
 export interface DeliveryInfo {
-  myShipping: "paketomat" | "gls" | "osobno";
-  theirShipping: "paketomat" | "gls" | "osobno";
-  whoPays: "each_own" | "sender" | "agreement";
+  method: "courier" | "personal";
   escrowActive: boolean;
 }
 

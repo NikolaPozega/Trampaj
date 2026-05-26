@@ -25,6 +25,7 @@ import {
   type Condition,
   type Deadline,
   type Flexibility,
+  type PackageBoxSize,
   type PackageSize,
   type Topup,
   useListings,
@@ -223,6 +224,8 @@ export default function PostScreen() {
   const [cashFallback, setCashFallback] = useState<boolean | null>(null);
   const [deadline, setDeadline] = useState<Deadline | null>(null);
   const [packageSize, setPackageSize] = useState<PackageSize | null>(null);
+  const [packageBoxSize, setPackageBoxSize] = useState<PackageBoxSize | null>(null);
+  const [packageWeight, setPackageWeight] = useState<string>("");
   const [locationSuggestions, setLocationSuggestions] = useState<
     LocationResult[]
   >([]);
@@ -468,6 +471,8 @@ export default function PostScreen() {
       nudimTags: tags.nudimTags,
       trazimTags: tags.trazimTags,
       packageSize,
+      packageBoxSize: packageSize === "small" ? packageBoxSize : null,
+      packageWeight: packageSize === "medium" ? (parseFloat(packageWeight) || null) : null,
     };
     console.log("[SUBMIT] Novi oglas:", JSON.stringify(listing));
     addListing(listing);
@@ -491,6 +496,8 @@ export default function PostScreen() {
       setCashFallback(null);
       setDeadline(null);
       setPackageSize(null);
+      setPackageBoxSize(null);
+      setPackageWeight("");
       setLocationSuggestions([]);
       setCategoryManuallySet(false);
       titleFromAI.current = false;
@@ -732,36 +739,121 @@ export default function PostScreen() {
           </Text>
           <View style={{ gap: 8, marginTop: 4 }}>
             {([
-              { key: "small" as PackageSize, emoji: "📦", label: "Mali paket", sub: "≤ 5 kg — može u paketomat" },
-              { key: "medium" as PackageSize, emoji: "🚐", label: "Srednji paket", sub: "5 – 31 kg — GLS kućna dostava" },
-              { key: "large" as PackageSize, emoji: "🚛", label: "Veliki / nestandardan", sub: "> 31 kg — osobni dogovor" },
+              { key: "small" as PackageSize, emoji: "📦", label: "Mali paket", sub: "Paketomat — do 20 kg" },
+              { key: "medium" as PackageSize, emoji: "🚐", label: "Srednji paket", sub: "GLS kućna dostava — do 31 kg" },
+              { key: "large" as PackageSize, emoji: "🚛", label: "Veliki / nestandardan", sub: "Osobni dogovor — bez kurirske" },
             ] as const).map((opt) => {
               const selected = packageSize === opt.key;
               return (
-                <Pressable
-                  key={opt.key}
-                  onPress={() => setPackageSize(selected ? null : opt.key)}
-                  style={[
-                    styles.pkgOption,
-                    {
-                      borderColor: selected ? colors.primary : colors.border,
-                      backgroundColor: selected ? "rgba(245,193,0,0.08)" : colors.muted,
-                    },
-                  ]}
-                >
-                  <Text style={styles.pkgEmoji}>{opt.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.pkgLabel, { color: selected ? colors.primary : colors.foreground }]}>
-                      {opt.label}
-                    </Text>
-                    <Text style={[styles.pkgSub, { color: colors.mutedForeground }]}>{opt.sub}</Text>
-                  </View>
-                  {selected && (
-                    <View style={[styles.pkgCheck, { backgroundColor: colors.primary }]}>
-                      <Text style={{ color: "#08152E", fontSize: 10, fontFamily: "Inter_700Bold" }}>✓</Text>
+                <View key={opt.key}>
+                  <Pressable
+                    onPress={() => {
+                      if (selected) { setPackageSize(null); setPackageBoxSize(null); setPackageWeight(""); }
+                      else { setPackageSize(opt.key); setPackageBoxSize(null); setPackageWeight(""); }
+                    }}
+                    style={[
+                      styles.pkgOption,
+                      {
+                        borderColor: selected ? colors.primary : colors.border,
+                        backgroundColor: selected ? "rgba(245,193,0,0.08)" : colors.muted,
+                        marginBottom: 0,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.pkgEmoji}>{opt.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.pkgLabel, { color: selected ? colors.primary : colors.foreground }]}>
+                        {opt.label}
+                      </Text>
+                      <Text style={[styles.pkgSub, { color: colors.mutedForeground }]}>{opt.sub}</Text>
+                    </View>
+                    {selected && (
+                      <View style={[styles.pkgCheck, { backgroundColor: colors.primary }]}>
+                        <Text style={{ color: "#08152E", fontSize: 10, fontFamily: "Inter_700Bold" }}>✓</Text>
+                      </View>
+                    )}
+                  </Pressable>
+
+                  {/* ── Sub-forma za mali paket (paketomat) ── */}
+                  {selected && opt.key === "small" && (
+                    <View style={[styles.pkgSubForm, { borderColor: colors.border }]}>
+                      <Text style={[styles.pkgSubLabel, { color: colors.mutedForeground }]}>
+                        Odaberi veličinu kutije:
+                      </Text>
+                      {([
+                        { key: "S" as PackageBoxSize, dim: "38 × 64 × 6 cm", kg: "do 5 kg" },
+                        { key: "M" as PackageBoxSize, dim: "38 × 64 × 19 cm", kg: "do 10 kg" },
+                        { key: "L" as PackageBoxSize, dim: "38 × 64 × 38 cm", kg: "do 20 kg" },
+                      ]).map((box) => {
+                        const boxSel = packageBoxSize === box.key;
+                        return (
+                          <Pressable
+                            key={box.key}
+                            onPress={() => setPackageBoxSize(boxSel ? null : box.key)}
+                            style={[
+                              styles.pkgBoxOption,
+                              {
+                                borderColor: boxSel ? colors.primary : colors.border,
+                                backgroundColor: boxSel ? "rgba(245,193,0,0.08)" : "transparent",
+                              },
+                            ]}
+                          >
+                            <View style={[styles.pkgBoxBadge, { backgroundColor: boxSel ? colors.primary : colors.border }]}>
+                              <Text style={[styles.pkgBoxBadgeText, { color: boxSel ? "#08152E" : colors.foreground }]}>
+                                {box.key}
+                              </Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.pkgBoxDim, { color: boxSel ? colors.primary : colors.foreground }]}>
+                                {box.dim}
+                              </Text>
+                              <Text style={[styles.pkgBoxKg, { color: colors.mutedForeground }]}>
+                                {box.kg}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   )}
-                </Pressable>
+
+                  {/* ── Sub-forma za srednji paket (GLS) ── */}
+                  {selected && opt.key === "medium" && (
+                    <View style={[styles.pkgSubForm, { borderColor: colors.border }]}>
+                      <Text style={[styles.pkgSubLabel, { color: colors.mutedForeground }]}>
+                        Težina paketa (kg):
+                      </Text>
+                      <View style={styles.pkgWeightRow}>
+                        <TextInput
+                          style={[styles.pkgWeightInput, {
+                            color: colors.foreground,
+                            borderColor: colors.border,
+                            backgroundColor: colors.muted,
+                          }]}
+                          value={packageWeight}
+                          onChangeText={(t) => setPackageWeight(t.replace(/[^0-9.,]/g, ""))}
+                          keyboardType="decimal-pad"
+                          placeholder="npr. 4.5"
+                          placeholderTextColor={colors.mutedForeground}
+                          maxLength={6}
+                        />
+                        <Text style={[styles.pkgWeightUnit, { color: colors.mutedForeground }]}>kg</Text>
+                      </View>
+                      <Text style={[styles.pkgSubHint, { color: colors.mutedForeground }]}>
+                        💡 GLS naplaćuje po kg. Ako je kutija velika ali lagana, mogu primijeniti volumetrijsku težinu (D×Š×V ÷ 5000).
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* ── Info za veliki predmet ── */}
+                  {selected && opt.key === "large" && (
+                    <View style={[styles.pkgSubForm, { borderColor: colors.border }]}>
+                      <Text style={[styles.pkgSubHint, { color: colors.mutedForeground }]}>
+                        🤝 Dogovorite se direktno u chatu o terminu i načinu preuzimanja. Kurirska dostava nije opcija za ovako velike predmete.
+                      </Text>
+                    </View>
+                  )}
+                </View>
               );
             })}
           </View>
@@ -1464,6 +1556,74 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  pkgSubForm: {
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+    gap: 8,
+  },
+  pkgSubLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
+  },
+  pkgBoxOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  pkgBoxBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pkgBoxBadgeText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  pkgBoxDim: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  pkgBoxKg: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  pkgWeightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pkgWeightInput: {
+    width: 90,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  pkgWeightUnit: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  pkgSubHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+    marginTop: 4,
   },
 
   sectionLabelRow: {
