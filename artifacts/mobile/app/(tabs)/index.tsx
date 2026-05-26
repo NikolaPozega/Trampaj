@@ -50,13 +50,13 @@ function AdCardSlot({ seed }: { seed: string }) {
   return (
     <Pressable
       onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
-      style={({ pressed }) => [adStyles.card, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88`, opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [adStyles.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
     >
-      <View style={[adStyles.sponsoredBadge, { backgroundColor: colors.border }]}>
+      <View style={[adStyles.sponsoredBadge, { backgroundColor: colors.muted }]}>
         <Text style={[adStyles.sponsoredText, { color: colors.mutedForeground }]}>oglas</Text>
       </View>
-      <View style={[adStyles.cardIconCircle, { backgroundColor: ad.color + "22" }]}>
-        <Feather name={ad.icon} size={16} color={ad.color} />
+      <View style={[adStyles.cardIconCircle, { backgroundColor: colors.muted }]}>
+        <Feather name={ad.icon} size={18} color={ad.color} />
       </View>
       <Text style={[adStyles.cardSponsor, { color: colors.foreground }]} numberOfLines={1}>{ad.sponsor}</Text>
       <Text style={[adStyles.cardTagline, { color: colors.mutedForeground }]} numberOfLines={2}>{ad.tagline}</Text>
@@ -72,10 +72,10 @@ function AdBannerSlot({ size = "small", seed = "banner" }: { size?: "small" | "b
   return (
     <Pressable
       onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
-      style={({ pressed }) => [adStyles.banner, { height, backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88`, opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [adStyles.banner, { height, backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
     >
-      <View style={[adStyles.cardIconCircle, { backgroundColor: ad.color + "22", width: 26, height: 26 }]}>
-        <Feather name={ad.icon} size={12} color={ad.color} />
+      <View style={[adStyles.cardIconCircle, { backgroundColor: colors.muted, width: 28, height: 28 }]}>
+        <Feather name={ad.icon} size={13} color={ad.color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[adStyles.bannerSponsor, { color: colors.foreground }]} numberOfLines={1}>{ad.sponsor}</Text>
