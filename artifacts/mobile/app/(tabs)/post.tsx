@@ -626,23 +626,6 @@ export default function PostScreen() {
           )}
         </ScrollView>
 
-        {analyzing && (
-          <View
-            style={[
-              styles.aiBanner,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.primary,
-              },
-            ]}
-          >
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.aiText, { color: colors.primary }]}>
-              AI prepoznaje predmet…
-            </Text>
-          </View>
-        )}
-
         {/* Naziv */}
         <View style={styles.section}>
           <View style={styles.sectionLabelRow}>
@@ -651,11 +634,7 @@ export default function PostScreen() {
             >
               Naziv predmeta
             </Text>
-            {titleAIBadge ? (
-              <View style={[styles.aiBadgePill, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}>
-                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>✨ AI predložilo</Text>
-              </View>
-            ) : !title.trim() ? (
+            {!title.trim() ? (
               <Text style={[styles.requiredTag, { color: colors.destructive }]}>obvezno</Text>
             ) : null}
           </View>
@@ -677,11 +656,6 @@ export default function PostScreen() {
               autoCorrect
               spellCheck
             />
-            {titleSuggesting && (
-              <View style={styles.titleAiDot}>
-                <ActivityIndicator size="small" color={colors.primary} />
-              </View>
-            )}
           </View>
         </View>
 
@@ -693,11 +667,7 @@ export default function PostScreen() {
             >
               Opis
             </Text>
-            {descriptionAIBadge ? (
-              <View style={[styles.aiBadgePill, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}>
-                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>✨ AI predložilo</Text>
-              </View>
-            ) : !description.trim() ? (
+            {!description.trim() ? (
               <Text style={[styles.requiredTag, { color: colors.destructive }]}>obvezno</Text>
             ) : null}
           </View>
