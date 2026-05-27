@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 export const CATEGORIES = [
   "Sve",
@@ -36,6 +37,7 @@ export type PackageBoxSize = "S" | "M" | "L";
 
 export interface Listing {
   id: string;
+  userId?: string;
   title: string;
   description: string;
   category: string;
@@ -89,857 +91,213 @@ interface ListingsContextType {
   blockedUserNames: string[];
   blockUser: (userName: string) => void;
   unblockUser: (userName: string) => void;
+  refreshListings: () => Promise<void>;
 }
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
 
-const STORAGE_KEY = "@trampaj_listings_v3";
-const NAME_KEY = "@trampaj_name";
-const SAVED_KEY = "@trampaj_saved_v1";
-const REVIEWS_KEY = "@trampaj_reviews_v1";
-const BLOCKED_KEY = "@trampaj_blocked_v1";
+const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
+  ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
+  : "/api";
 
+// ─── Sample listings (shown when not connected / API empty) ──────────────────
 const SAMPLE_LISTINGS: Listing[] = [
-  {
-    id: "sample_1",
-    title: "Sony slušalice WH-1000XM4",
-    description: "Odlične slušalice s redukcijom buke, malo korištene. U originalnoj kutiji, sve ispravno radi.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta",
-    price: 180,
-    imageUris: ["https://picsum.photos/seed/headphones1/400/300"],
-    phone: "091 123 4567",
-    userName: "Marko K.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_2",
-    title: "Zimska jakna XL, North Face",
-    description: "Topla zimska jakna, nosio je jednu sezonu. Boja tamno plava, odlično stanje.",
-    category: "Odjeća",
-    condition: "Jako dobro",
-    wantedFor: "Ljetna jakna ili sportska oprema",
-    price: null,
-    imageUris: ["https://picsum.photos/seed/jacket2/400/300"],
-    phone: null,
-    userName: "Ana P.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 5,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_3",
-    title: "Skup knjiga - fantazija (10 knjiga)",
-    description: "Komplet knjiga Patricka Rothfussa i Brandona Sandersona. Sve u odličnom stanju.",
-    category: "Knjige",
-    condition: "Kao novo",
-    wantedFor: "Sci-fi knjige ili stripovi",
-    price: 60,
-    imageUris: ["https://picsum.photos/seed/books3/400/300"],
-    phone: "095 765 4321",
-    userName: "Luka B.",
-    location: "Rijeka",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 4,
-  },
-  {
-    id: "sample_4",
-    title: "Bicikl - gradski, 26\"",
-    description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.",
-    category: "Sport",
-    condition: "Dobro",
-    wantedFor: "Roleri ili električni romobil",
-    price: 350,
-    imageUris: ["https://picsum.photos/seed/bicycle4/400/300"],
-    phone: "098 111 2233",
-    userName: "Petra M.",
-    location: "Osijek",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: false,
-    packageSize: "large",
-  },
-  {
-    id: "sample_5",
-    title: "Stolna lampa - industrijski stil",
-    description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol.",
-    category: "Namještaj",
-    condition: "Dobro",
-    wantedFor: "Polica za knjige ili mali stol",
-    price: null,
-    imageUris: ["https://picsum.photos/seed/lamp5/400/300"],
-    phone: null,
-    userName: "Tomislav R.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 7,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 3,
-  },
-  {
-    id: "sample_6",
-    title: "Roleri Rollerblade, vel. 42",
-    description: "Inline roleri u odličnom stanju, korišteni svega par puta. Kaciga uključena.",
-    category: "Sport",
-    condition: "Kao novo",
-    wantedFor: "Bicikl gradski ili električni romobil",
-    price: 120,
-    imageUris: ["https://picsum.photos/seed/skates6/400/300"],
-    phone: "091 555 7788",
-    userName: "Ivan S.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "L",
-  },
-  {
-    id: "sample_7",
-    title: "Bežični miš Logitech MX Master 3",
-    description: "Premium miš, ergonomski, savršen za dugotrajni rad. Baterija traje 70 dana.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Mehanička tipkovnica ili slušalice",
-    price: 90,
-    imageUris: ["https://picsum.photos/seed/mouse7/400/300"],
-    phone: null,
-    userName: "Dora V.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_8",
-    title: "Ljetna jakna, H&M, M veličina",
-    description: "Lagana ljetna jakna, nošena jednu sezonu. Boja krem/bijela, odlično stanje.",
-    category: "Odjeća",
-    condition: "Prihvatljivo",
-    wantedFor: "Zimska jakna ili kaput",
-    price: null,
-    imageUris: ["https://picsum.photos/seed/jacket8/400/300"],
-    phone: "092 333 1122",
-    userName: "Maja L.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 4,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_9",
-    title: "PS5 kontroler DualSense",
-    description: "Originalni PlayStation 5 kontroler, crna boja. Baterija drži odlično, nema ogrebotina.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Xbox kontroler ili gaming slušalice",
-    price: 70,
-    imageUris: ["https://picsum.photos/seed/ps5ctrl/400/300"],
-    phone: null,
-    userName: "Bruno T.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_10",
-    title: "Tenisice Nike Air Max 90, vel. 43",
-    description: "Klasične Nike patike, nošene desetak puta. Bez oštećenja, original kutija.",
-    category: "Odjeća",
-    condition: "Jako dobro",
-    wantedFor: "Adidas ili New Balance iste veličine",
-    price: 80,
-    imageUris: ["https://picsum.photos/seed/nike43/400/300"],
-    phone: "091 222 3344",
-    userName: "Klara M.",
-    location: "Rijeka",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_11",
-    title: "iPad 9. generacija, 64GB",
-    description: "iPad u odličnom stanju, s torbom i punjačem. Bez ogrebotina na ekranu.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Laptop ili MacBook bilo koje generacije",
-    price: 300,
-    imageUris: ["https://picsum.photos/seed/ipad9/400/300"],
-    phone: "098 444 5566",
-    userName: "Filip H.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_12",
-    title: "Ruksak Osprey Farpoint 40L",
-    description: "Putni ruksak, korišten na 3 putovanja. Bez oštećenja, svi džepovi funkcionalni.",
-    category: "Sport",
-    condition: "Dobro",
-    wantedFor: "Manji ruksak do 20L ili torba",
-    price: 110,
-    imageUris: ["https://picsum.photos/seed/osprey40/400/300"],
-    phone: null,
-    userName: "Sara K.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 4,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 2,
-  },
-  {
-    id: "sample_13",
-    title: "Električni skuter Xiaomi Mi 3",
-    description: "Električni romobil, domet 30km. Baterija odlična, bez vidljivih oštećenja.",
-    category: "Sport",
-    condition: "Jako dobro",
-    wantedFor: "Bicikl gradski ili BMX",
-    price: 400,
-    imageUris: ["https://picsum.photos/seed/scooter3/400/300"],
-    phone: "092 888 9900",
-    userName: "Nikolina B.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 5,
-    status: "active",
-    isMine: false,
-    packageSize: "large",
-  },
-  {
-    id: "sample_14",
-    title: "Kuhinjski robot Kenwood kMix",
-    description: "Kuhinjski robot s više nastavaka za tijesto, mješanje i tucanje. Rijetko korišten.",
-    category: "Namještaj",
-    condition: "Kao novo",
-    wantedFor: "Blender ili sokovnik",
-    price: 200,
-    imageUris: ["https://picsum.photos/seed/kenwood/400/300"],
-    phone: null,
-    userName: "Vesna P.",
-    location: "Osijek",
-    createdAt: Date.now() - 86400000 * 6,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 7,
-  },
-  {
-    id: "sample_15",
-    title: "Gitara akustična Yamaha F310",
-    description: "Početna akustična gitara u dobrom stanju. Nova žica postavljena prošli tjedan.",
-    category: "Ostalo",
-    condition: "Dobro",
-    wantedFor: "Električna gitara ili klavijature",
-    price: 100,
-    imageUris: ["https://picsum.photos/seed/yamahaf310/400/300"],
-    phone: "091 777 8899",
-    userName: "Matej D.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "large",
-  },
-  {
-    id: "sample_16",
-    title: "Sat Casio G-Shock GA-2100",
-    description: "Robusni sat, nošen godinu dana. Bez ogrebotina na staklu, baterija nova.",
-    category: "Nakit",
-    condition: "Jako dobro",
-    wantedFor: "Sportski sat ili pametni sat",
-    price: 90,
-    imageUris: ["https://picsum.photos/seed/gshock/400/300"],
-    phone: null,
-    userName: "Ante V.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_17",
-    title: "Monitor LG 27\" IPS 4K",
-    description: "Monitor s USB-C i HDMI ulazima, idealan za rad i gaming. Bez dead pixela.",
-    category: "Elektronika",
-    condition: "Kao novo",
-    wantedFor: "Laptop prijenosnik ili tablet",
-    price: 350,
-    imageUris: ["https://picsum.photos/seed/lgmonitor/400/300"],
-    phone: "098 333 2211",
-    userName: "Renata K.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 6,
-  },
-  {
-    id: "sample_18",
-    title: "Snowboard komplet, vel. 155",
-    description: "Snowboard s vezovima i čizmama. Korišten dvije sezone, sve u odličnom stanju.",
-    category: "Sport",
-    condition: "Dobro",
-    wantedFor: "Skije komplet ili wakeboard",
-    price: 250,
-    imageUris: ["https://picsum.photos/seed/snowboard/400/300"],
-    phone: null,
-    userName: "Josip R.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 10,
-    status: "active",
-    isMine: false,
-    packageSize: "large",
-  },
-  {
-    id: "sample_19",
-    title: "Vintage naočale Ray-Ban Wayfarer",
-    description: "Originalne Ray-Ban Wayfarer, crni okvir, UV400 zaštita. Kutija i krpica uključene.",
-    category: "Nakit",
-    condition: "Jako dobro",
-    wantedFor: "Sat ili narukvica",
-    price: 60,
-    imageUris: ["https://picsum.photos/seed/rayban/400/300"],
-    phone: "095 111 9988",
-    userName: "Lucija M.",
-    location: "Rijeka",
-    createdAt: Date.now() - 86400000 * 4,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_20",
-    title: "Lego Technic 42128, kamion",
-    description: "Lego Technic teški kamion, kompletan set s uputama. Sastavljen jednom i rasklopljen.",
-    category: "Igračke",
-    condition: "Kao novo",
-    wantedFor: "Lego City ili Lego Technic auto",
-    price: 120,
-    imageUris: ["https://picsum.photos/seed/legotruck/400/300"],
-    phone: null,
-    userName: "Damir L.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 5,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 2,
-  },
-  {
-    id: "sample_21",
-    title: "Termomix TM5 kuhinjski robot",
-    description: "Malo korišten kuhinjski robot s receptima. Sve funkcionira besprijekorno.",
-    category: "Namještaj",
-    condition: "Jako dobro",
-    wantedFor: "AirFryer ili aparat za kavu",
-    price: 600,
-    imageUris: ["https://picsum.photos/seed/thermomix/400/300"],
-    phone: "091 444 5500",
-    userName: "Gordana T.",
-    location: "Osijek",
-    createdAt: Date.now() - 86400000 * 7,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 8,
-  },
-  {
-    id: "sample_22",
-    title: "Električna romobil Ninebot E25E",
-    description: "Segway-Ninebot romobil s LED svjetlima i APP kontrolom. Domet 25km.",
-    category: "Sport",
-    condition: "Prihvatljivo",
-    wantedFor: "Bicikl gradski ili električni bicikl",
-    price: 280,
-    imageUris: ["https://picsum.photos/seed/ninebot/400/300"],
-    phone: null,
-    userName: "Zoran B.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 8,
-    status: "active",
-    isMine: false,
-    packageSize: "large",
-  },
-  {
-    id: "sample_23",
-    title: "Knjige o programiranju (8 kom)",
-    description: "Clean Code, Design Patterns, JavaScript: Good Parts i ostale. Sve u odličnom stanju.",
-    category: "Knjige",
-    condition: "Dobro",
-    wantedFor: "Knjige o poslovanju ili filozofiji",
-    price: 80,
-    imageUris: ["https://picsum.photos/seed/devbooks/400/300"],
-    phone: "098 222 3344",
-    userName: "Kristian M.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 4,
-  },
-  {
-    id: "sample_24",
-    title: "Kamera Sony Alpha a6000",
-    description: "Mirrorless kamera s 16-50mm objektivom. Izvrsna za fotografiju i video. Malo korištena.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Canon ili Fujifilm mirrorless",
-    price: 450,
-    imageUris: ["https://picsum.photos/seed/sonya6000/400/300"],
-    phone: null,
-    userName: "Nela S.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_25",
-    title: "Stolni tenis, Butterfly komplet",
-    description: "Dva Butterfly reketa s torbom i lopticama. Odlično za rekreativce.",
-    category: "Sport",
-    condition: "Dobro",
-    wantedFor: "Badminton ili teniski reketi",
-    price: 45,
-    imageUris: ["https://picsum.photos/seed/pingpong/400/300"],
-    phone: "092 666 7788",
-    userName: "Tomislav K.",
-    location: "Osijek",
-    createdAt: Date.now() - 86400000 * 6,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 1,
-  },
-  {
-    id: "sample_26",
-    title: "Narukvica Pandora, srebro",
-    description: "Originalna Pandora narukvica s tri charmsa. S kutijom i certifikatom.",
-    category: "Nakit",
-    condition: "Kao novo",
-    wantedFor: "Naušnice ili ogrlica srebro",
-    price: 100,
-    imageUris: ["https://picsum.photos/seed/pandora/400/300"],
-    phone: null,
-    userName: "Ines F.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "S",
-  },
-  {
-    id: "sample_27",
-    title: "Dječji romobil Micro Maxi",
-    description: "Romobil za djecu 5-12 godina, malo korišten. Sve funkcionira, bez ogrebotina.",
-    category: "Igračke",
-    condition: "Jako dobro",
-    wantedFor: "Bicikl za djecu ili skuter",
-    price: 55,
-    imageUris: ["https://picsum.photos/seed/kidsscooter/400/300"],
-    phone: "091 888 4455",
-    userName: "Jasna B.",
-    location: "Rijeka",
-    createdAt: Date.now() - 86400000 * 9,
-    status: "active",
-    isMine: false,
-    packageSize: "medium",
-    packageWeight: 3,
-  },
-  {
-    id: "sample_28",
-    title: "MacBook Air M1, 8GB/256GB",
-    description: "Laptop u odličnom stanju, baterija 89% zdravlja. Bez ogrebotina, original kutija.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "iPad Pro ili monitor 27\"",
-    price: 800,
-    imageUris: ["https://picsum.photos/seed/macbookm1/400/300"],
-    phone: null,
-    userName: "Igor P.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    packageSize: "small",
-    packageBoxSize: "L",
-  },
-  {
-    id: "sample_mine_1",
-    title: "Gaming tipkovnica mehanička Logitech G413",
-    description: "Mehanička tipkovnica s RGB osvjetljenjem, odlična za gaming i tipkanje. Malo korištena.",
-    category: "Elektronika",
-    condition: "Jako dobro",
-    wantedFor: "Slušalice ili bežični miš",
-    price: 150,
-    imageUris: ["https://picsum.photos/seed/keyboard9/400/300"],
-    phone: "098 000 1234",
-    userName: "Korisnik",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: true,
-    packageSize: "small",
-    packageBoxSize: "M",
-  },
-  {
-    id: "sample_mine_2",
-    title: "Brdski bicikl 29\", 21 brzina",
-    description: "Solid brdski bicikl za rekreativce, servisiran ove godine. Shimano mjenjač.",
-    category: "Sport",
-    condition: "Dobro",
-    wantedFor: "Roleri ili električni romobil",
-    price: 280,
-    imageUris: ["https://picsum.photos/seed/mtb10/400/300"],
-    phone: "098 000 1234",
-    userName: "Korisnik",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: true,
-    packageSize: "large",
-  },
-  {
-    id: "sample_mine_3",
-    title: "Sci-fi knjige (5 komada)",
-    description: "Asimov, Philip K. Dick i Arthur C. Clarke. Sve u odličnom stanju, bez oštećenja.",
-    category: "Knjige",
-    condition: "Kao novo",
-    wantedFor: "Fantazija ili kriminalistički romani",
-    price: 40,
-    imageUris: ["https://picsum.photos/seed/scifi11/400/300"],
-    phone: "098 000 1234",
-    userName: "Korisnik",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: true,
-    packageSize: "medium",
-    packageWeight: 2,
-  },
-  {
-    id: "sample_30",
-    title: "Blagovaonske stolice (4 kom), bijele",
-    description: "Četiri stolice od masivnog drva, bijelo lakirane. Tapecirana sjedala, odlično stanje.",
-    category: "Namještaj",
-    condition: "Jako dobro",
-    wantedFor: "Blagovaonski stol ili fotelja",
-    price: 200,
-    imageUris: ["https://picsum.photos/seed/stolice/400/300"],
-    phone: "091 234 5678",
-    userName: "Martina K.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    nudimTags: ["stolica", "namještaj", "blagovaonica"],
-    trazimTags: ["stol", "fotelja", "namještaj"],
-    packageSize: "large",
-  },
-  {
-    id: "sample_31",
-    title: "Uredska stolica Herman Miller",
-    description: "Ergonomska uredska stolica, podesiva visina i nasloni. Malo korištena, kao nova.",
-    category: "Namještaj",
-    condition: "Kao novo",
-    wantedFor: "Stolni monitor ili laptop stalak",
-    price: 400,
-    imageUris: ["https://picsum.photos/seed/hermanmiller/400/300"],
-    phone: null,
-    userName: "Tomislav R.",
-    location: "Zagreb",
-    createdAt: Date.now() - 86400000 * 2,
-    status: "active",
-    isMine: false,
-    nudimTags: ["stolica", "uredska stolica", "ergonomska"],
-    trazimTags: ["monitor", "laptop", "uredska oprema"],
-    packageSize: "large",
-  },
-  {
-    id: "sample_32",
-    title: "Sofa trosjedna, siva tkanina",
-    description: "Udobna sofa, siva tkanina, bez fleka i oštećenja. Idealna za dnevni boravak.",
-    category: "Namještaj",
-    condition: "Dobro",
-    wantedFor: "Dvosjedna sofa ili fotelja",
-    price: 350,
-    imageUris: ["https://picsum.photos/seed/sofa32/400/300"],
-    phone: "099 876 5432",
-    userName: "Petra V.",
-    location: "Split",
-    createdAt: Date.now() - 86400000 * 3,
-    status: "active",
-    isMine: false,
-    nudimTags: ["sofa", "kauč", "namještaj", "dnevna soba"],
-    trazimTags: ["sofa", "fotelja", "kauč"],
-    packageSize: "large",
-  },
-  {
-    id: "sample_33",
-    title: "Ormar s kliznim vratima, bijeli",
-    description: "Dvokrilni ormar s kliznim ogledalom. Visina 220cm, širina 160cm. Demontiran za transport.",
-    category: "Namještaj",
-    condition: "Dobro",
-    wantedFor: "Komoda ili polica za knjige",
-    price: 250,
-    imageUris: ["https://picsum.photos/seed/ormar33/400/300"],
-    phone: "095 321 6540",
-    userName: "Josip B.",
-    location: "Osijek",
-    createdAt: Date.now() - 86400000 * 4,
-    status: "active",
-    isMine: false,
-    nudimTags: ["ormar", "garderober", "namještaj", "spavaća soba"],
-    trazimTags: ["komoda", "polica", "namještaj"],
-    packageSize: "large",
-  },
-  {
-    id: "sample_kauc",
-    title: "Kauč ugaona garnitura, antracit",
-    description: "Ugaona garnitura u dobrom stanju, antracit boja. Bez fleka. Demontira se na dva dijela za transport. Dostupna Rijeka.",
-    category: "Namještaj",
-    condition: "Dobro",
-    wantedFor: "Dvosjedna sofa, fotelja ili veća polica",
-    price: 300,
-    imageUris: ["https://picsum.photos/seed/ugaona_kauč/400/300"],
-    phone: "091 500 6677",
-    userName: "Robert K.",
-    location: "Rijeka",
-    createdAt: Date.now() - 86400000 * 1,
-    status: "active",
-    isMine: false,
-    nudimTags: ["kauč", "ugaona", "sofa", "garnitura", "namještaj"],
-    trazimTags: ["sofa", "fotelja", "polica"],
-    packageSize: "large",
-  },
+  { id: "sample_1", title: "Sony slušalice WH-1000XM4", description: "Odlične slušalice s redukcijom buke, malo korištene. U originalnoj kutiji, sve ispravno radi.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta", price: 180, imageUris: ["https://picsum.photos/seed/headphones1/400/300"], phone: "091 123 4567", userName: "Marko K.", location: "Zagreb", createdAt: Date.now() - 86400000 * 2, status: "active", isMine: false, packageSize: "small", packageBoxSize: "M" },
+  { id: "sample_2", title: "Zimska jakna XL, North Face", description: "Topla zimska jakna, nosio je jednu sezonu. Boja tamno plava, odlično stanje.", category: "Odjeća", condition: "Jako dobro", wantedFor: "Ljetna jakna ili sportska oprema", price: null, imageUris: ["https://picsum.photos/seed/jacket2/400/300"], phone: null, userName: "Ana P.", location: "Split", createdAt: Date.now() - 86400000 * 5, status: "active", isMine: false, packageSize: "small", packageBoxSize: "M" },
+  { id: "sample_3", title: "Skup knjiga - fantazija (10 knjiga)", description: "Komplet knjiga Patricka Rothfussa i Brandona Sandersona. Sve u odličnom stanju.", category: "Knjige", condition: "Kao novo", wantedFor: "Sci-fi knjige ili stripovi", price: 60, imageUris: ["https://picsum.photos/seed/books3/400/300"], phone: "095 765 4321", userName: "Luka B.", location: "Rijeka", createdAt: Date.now() - 86400000 * 1, status: "active", isMine: false, packageSize: "medium", packageWeight: 4 },
+  { id: "sample_4", title: "Bicikl - gradski, 26\"", description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.", category: "Sport", condition: "Dobro", wantedFor: "Roleri ili električni romobil", price: 350, imageUris: ["https://picsum.photos/seed/bicycle4/400/300"], phone: "098 111 2233", userName: "Petra M.", location: "Osijek", createdAt: Date.now() - 86400000 * 3, status: "active", isMine: false, packageSize: "large" },
+  { id: "sample_5", title: "Stolna lampa - industrijski stil", description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol.", category: "Namještaj", condition: "Dobro", wantedFor: "Polica za knjige ili mali stol", price: null, imageUris: ["https://picsum.photos/seed/lamp5/400/300"], phone: null, userName: "Tomislav R.", location: "Zagreb", createdAt: Date.now() - 86400000 * 7, status: "active", isMine: false, packageSize: "medium", packageWeight: 3 },
+  { id: "sample_6", title: "Roleri Rollerblade, vel. 42", description: "Inline roleri u odličnom stanju, korišteni svega par puta. Kaciga uključena.", category: "Sport", condition: "Kao novo", wantedFor: "Bicikl gradski ili električni romobil", price: 120, imageUris: ["https://picsum.photos/seed/skates6/400/300"], phone: "091 555 7788", userName: "Ivan S.", location: "Zagreb", createdAt: Date.now() - 86400000 * 2, status: "active", isMine: false, packageSize: "small", packageBoxSize: "L" },
+  { id: "sample_7", title: "Bežični miš Logitech MX Master 3", description: "Premium miš, ergonomski, savršen za dugotrajni rad. Baterija traje 70 dana.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Mehanička tipkovnica ili slušalice", price: 90, imageUris: ["https://picsum.photos/seed/mouse7/400/300"], phone: null, userName: "Viktor N.", location: "Zagreb", createdAt: Date.now() - 86400000 * 1, status: "active", isMine: false, packageSize: "small", packageBoxSize: "S" },
+  { id: "sample_8", title: "iPad 9. generacija, 64GB", description: "iPad u odličnom stanju, s torbom i punjačem. Bez ogrebotina na ekranu.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Laptop ili MacBook bilo koje generacije", price: 300, imageUris: ["https://picsum.photos/seed/ipad9/400/300"], phone: "098 444 5566", userName: "Filip H.", location: "Zagreb", createdAt: Date.now() - 86400000 * 3, status: "active", isMine: false, packageSize: "small", packageBoxSize: "S" },
 ];
 
+// ─── Provider ────────────────────────────────────────────────────────────────
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
+  const { user, token } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [myName, setMyNameState] = useState<string>("Korisnik");
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [blockedUserNames, setBlockedUserNames] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [storedListings, storedName, storedSaved, storedReviews, storedBlocked] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEY),
-          AsyncStorage.getItem(NAME_KEY),
-          AsyncStorage.getItem(SAVED_KEY),
-          AsyncStorage.getItem(REVIEWS_KEY),
-          AsyncStorage.getItem(BLOCKED_KEY),
-        ]);
-        const rawParsed: Array<Listing & { imageUri?: string | null }> = storedListings ? JSON.parse(storedListings) : [];
-        const parsed: Listing[] = rawParsed.map((l) =>
-          Array.isArray(l.imageUris) ? l : { ...l, imageUris: l.imageUri ? [l.imageUri] : [] }
-        );
-        // Merge user listings with samples, replace sample_mine_* with user's actual name
-        const storedName_ = storedName || "Korisnik";
-        const mergedSamples = SAMPLE_LISTINGS.map((s) =>
-          s.isMine ? { ...s, userName: storedName_ } : s
-        );
-        setListings([...parsed, ...mergedSamples]);
-        if (storedName) setMyNameState(storedName);
-        if (storedSaved) setSavedListingIds(JSON.parse(storedSaved));
-        if (storedReviews) setReviews(JSON.parse(storedReviews));
-        if (storedBlocked) setBlockedUserNames(JSON.parse(storedBlocked));
-      } catch {
-        setListings(SAMPLE_LISTINGS);
-      } finally {
-        setIsLoaded(true);
+  const myName = user?.username ?? "Korisnik";
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+  const authHeaders = useCallback((): Record<string, string> => {
+    const t = tokenRef.current;
+    return t ? { Authorization: `Bearer ${t}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+  }, []);
+
+  // ─── Fetch listings from API ───────────────────────────────────────────────
+  const refreshListings = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/listings`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json() as { listings: Listing[] };
+        if (data.listings.length > 0) {
+          setListings(data.listings.map((l) => ({
+            ...l,
+            imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
+            nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
+            trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
+          })));
+          return;
+        }
       }
-    }
-    load();
-  }, []);
+    } catch { /* offline */ }
+    // Fallback to sample listings when DB is empty or offline
+    setListings(SAMPLE_LISTINGS);
+  }, [authHeaders]);
 
-  const saveUserListings = useCallback(async (userListings: Listing[]) => {
+  // ─── Load saved IDs from API ───────────────────────────────────────────────
+  const loadSaved = useCallback(async () => {
+    if (!tokenRef.current) { setSavedListingIds([]); return; }
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(userListings));
-    } catch {}
-  }, []);
+      const res = await fetch(`${API_BASE}/saved`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json() as { savedIds: string[] };
+        setSavedListingIds(data.savedIds);
+      }
+    } catch { /* ignore */ }
+  }, [authHeaders]);
 
-  const setMyName = useCallback(async (name: string) => {
-    setMyNameState(name);
-    // Also update isMine listings with new name
-    setListings((prev) =>
-      prev.map((l) => (l.isMine ? { ...l, userName: name } : l))
-    );
+  // ─── Load blocked from API ─────────────────────────────────────────────────
+  const loadBlocked = useCallback(async () => {
+    if (!tokenRef.current) { setBlockedUserNames([]); return; }
     try {
-      await AsyncStorage.setItem(NAME_KEY, name);
-    } catch {}
-  }, []);
+      const res = await fetch(`${API_BASE}/blocked`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json() as { blockedUserNames: string[] };
+        setBlockedUserNames(data.blockedUserNames);
+      }
+    } catch { /* ignore */ }
+  }, [authHeaders]);
 
+  // ─── Initial load ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    setIsLoaded(false);
+    Promise.all([refreshListings(), loadSaved(), loadBlocked()]).finally(() => {
+      setIsLoaded(true);
+    });
+  }, [user?.id]); // re-run when user changes (login/logout)
+
+  // ─── CRUD operations ───────────────────────────────────────────────────────
   const addListing = useCallback(
     (data: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => {
-      const newListing: Listing = {
-        ...data,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        userName: myName,
-        createdAt: Date.now(),
-        status: "active",
-        isMine: true,
-      };
-      setListings((prev) => {
-        const updated = [newListing, ...prev];
-        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
-        saveUserListings(userListings);
-        return updated;
-      });
+      if (!tokenRef.current) return;
+      fetch(`${API_BASE}/listings`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      })
+        .then((r) => r.ok ? refreshListings() : null)
+        .catch(() => {});
     },
-    [myName, saveUserListings]
-  );
-
-  const markAsTraded = useCallback(
-    (id: string) => {
-      setListings((prev) => {
-        const updated = prev.map((l) => (l.id === id ? { ...l, status: "traded" as const } : l));
-        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
-        saveUserListings(userListings);
-        return updated;
-      });
-    },
-    [saveUserListings]
+    [authHeaders, refreshListings]
   );
 
   const updateListing = useCallback(
-    (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location">>) => {
-      setListings((prev) => {
-        const updated = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
-        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
-        saveUserListings(userListings);
-        return updated;
-      });
+    (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition">>) => {
+      if (!tokenRef.current) return;
+      // Optimistic update
+      setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+      fetch(`${API_BASE}/listings/${id}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify(updates),
+      }).catch(() => {});
     },
-    [saveUserListings]
+    [authHeaders]
   );
 
-  const markAsActive = useCallback(
-    (id: string) => {
-      setListings((prev) => {
-        const updated = prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l));
-        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
-        saveUserListings(userListings);
-        return updated;
-      });
-    },
-    [saveUserListings]
-  );
+  const markAsTraded = useCallback((id: string) => {
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "traded" as const } : l)));
+    fetch(`${API_BASE}/listings/${id}/status`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status: "traded" }),
+    }).catch(() => {});
+  }, [authHeaders]);
 
-  const deleteListing = useCallback(
-    (id: string) => {
-      setListings((prev) => {
-        const updated = prev.filter((l) => l.id !== id);
-        const userListings = updated.filter((l) => l.isMine && !l.id.startsWith("sample_"));
-        saveUserListings(userListings);
-        return updated;
-      });
-    },
-    [saveUserListings]
-  );
+  const markAsActive = useCallback((id: string) => {
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l)));
+    fetch(`${API_BASE}/listings/${id}/status`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status: "active" }),
+    }).catch(() => {});
+  }, [authHeaders]);
+
+  const deleteListing = useCallback((id: string) => {
+    setListings((prev) => prev.filter((l) => l.id !== id));
+    fetch(`${API_BASE}/listings/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).catch(() => {});
+  }, [authHeaders]);
 
   const saveListing = useCallback((id: string) => {
-    setSavedListingIds((prev) => {
-      if (prev.includes(id)) return prev;
-      const updated = [...prev, id];
-      AsyncStorage.setItem(SAVED_KEY, JSON.stringify(updated)).catch(() => {});
-      return updated;
-    });
-  }, []);
+    setSavedListingIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+    fetch(`${API_BASE}/saved/${id}`, { method: "POST", headers: authHeaders() }).catch(() => {});
+  }, [authHeaders]);
 
   const unsaveListing = useCallback((id: string) => {
-    setSavedListingIds((prev) => {
-      const updated = prev.filter((s) => s !== id);
-      AsyncStorage.setItem(SAVED_KEY, JSON.stringify(updated)).catch(() => {});
-      return updated;
-    });
-  }, []);
+    setSavedListingIds((prev) => prev.filter((s) => s !== id));
+    fetch(`${API_BASE}/saved/${id}`, { method: "DELETE", headers: authHeaders() }).catch(() => {});
+  }, [authHeaders]);
 
-  const addReview = useCallback(
-    (targetUserName: string, stars: number, comment: string) => {
-      const review: Review = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
-        targetUserName,
-        authorName: myName,
-        stars,
-        comment: comment.trim(),
-        createdAt: Date.now(),
-      };
-      setReviews((prev) => {
-        const updated = [review, ...prev];
-        AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(updated)).catch(() => {});
-        return updated;
-      });
-    },
-    [myName]
-  );
+  const addReview = useCallback((targetUserName: string, stars: number, comment: string) => {
+    const review: Review = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 8),
+      targetUserName,
+      authorName: myName,
+      stars,
+      comment: comment.trim(),
+      createdAt: Date.now(),
+    };
+    setReviews((prev) => [review, ...prev]);
+    fetch(`${API_BASE}/reviews`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ targetUserName, stars, comment }),
+    }).catch(() => {});
+  }, [myName, authHeaders]);
 
   const blockUser = useCallback((userName: string) => {
-    setBlockedUserNames((prev) => {
-      if (prev.includes(userName)) return prev;
-      const updated = [...prev, userName];
-      AsyncStorage.setItem(BLOCKED_KEY, JSON.stringify(updated)).catch(() => {});
-      return updated;
-    });
-  }, []);
+    setBlockedUserNames((prev) => prev.includes(userName) ? prev : [...prev, userName]);
+    fetch(`${API_BASE}/blocked`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ username: userName }),
+    }).catch(() => {});
+  }, [authHeaders]);
 
   const unblockUser = useCallback((userName: string) => {
-    setBlockedUserNames((prev) => {
-      const updated = prev.filter((u) => u !== userName);
-      AsyncStorage.setItem(BLOCKED_KEY, JSON.stringify(updated)).catch(() => {});
-      return updated;
-    });
+    setBlockedUserNames((prev) => prev.filter((u) => u !== userName));
+    fetch(`${API_BASE}/blocked/${encodeURIComponent(userName)}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).catch(() => {});
+  }, [authHeaders]);
+
+  const setMyName = useCallback((_name: string) => {
+    // Username is managed via auth profile — this is a no-op kept for interface compat
   }, []);
 
   const deleteAllData = useCallback(async () => {
     await AsyncStorage.multiRemove([
-      STORAGE_KEY,
-      NAME_KEY,
-      SAVED_KEY,
-      REVIEWS_KEY,
-      BLOCKED_KEY,
+      "@trampaj_listings_v3",
+      "@trampaj_name",
+      "@trampaj_saved_v1",
+      "@trampaj_reviews_v1",
+      "@trampaj_blocked_v1",
       "@trampaj_onboarded_v1",
-      "@trampaj_chat_v1",
+      "@trampaj_chats_v5",
     ]);
-    setListings(SAMPLE_LISTINGS.filter((s) => !s.isMine));
-    setMyNameState("Korisnik");
+    setListings(SAMPLE_LISTINGS);
     setSavedListingIds([]);
     setReviews([]);
     setBlockedUserNames([]);
@@ -966,6 +324,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         blockedUserNames,
         blockUser,
         unblockUser,
+        refreshListings,
       }}
     >
       {children}

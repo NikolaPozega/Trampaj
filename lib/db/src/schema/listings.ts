@@ -1,0 +1,28 @@
+import { pgTable, text, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { usersTable } from "./users";
+
+export const listingsTable = pgTable("listings", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  condition: text("condition"),
+  wantedFor: text("wanted_for").notNull().default(""),
+  price: real("price"),
+  imageUris: text("image_uris").notNull().default("[]"),
+  phone: text("phone"),
+  location: text("location").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  topup: text("topup"),
+  flexibility: text("flexibility"),
+  cashFallback: boolean("cash_fallback"),
+  deadline: text("deadline"),
+  nudimTags: text("nudim_tags").notNull().default("[]"),
+  trazimTags: text("trazim_tags").notNull().default("[]"),
+  packageSize: text("package_size"),
+  packageBoxSize: text("package_box_size"),
+  packageWeight: real("package_weight"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

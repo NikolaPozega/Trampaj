@@ -586,7 +586,7 @@ export default function ListingDetailScreen() {
                   router.push("/login");
                   return;
                 }
-                getOrCreateConversation(listing.id, listing.title, listing.userName);
+                void getOrCreateConversation(listing.id, listing.title, listing.userName);
                 router.push(`/chat/${listing.id}?listingTitle=${encodeURIComponent(listing.title)}&otherUser=${encodeURIComponent(listing.userName)}`);
               }}
               style={({ pressed }) => [
