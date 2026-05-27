@@ -493,6 +493,255 @@ function EscrowModal({
   );
 }
 
+// ─── Deposit modal (5€ escrow hold) ──────────────────────────────────────────
+function DepositModal({
+  onDone,
+  onSkip,
+  conversationId,
+  token,
+}: {
+  onDone: () => void;
+  onSkip: () => void;
+  conversationId: string;
+  token: string | null;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  const handleDeposit = async () => {
+    setLoading(true);
+    setErrMsg(null);
+    try {
+      const successUrl = Linking.createURL("escrow/success");
+      const cancelUrl = Linking.createURL("escrow/cancel");
+
+      const resp = await fetch(`${API_BASE}/escrow/checkout/${conversationId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ successUrl, cancelUrl }),
+      });
+      const data = await resp.json() as {
+        url?: string;
+        alreadyPaid?: boolean;
+        status?: string;
+        error?: string;
+        code?: string;
+      };
+
+      if (data.alreadyPaid) {
+        setPaid(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        return;
+      }
+
+      if (!resp.ok || !data.url) {
+        if (data.code === "stripe_not_connected") {
+          setErrMsg("Sigurnosni depozit uskoro dostupan! Platforma je u fazi testiranja.");
+        } else {
+          setErrMsg(data.error ?? "Greška pri otvaranju plaćanja.");
+        }
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, Linking.createURL("escrow"));
+
+      if (result.type === "success" && result.url?.includes("escrow/success")) {
+        // Verify with backend
+        const sessionId = data.url.match(/cs_[a-zA-Z0-9_]+/)?.[0];
+        if (sessionId) {
+          await fetch(`${API_BASE}/escrow/verify`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ checkoutSessionId: sessionId, conversationId }),
+          });
+        }
+        setPaid(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (result.type === "cancel" || (result.type === "success" && result.url?.includes("escrow/cancel"))) {
+        setErrMsg("Plaćanje otkazano.");
+      }
+    } catch {
+      setErrMsg("Greška. Pokušaj ponovo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (paid) {
+    return (
+      <View style={styles.overlay}>
+        <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
+          <Text style={{ fontSize: 48, marginBottom: 8 }}>🔐</Text>
+          <Text style={styles.modalLabel}>DEPOZIT AKTIVAN</Text>
+          <Text style={styles.modalTitle}>5,00 € zadržano</Text>
+          <Text style={[styles.disclaimerBody, { marginTop: 10, textAlign: "center" }]}>
+            {"Novac je sigurno zadržan na tvojoj kartici — nismo ga naplatili.\n\n"}
+            {"Kada obje strane potvrde primitak paketa, iznos se automatski oslobađa.\n\n"}
+            <Text style={styles.disclaimerBold}>Pritisni "Potvrdi primitak"</Text>
+            {" u chatu čim dobiješ paket."}
+          </Text>
+          <Pressable
+            onPress={onDone}
+            style={({ pressed }) => [
+              styles.dealBtn,
+              { marginTop: 20, width: "100%", backgroundColor: "#22C55E", opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Text style={[styles.dealBtnText, { color: "#fff" }]}>Savršeno! 🎉</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.overlay}>
+      <View style={[styles.dealCard, { padding: 24, gap: 0, maxWidth: SW - 40 }]}>
+        <Text style={{ fontSize: 36, marginBottom: 6 }}>🔒</Text>
+        <Text style={styles.modalLabel}>ZAŠTITA TRAMPE</Text>
+        <Text style={styles.modalTitle}>Sigurnosni depozit</Text>
+
+        <View style={{ marginTop: 14, width: "100%", gap: 10 }}>
+          {[
+            { icon: "💳", text: "5,00 € se drži na kartici — NE naplaćuje se" },
+            { icon: "✅", text: "Kad obje strane potvrde primitak — automatski se vraća" },
+            { icon: "⚠️", text: "Ako pošiljatelj ne pošalje — iznos se dodjeljuje tebi" },
+          ].map((row, i) => (
+            <View key={i} style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+              <Text style={{ fontSize: 18, lineHeight: 22 }}>{row.icon}</Text>
+              <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 13, flex: 1, lineHeight: 20 }}>{row.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {errMsg && (
+          <View style={{ marginTop: 12, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
+            <Text style={{ color: "#EF4444", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" }}>{errMsg}</Text>
+          </View>
+        )}
+
+        <Pressable
+          onPress={handleDeposit}
+          disabled={loading}
+          style={({ pressed }) => [
+            styles.dealBtn,
+            { marginTop: 16, width: "100%", backgroundColor: loading ? C.mutedBg : C.primary, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          {loading
+            ? <Text style={[styles.dealBtnText, { color: C.muted }]}>Učitavanje…</Text>
+            : <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Zaštiti trampu — 5,00 € 🔒</Text>
+          }
+        </Pressable>
+        <Pressable
+          onPress={onSkip}
+          style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+        >
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči zaštitu</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ─── Escrow banner (persistent u chatu kad su oba depozita aktivna) ───────────
+function EscrowBanner({
+  conversationId,
+  token,
+  escrowStatus,
+  onRefresh,
+}: {
+  conversationId: string;
+  token: string | null;
+  escrowStatus: import("@/context/ChatContext").EscrowStatus;
+  onRefresh: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const { confirmReceipt } = useChat();
+
+  const myDone = ["confirmed", "released", "captured"].includes(escrowStatus.myStatus);
+  const theirDone = ["confirmed", "released", "captured"].includes(escrowStatus.theirStatus);
+  const bothDone = escrowStatus.bothConfirmed || escrowStatus.released;
+
+  const handleConfirm = async () => {
+    if (myDone) return;
+    setConfirming(true);
+    try {
+      const result = await confirmReceipt(conversationId);
+      if (result.released) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      onRefresh();
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  if (bothDone) {
+    return (
+      <View style={{ marginHorizontal: 12, marginBottom: 8, backgroundColor: "rgba(34,197,94,0.12)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(34,197,94,0.3)", flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ fontSize: 20 }}>🎉</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#22C55E", fontFamily: "Inter_700Bold", fontSize: 13 }}>Trampa završena!</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Obje strane potvrdile primitak. Depoziti su oslobođeni.</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginHorizontal: 12, marginBottom: 8, backgroundColor: "rgba(245,193,0,0.08)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(245,193,0,0.25)" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Text style={{ fontSize: 16 }}>🔒</Text>
+        <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 13 }}>Depozit aktivan — 5,00 € zadržano</Text>
+      </View>
+
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+        <View style={{ flex: 1, backgroundColor: myDone ? "rgba(34,197,94,0.12)" : "rgba(56,189,248,0.07)", borderRadius: 8, padding: 8, borderWidth: 1, borderColor: myDone ? "rgba(34,197,94,0.3)" : "rgba(56,189,248,0.2)", alignItems: "center" }}>
+          <Text style={{ fontSize: 14 }}>{myDone ? "✅" : "⏳"}</Text>
+          <Text style={{ color: myDone ? "#22C55E" : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11, marginTop: 2 }}>Ti</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 1 }}>{myDone ? "Potvrđeno" : "Čeka"}</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: theirDone ? "rgba(34,197,94,0.12)" : "rgba(56,189,248,0.07)", borderRadius: 8, padding: 8, borderWidth: 1, borderColor: theirDone ? "rgba(34,197,94,0.3)" : "rgba(56,189,248,0.2)", alignItems: "center" }}>
+          <Text style={{ fontSize: 14 }}>{theirDone ? "✅" : "⏳"}</Text>
+          <Text style={{ color: theirDone ? "#22C55E" : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11, marginTop: 2 }}>Druga strana</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 1 }}>{theirDone ? "Potvrđeno" : "Čeka"}</Text>
+        </View>
+      </View>
+
+      {!myDone && (
+        <Pressable
+          onPress={handleConfirm}
+          disabled={confirming}
+          style={({ pressed }) => ({
+            backgroundColor: confirming ? C.mutedBg : "#22C55E",
+            borderRadius: 8,
+            padding: 10,
+            alignItems: "center",
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 13 }}>
+            {confirming ? "Potvrđujem…" : "✓ Primio/la sam paket"}
+          </Text>
+        </Pressable>
+      )}
+      {myDone && !theirDone && (
+        <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" }}>
+          Čekamo potvrdu druge strane…
+        </Text>
+      )}
+    </View>
+  );
+}
+
 // ─── Deal overlay (confetti + card) ─────────────────────────────────────────
 function DealOverlay({ onDismiss }: { onDismiss: () => void }) {
   const cardScale = useRef(new Animated.Value(0)).current;
@@ -545,9 +794,9 @@ export default function ChatScreen() {
     otherUser: string;
   }>();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { listings } = useListings();
-  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation } =
+  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation, loadEscrowStatus, confirmReceipt } =
     useChat();
 
   // Auth guard — redirect to login if not logged in
@@ -562,7 +811,7 @@ export default function ChatScreen() {
 
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
-  const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "delivery" | "escrow">(null);
+  const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "delivery" | "escrow" | "deposit">(null);
   const flatListRef = useRef<FlatList>(null);
   const prevHsRef = useRef<HsStatus | null>(null);
 
@@ -599,6 +848,13 @@ export default function ChatScreen() {
     }
     prevHsRef.current = hsStatus;
   }, [hsStatus, liveConv?.dealShown]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load escrow status when deal is accepted and conversation is loaded
+  useEffect(() => {
+    if (liveConv?.id && hsStatus === "accepted") {
+      loadEscrowStatus(liveConv.id);
+    }
+  }, [liveConv?.id, hsStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const convId = liveConv?.id ?? "";
 
@@ -799,6 +1055,16 @@ export default function ChatScreen() {
           }
         />
 
+        {/* ── Escrow Banner (visible when deposit is held) ── */}
+        {hsStatus === "accepted" && liveConv.escrowStatus?.bothHeld && (
+          <EscrowBanner
+            conversationId={liveConv.id}
+            token={token}
+            escrowStatus={liveConv.escrowStatus}
+            onRefresh={() => loadEscrowStatus(liveConv.id)}
+          />
+        )}
+
         {/* ── Input Bar ── */}
         <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
           <TextInput
@@ -877,18 +1143,29 @@ export default function ChatScreen() {
       {/* ── Escrow / Delivery Payment Modal ── */}
       {postDealStep === "escrow" && (
         <EscrowModal
+          onDone={() => setPostDealStep("deposit")}
+          onSkip={() => setPostDealStep("deposit")}
+          deliveryMethod={liveConv.deliveryInfo?.method}
+          packageSize={listing?.packageSize ?? null}
+          conversationId={liveConv.id}
+          listingId={listingId ?? ""}
+        />
+      )}
+
+      {/* ── Deposit Modal (5€ escrow hold) ── */}
+      {postDealStep === "deposit" && (
+        <DepositModal
           onDone={() => {
             setPostDealStep(null);
             markDealShown(liveConv.id);
+            loadEscrowStatus(liveConv.id);
           }}
           onSkip={() => {
             setPostDealStep(null);
             markDealShown(liveConv.id);
           }}
-          deliveryMethod={liveConv.deliveryInfo?.method}
-          packageSize={listing?.packageSize ?? null}
           conversationId={liveConv.id}
-          listingId={listingId ?? ""}
+          token={token}
         />
       )}
     </View>

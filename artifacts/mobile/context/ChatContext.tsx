@@ -18,6 +18,17 @@ export interface DeliveryInfo {
   escrowActive: boolean;
 }
 
+export interface EscrowStatus {
+  myStatus: "none" | "pending" | "held" | "confirmed" | "released" | "captured";
+  theirStatus: "none" | "pending" | "held" | "confirmed" | "released" | "captured";
+  myCheckoutSessionId?: string | null;
+  bothHeld: boolean;
+  bothConfirmed: boolean;
+  released: boolean;
+  amount: number;
+  currency: string;
+}
+
 export interface Conversation {
   id: string;
   listingId: string;
@@ -29,6 +40,7 @@ export interface Conversation {
   dealShown: boolean;
   disclaimerAccepted?: boolean;
   deliveryInfo?: DeliveryInfo;
+  escrowStatus?: EscrowStatus;
 }
 
 interface ChatContextType {
@@ -41,6 +53,8 @@ interface ChatContextType {
   acceptDisclaimer: (conversationId: string) => void;
   saveDeliveryInfo: (conversationId: string, info: DeliveryInfo) => void;
   deleteConversation: (conversationId: string) => void;
+  loadEscrowStatus: (conversationId: string) => Promise<void>;
+  confirmReceipt: (conversationId: string) => Promise<{ bothConfirmed: boolean; released: boolean }>;
   unreadCount: number;
 }
 
@@ -50,7 +64,7 @@ const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
   ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
   : "/api";
 
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 5000;
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
@@ -73,11 +87,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return;
       const data = await res.json() as { conversations: Conversation[] };
       setConversations((prev) => {
-        // Merge: preserve local dealShown/disclaimerAccepted state if server doesn't have it yet
         return data.conversations.map((incoming) => {
           const existing = prev.find((c) => c.id === incoming.id);
           if (!existing) return incoming;
-          // Notify if there are new messages from others
           const prevCount = existing.messages.filter((m) => !m.fromMe).length;
           const newCount = incoming.messages.filter((m) => !m.fromMe).length;
           if (newCount > prevCount && AppState.currentState !== "active") {
@@ -92,8 +104,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           }
           return {
             ...incoming,
-            // Preserve local UI state
             dealShown: incoming.dealShown || existing.dealShown,
+            // Preserve escrow status from local state until next explicit refresh
+            escrowStatus: existing.escrowStatus ?? incoming.escrowStatus,
           };
         });
       });
@@ -126,7 +139,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       stopPolling();
     }
     return stopPolling;
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -143,7 +156,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     async (listingId: string, _listingTitle: string, _otherUserName: string): Promise<Conversation | null> => {
       if (!tokenRef.current) return null;
 
-      // Check local cache first
       const cached = conversations.find((c) => c.listingId === listingId);
       if (cached) return cached;
 
@@ -171,7 +183,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ─── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (conversationId: string, text: string): Promise<void> => {
     if (!tokenRef.current) return;
-    // Optimistic update
     const tempMsg: ChatMessage = {
       id: `temp_${Date.now()}`,
       text,
@@ -194,7 +205,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json() as { message: ChatMessage };
-        // Replace temp with real message
         setConversations((prev) =>
           prev.map((c) =>
             c.id !== conversationId ? c
@@ -302,6 +312,58 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [authHeaders]);
 
+  // ─── Load escrow status ───────────────────────────────────────────────────
+  const loadEscrowStatus = useCallback(async (conversationId: string) => {
+    if (!tokenRef.current) return;
+    try {
+      const res = await fetch(`${API_BASE}/escrow/status/${conversationId}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) return;
+      const status = await res.json() as EscrowStatus;
+      setConversations((prev) =>
+        prev.map((c) => c.id === conversationId ? { ...c, escrowStatus: status } : c)
+      );
+    } catch { /* offline */ }
+  }, [authHeaders]);
+
+  // ─── Confirm receipt ──────────────────────────────────────────────────────
+  const confirmReceipt = useCallback(async (conversationId: string): Promise<{ bothConfirmed: boolean; released: boolean }> => {
+    if (!tokenRef.current) return { bothConfirmed: false, released: false };
+    try {
+      const res = await fetch(`${API_BASE}/escrow/confirm/${conversationId}`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const result = await res.json() as {
+        myStatus: EscrowStatus["myStatus"];
+        theirStatus: EscrowStatus["theirStatus"];
+        bothConfirmed: boolean;
+        released: boolean;
+      };
+      // Update local escrow status
+      setConversations((prev) =>
+        prev.map((c) => c.id !== conversationId ? c : {
+          ...c,
+          escrowStatus: {
+            ...c.escrowStatus,
+            myStatus: result.myStatus,
+            theirStatus: result.theirStatus,
+            bothConfirmed: result.bothConfirmed,
+            released: result.released,
+            bothHeld: c.escrowStatus?.bothHeld ?? false,
+            amount: c.escrowStatus?.amount ?? 500,
+            currency: c.escrowStatus?.currency ?? "eur",
+          },
+        })
+      );
+      return { bothConfirmed: result.bothConfirmed, released: result.released };
+    } catch {
+      return { bothConfirmed: false, released: false };
+    }
+  }, [authHeaders]);
+
   // ─── Delete conversation (local only) ─────────────────────────────────────
   const deleteConversation = useCallback((conversationId: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
@@ -325,6 +387,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       markDealShown,
       acceptDisclaimer,
       saveDeliveryInfo,
+      loadEscrowStatus,
+      confirmReceipt,
       deleteConversation,
       unreadCount,
     }}>

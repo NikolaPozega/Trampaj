@@ -5,3 +5,4 @@ export * from "./messages";
 export * from "./reviews";
 export * from "./saved_listings";
 export * from "./blocked_users";
+export * from "./escrow_deposits";
