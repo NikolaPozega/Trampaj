@@ -262,7 +262,7 @@ function DeliveryModal({
           <Text style={[styles.deliveryOptionLabel, method === "courier" && { color: C.primary }]}>
             🚐 Kurirska dostava
           </Text>
-          <Text style={styles.deliveryOptionSub}>Paketomat ili GLS kućna dostava</Text>
+          <Text style={styles.deliveryOptionSub}>Box Now ili GLS kućna dostava</Text>
         </Pressable>
 
         <Pressable
@@ -314,7 +314,7 @@ const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
 type ShippingInfo = { label: string; amountEur: string; emoji: string };
 
 const SHIPPING: Record<string, ShippingInfo> = {
-  small: { label: "Paketomat (Packeta)", amountEur: "3,99 €", emoji: "📦" },
+  small: { label: "Box Now paketomat", amountEur: "3,99 €", emoji: "📦" },
   medium: { label: "GLS kućna dostava", amountEur: "5,99 €", emoji: "🚚" },
 };
 
@@ -392,7 +392,7 @@ function EscrowModal({
           <Text style={styles.modalLabel}>PLAĆANJE USPJEŠNO</Text>
           <Text style={styles.modalTitle}>Dostava plaćena!</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
-            {"Nalepnica za dostavu će ti biti poslana na e-mail.\n\nUpakuj predmet i odnesi ga na paketomat ili predaj kuriru."}
+            {"Nalepnica za dostavu će ti biti poslana na e-mail.\n\nUpakuj predmet i odnesi ga na Box Now paketomat ili predaj GLS kuriru."}
           </Text>
           <Pressable
             onPress={onDone}

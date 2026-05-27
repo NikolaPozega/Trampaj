@@ -709,7 +709,7 @@ export default function PostScreen() {
           </Text>
           <View style={{ gap: 8, marginTop: 4 }}>
             {([
-              { key: "small" as PackageSize, emoji: "📦", label: "Mali paket", sub: "Paketomat — do 20 kg" },
+              { key: "small" as PackageSize, emoji: "📦", label: "Mali paket", sub: "Box Now paketomat — do 20 kg" },
               { key: "medium" as PackageSize, emoji: "🚐", label: "Srednji paket", sub: "GLS kućna dostava — do 31 kg" },
               { key: "large" as PackageSize, emoji: "🚛", label: "Veliki / nestandardan", sub: "Osobni dogovor — bez kurirske" },
             ] as const).map((opt) => {
@@ -744,7 +744,7 @@ export default function PostScreen() {
                     )}
                   </Pressable>
 
-                  {/* ── Sub-forma za mali paket (paketomat) ── */}
+                  {/* ── Sub-forma za mali paket (Box Now paketomat) ── */}
                   {selected && opt.key === "small" && (
                     <View style={[styles.pkgSubForm, { borderColor: colors.border }]}>
                       <Text style={[styles.pkgSubLabel, { color: colors.mutedForeground }]}>

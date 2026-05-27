@@ -4,7 +4,7 @@ import { getUncachableStripeClient, getStripePublishableKey } from "../stripeCli
 const router = Router();
 
 const SHIPPING_PRICES: Record<string, { amount: number; label: string }> = {
-  small: { amount: 399, label: "Paketomat (Packeta)" },
+  small: { amount: 399, label: "Box Now paketomat" },
   medium: { amount: 599, label: "GLS kućna dostava" },
 };
 

@@ -33,9 +33,9 @@ async function createProducts() {
 
   const shippingProducts = [
     {
-      name: "Dostava — Paketomat (Packeta)",
-      description: "Slanje putem paketomata — paketi do 20 kg",
-      metadata: { type: "shipping", method: "packeta", size: "small" },
+      name: "Dostava — Box Now paketomat",
+      description: "Slanje putem Box Now paketomata — paketi do 20 kg",
+      metadata: { type: "shipping", method: "boxnow", size: "small" },
       amount: 399,
     },
     {
