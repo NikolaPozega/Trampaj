@@ -579,8 +579,6 @@ export default function ListingDetailScreen() {
         )}
       </ScrollView>
 
-      <AdBannerSlot size="bottom" seed={`${id ?? "listing"}-bottom`} />
-
       {!listing.isMine && listing.status === "active" && (
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>
           <View style={styles.footerButtons}>
@@ -652,6 +650,7 @@ export default function ListingDetailScreen() {
               <Text style={[styles.reportText, { color: colors.mutedForeground }]}>Prijavi / Blokiraj</Text>
             </Pressable>
           </View>
+          <AdBannerSlot size="bottom" seed={`${id ?? "listing"}-bottom`} />
         </View>
       )}
 
