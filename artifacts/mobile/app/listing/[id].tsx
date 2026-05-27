@@ -626,7 +626,7 @@ export default function ListingDetailScreen() {
           </View>
 
           <View style={styles.footerMeta}>
-            {!alreadyReviewed && (
+            {user && !alreadyReviewed && (
               <Pressable
                 onPress={() => openModal("review")}
                 style={({ pressed }) => [styles.reviewBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
