@@ -134,7 +134,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   // ─── Fetch listings from API ───────────────────────────────────────────────
   const refreshListings = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/listings`, { headers: authHeaders() });
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${API_BASE}/listings`, { headers: authHeaders(), signal: controller.signal });
+      clearTimeout(tid);
       if (res.ok) {
         const data = await res.json() as { listings: Listing[] };
         if (data.listings.length > 0) {
@@ -147,7 +150,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-    } catch { /* offline */ }
+    } catch { /* offline or timeout */ }
     // Fallback to sample listings when DB is empty or offline
     setListings(SAMPLE_LISTINGS);
   }, [authHeaders]);
