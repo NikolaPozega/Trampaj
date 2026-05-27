@@ -216,7 +216,7 @@ export default function OnboardingScreen() {
               <Text style={[styles.devLinkLabel, { color: colors.mutedForeground }]}>
                 🔧 Dev mode — SMTP nije konfiguriran. Klikni ovaj link za aktivaciju:
               </Text>
-              <Pressable onPress={() => router.push(devLink.replace(/.*\/verify-email/, "/verify-email"))}>
+              <Pressable onPress={() => router.push(devLink.replace(/.*\/verify-email/, "/verify-email") as never)}>
                 <Text style={[styles.devLink, { color: colors.secondary }]} numberOfLines={3}>
                   {devLink}
                 </Text>

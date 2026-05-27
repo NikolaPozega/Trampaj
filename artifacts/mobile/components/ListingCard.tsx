@@ -31,9 +31,10 @@ const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
 
 interface Props {
   listing: Listing;
+  onPress?: () => void;
 }
 
-export function ListingCard({ listing }: Props) {
+export function ListingCard({ listing, onPress }: Props) {
   const colors = useColors();
   const hasPrice = listing.price != null && listing.price > 0;
   const iconName = CATEGORY_ICONS[listing.category] ?? "package";

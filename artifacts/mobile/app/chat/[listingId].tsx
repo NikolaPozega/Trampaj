@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -304,34 +306,187 @@ function DeliveryModal({
   );
 }
 
-// ─── Escrow modal ─────────────────────────────────────────────────────────────
-function EscrowModal({ onActivate, onSkip }: { onActivate: () => void; onSkip: () => void }) {
+// ─── Escrow / delivery-payment modal ─────────────────────────────────────────
+const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
+  ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
+  : "http://localhost:8080/api";
+
+type ShippingInfo = { label: string; amountEur: string; emoji: string };
+
+const SHIPPING: Record<string, ShippingInfo> = {
+  small: { label: "Paketomat (Packeta)", amountEur: "3,99 €", emoji: "📦" },
+  medium: { label: "GLS kućna dostava", amountEur: "5,99 €", emoji: "🚚" },
+};
+
+function EscrowModal({
+  onDone,
+  onSkip,
+  deliveryMethod,
+  packageSize,
+  conversationId,
+  listingId,
+}: {
+  onDone: () => void;
+  onSkip: () => void;
+  deliveryMethod?: "courier" | "personal";
+  packageSize?: string | null;
+  conversationId: string;
+  listingId: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  const isCourier = deliveryMethod === "courier";
+  const shipping = packageSize ? SHIPPING[packageSize] : null;
+
+  const handlePay = async () => {
+    if (!shipping) return;
+    setLoading(true);
+    setErrMsg(null);
+    try {
+      const successUrl = Linking.createURL("payment/success");
+      const cancelUrl = Linking.createURL("payment/cancel");
+
+      const resp = await fetch(`${API_BASE}/payments/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          listingId,
+          packageSize: packageSize ?? "small",
+          successUrl,
+          cancelUrl,
+        }),
+      });
+      const data = await resp.json() as { url?: string; error?: string; code?: string };
+
+      if (!resp.ok || !data.url) {
+        if (data.code === "stripe_not_connected") {
+          setErrMsg("Plaćanje karticom uskoro dostupno! Platforma je u fazi testiranja.");
+        } else {
+          setErrMsg(data.error ?? "Greška pri otvaranju plaćanja.");
+        }
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, Linking.createURL("payment"));
+      if (result.type === "success" && result.url?.includes("payment/success")) {
+        setPaid(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (result.type === "cancel" || (result.type === "success" && result.url?.includes("payment/cancel"))) {
+        setErrMsg("Plaćanje otkazano.");
+      }
+    } catch (e) {
+      setErrMsg("Greška. Pokušaj ponovo ili kontaktiraj podršku.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (paid) {
+    return (
+      <View style={styles.overlay}>
+        <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
+          <Text style={{ fontSize: 48, marginBottom: 8 }}>✅</Text>
+          <Text style={styles.modalLabel}>PLAĆANJE USPJEŠNO</Text>
+          <Text style={styles.modalTitle}>Dostava plaćena!</Text>
+          <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
+            {"Nalepnica za dostavu će ti biti poslana na e-mail.\n\nUpakuj predmet i odnesi ga na paketomat ili predaj kuriru."}
+          </Text>
+          <Pressable
+            onPress={onDone}
+            style={({ pressed }) => [
+              styles.dealBtn,
+              { marginTop: 20, width: "100%", backgroundColor: "#22C55E", opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Text style={[styles.dealBtnText, { color: "#fff" }]}>Super, nastavi! 🎉</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!isCourier) {
+    return (
+      <View style={styles.overlay}>
+        <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
+          <Text style={{ fontSize: 36, marginBottom: 8 }}>🤝</Text>
+          <Text style={styles.modalLabel}>OSOBNO PREUZIMANJE</Text>
+          <Text style={styles.modalTitle}>Dogovorite se direktno</Text>
+          <Text style={[styles.disclaimerBody, { marginTop: 12 }]}>
+            {"Dogovorite se u chatu o terminu i mjestu preuzimanja.\n\n"}
+            {"Za sigurniju trampu, u budućnosti planiramo i opciju sigurnosnog depozita."}
+          </Text>
+          <Pressable
+            onPress={onDone}
+            style={({ pressed }) => [styles.dealBtn, { marginTop: 20, width: "100%", opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={styles.dealBtnText}>Razumijem →</Text>
+          </Pressable>
+          <Pressable
+            onPress={onSkip}
+            style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
+          >
+            <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Zatvori</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.overlay}>
       <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
-        <Text style={{ fontSize: 36, marginBottom: 8 }}>🔒</Text>
-        <Text style={styles.modalLabel}>ZAŠTITA TRAMPE</Text>
-        <Text style={styles.modalTitle}>Sigurnosni depozit</Text>
-        <Text style={[styles.disclaimerBody, { marginTop: 12 }]}>
-          {"Rezerviraj mali iznos na kartici koji se otpušta kada obje strane potvrde primitak paketa.\n\n"}
-          {"Ako jedna strana ne pošalje paket u dogovorenom roku, iznos se vraća drugoj strani.\n\n"}
-          <Text style={styles.disclaimerBold}>Dostupno uskoro</Text>
-          {" — trenutno radimo na integraciji sigurnosnog plaćanja."}
+        <Text style={{ fontSize: 36, marginBottom: 8 }}>{shipping?.emoji ?? "📦"}</Text>
+        <Text style={styles.modalLabel}>PLAĆANJE DOSTAVE</Text>
+        <Text style={styles.modalTitle}>{shipping?.label ?? "Dostava"}</Text>
+
+        <View style={{ marginTop: 16, backgroundColor: "rgba(56,189,248,0.07)", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "rgba(56,189,248,0.18)", width: "100%" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Dostava</Text>
+            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{shipping?.amountEur ?? "—"}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Platformska naknada</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>uključena</Text>
+          </View>
+          <View style={{ height: 1, backgroundColor: "rgba(56,189,248,0.15)", marginVertical: 6 }} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15 }}>Ukupno</Text>
+            <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 15 }}>{shipping?.amountEur ?? "—"}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.disclaimerBody, { marginTop: 12, fontSize: 12 }]}>
+          {"Plaćanje je sigurno putem Stripe platforme. Nalepinica za dostavu stiže na tvoj e-mail. 🔒"}
         </Text>
+
+        {errMsg && (
+          <View style={{ marginTop: 10, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
+            <Text style={{ color: "#EF4444", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" }}>{errMsg}</Text>
+          </View>
+        )}
+
         <Pressable
-          onPress={onActivate}
+          onPress={handlePay}
+          disabled={loading}
           style={({ pressed }) => [
             styles.dealBtn,
-            { marginTop: 20, width: "100%", backgroundColor: C.secondary, opacity: pressed ? 0.85 : 1 },
+            { marginTop: 16, width: "100%", backgroundColor: loading ? C.mutedBg : C.secondary, opacity: pressed ? 0.85 : 1 },
           ]}
         >
-          <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Obavijesti me kada bude dostupno</Text>
+          {loading
+            ? <Text style={[styles.dealBtnText, { color: C.muted }]}>Učitavanje…</Text>
+            : <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Plati {shipping?.amountEur ?? ""} karticom →</Text>
+          }
         </Pressable>
         <Pressable
           onPress={onSkip}
           style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
         >
-          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Preskoči</Text>
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Plati kasni­je / preskoči</Text>
         </Pressable>
       </View>
     </View>
@@ -719,15 +874,10 @@ export default function ChatScreen() {
         />
       )}
 
-      {/* ── Escrow Modal ── */}
+      {/* ── Escrow / Delivery Payment Modal ── */}
       {postDealStep === "escrow" && (
         <EscrowModal
-          onActivate={() => {
-            Alert.alert(
-              "Uskoro dostupno!",
-              "Obavijestit ćemo te kada sigurnosni depozit bude aktiviran.",
-              [{ text: "U redu" }]
-            );
+          onDone={() => {
             setPostDealStep(null);
             markDealShown(liveConv.id);
           }}
@@ -735,6 +885,10 @@ export default function ChatScreen() {
             setPostDealStep(null);
             markDealShown(liveConv.id);
           }}
+          deliveryMethod={liveConv.deliveryInfo?.method}
+          packageSize={listing?.packageSize ?? null}
+          conversationId={liveConv.id}
+          listingId={listingId ?? ""}
         />
       )}
     </View>
