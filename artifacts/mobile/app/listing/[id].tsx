@@ -24,6 +24,7 @@ import { useChat } from "@/context/ChatContext";
 import { useListings, type Listing } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { AdBannerSlot } from "@/components/AdBanner";
 
 // ─── Matching helpers ─────────────────────────────────────────────────────────
 
@@ -409,6 +410,8 @@ export default function ListingDetailScreen() {
         </Pressable>
       </View>
 
+      <AdBannerSlot size="small" seed={id ?? "listing-top"} />
+
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]} showsVerticalScrollIndicator={false}>
         {(() => {
           const images = (listing.imageUris?.length ?? 0) > 0
@@ -575,6 +578,8 @@ export default function ListingDetailScreen() {
           />
         )}
       </ScrollView>
+
+      <AdBannerSlot size="bottom" seed={`${id ?? "listing"}-bottom`} />
 
       {!listing.isMine && listing.status === "active" && (
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>

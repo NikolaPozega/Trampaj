@@ -85,11 +85,9 @@ export function ListingCard({ listing }: Props) {
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
             {listing.title}
           </Text>
-          {hasPrice && (
-            <Text style={[styles.price, { color: colors.primary }]}>
-              {listing.price} €
-            </Text>
-          )}
+          <Text style={[styles.price, { color: hasPrice ? colors.primary : colors.mutedForeground }]}>
+            {hasPrice ? `${listing.price} €` : "Dogovor"}
+          </Text>
         </View>
 
         <View style={styles.tradeRow}>
