@@ -3,11 +3,6 @@ import { getUncachableStripeClient, getStripePublishableKey } from "../stripeCli
 
 const router = Router();
 
-const SHIPPING_PRICES: Record<string, { amount: number; label: string }> = {
-  small: { amount: 399, label: "Box Now paketomat" },
-  medium: { amount: 599, label: "GLS kućna dostava" },
-};
-
 const PLATFORM_FEE_CENTS = 150;
 
 /**
@@ -26,40 +21,52 @@ router.get("/publishable-key", async (req, res) => {
 /**
  * POST /api/payments/checkout
  * Kreira Stripe Checkout Session za plaćanje dostave.
- * Body: { conversationId, listingId, packageSize: "small"|"medium", successUrl, cancelUrl }
+ * Body: { conversationId, listingId, methodName, amountCents, successUrl, cancelUrl, sendcloudMethodId? }
  */
 router.post("/checkout", async (req, res) => {
   try {
-    const { conversationId, listingId, packageSize, successUrl, cancelUrl } = req.body as {
+    const {
+      conversationId,
+      listingId,
+      methodName,
+      amountCents,
+      successUrl,
+      cancelUrl,
+      sendcloudMethodId,
+    } = req.body as {
       conversationId?: string;
       listingId?: string;
-      packageSize?: string;
+      methodName?: string;
+      amountCents?: number;
       successUrl?: string;
       cancelUrl?: string;
+      sendcloudMethodId?: number;
     };
 
-    if (!conversationId || !packageSize || !successUrl || !cancelUrl) {
+    if (!conversationId || !successUrl || !cancelUrl) {
       return res.status(400).json({ error: "Nedostaju obavezni parametri" });
     }
 
-    const pricing = SHIPPING_PRICES[packageSize];
-    if (!pricing) {
-      return res.status(400).json({ error: `Nepoznata veličina paketa: ${packageSize}` });
+    const finalAmount = amountCents ?? 399;
+    if (finalAmount < 100 || finalAmount > 5000) {
+      return res.status(400).json({ error: "Iznos dostave izvan dopuštenog raspona." });
     }
+
+    const label = methodName ?? "Kurirska dostava";
+    const totalCents = finalAmount + PLATFORM_FEE_CENTS;
 
     const stripe = await getUncachableStripeClient();
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
             currency: "eur",
             product_data: {
-              name: `Dostava — ${pricing.label}`,
+              name: `Dostava — ${label}`,
               description: "Plaćanje dostavne usluge putem Trampaj.hr platforme",
             },
-            unit_amount: pricing.amount,
+            unit_amount: totalCents,
           },
           quantity: 1,
         },
@@ -70,8 +77,10 @@ router.post("/checkout", async (req, res) => {
       metadata: {
         conversationId: conversationId ?? "",
         listingId: listingId ?? "",
-        packageSize,
+        methodName: label,
+        shippingAmountCents: String(finalAmount),
         platformFee: String(PLATFORM_FEE_CENTS),
+        sendcloudMethodId: sendcloudMethodId ? String(sendcloudMethodId) : "",
         type: "shipping_payment",
       },
     });
@@ -79,7 +88,9 @@ router.post("/checkout", async (req, res) => {
     return res.json({
       sessionId: session.id,
       url: session.url,
-      amount: pricing.amount,
+      amount: totalCents,
+      shippingAmount: finalAmount,
+      platformFee: PLATFORM_FEE_CENTS,
       currency: "eur",
     });
   } catch (err) {
@@ -90,25 +101,6 @@ router.post("/checkout", async (req, res) => {
     }
     return res.status(500).json({ error: message });
   }
-});
-
-/**
- * GET /api/payments/shipping-price/:packageSize
- * Vraća cijenu dostave za zadanu veličinu paketa.
- */
-router.get("/shipping-price/:packageSize", (req, res) => {
-  const { packageSize } = req.params;
-  const pricing = SHIPPING_PRICES[packageSize];
-  if (!pricing) {
-    return res.status(404).json({ error: "Nepoznata veličina paketa" });
-  }
-  return res.json({
-    packageSize,
-    amount: pricing.amount,
-    amountEur: (pricing.amount / 100).toFixed(2),
-    label: pricing.label,
-    platformFee: PLATFORM_FEE_CENTS,
-  });
 });
 
 export default router;

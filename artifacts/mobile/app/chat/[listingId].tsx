@@ -311,18 +311,26 @@ const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
   ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
   : "http://localhost:8080/api";
 
-type ShippingInfo = { label: string; amountEur: string; emoji: string };
+interface ShippingMethod {
+  id: number;
+  name: string;
+  carrier: string;
+  priceEur: number;
+  deliveryDays: number | null;
+}
 
-const SHIPPING: Record<string, ShippingInfo> = {
-  small: { label: "Box Now paketomat", amountEur: "3,99 €", emoji: "📦" },
-  medium: { label: "GLS kućna dostava", amountEur: "5,99 €", emoji: "🚚" },
+const CARRIER_EMOJI: Record<string, string> = {
+  gls: "🟡", dpd: "🔴", dhl: "🟡", boxnow: "📦", hp: "🇭🇷", ups: "🟤", fedex: "🟣",
 };
+
+function carrierEmoji(carrier: string) {
+  return CARRIER_EMOJI[carrier.toLowerCase()] ?? "🚚";
+}
 
 function EscrowModal({
   onDone,
   onSkip,
   deliveryMethod,
-  packageSize,
   conversationId,
   listingId,
 }: {
@@ -335,13 +343,36 @@ function EscrowModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [paidMethodName, setPaidMethodName] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [methods, setMethods] = useState<ShippingMethod[]>([]);
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  const [platformFeeCents, setPlatformFeeCents] = useState(150);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const isCourier = deliveryMethod === "courier";
-  const shipping = packageSize ? SHIPPING[packageSize] : null;
+
+  useEffect(() => {
+    if (!isCourier) return;
+    setMethodsLoading(true);
+    fetch(`${API_BASE}/sendcloud/methods`)
+      .then((r) => r.json())
+      .then((d: { methods?: ShippingMethod[]; platformFeeCents?: number }) => {
+        setMethods(d.methods ?? []);
+        setPlatformFeeCents(d.platformFeeCents ?? 150);
+        if (d.methods && d.methods.length > 0) setSelectedId(d.methods[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setMethodsLoading(false));
+  }, [isCourier]);
+
+  const selectedMethod = methods.find((m) => m.id === selectedId) ?? null;
+  const shippingCents = selectedMethod ? Math.round(selectedMethod.priceEur * 100) : 0;
+  const totalCents = shippingCents + platformFeeCents;
+  const fmtEurLocal = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
   const handlePay = async () => {
-    if (!shipping) return;
+    if (!selectedMethod) return;
     setLoading(true);
     setErrMsg(null);
     try {
@@ -354,7 +385,9 @@ function EscrowModal({
         body: JSON.stringify({
           conversationId,
           listingId,
-          packageSize: packageSize ?? "small",
+          methodName: selectedMethod.name,
+          amountCents: shippingCents,
+          sendcloudMethodId: selectedMethod.id > 0 ? selectedMethod.id : undefined,
           successUrl,
           cancelUrl,
         }),
@@ -372,12 +405,13 @@ function EscrowModal({
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, Linking.createURL("payment"));
       if (result.type === "success" && result.url?.includes("payment/success")) {
+        setPaidMethodName(selectedMethod.name);
         setPaid(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (result.type === "cancel" || (result.type === "success" && result.url?.includes("payment/cancel"))) {
         setErrMsg("Plaćanje otkazano.");
       }
-    } catch (e) {
+    } catch {
       setErrMsg("Greška. Pokušaj ponovo ili kontaktiraj podršku.");
     } finally {
       setLoading(false);
@@ -392,7 +426,9 @@ function EscrowModal({
           <Text style={styles.modalLabel}>PLAĆANJE USPJEŠNO</Text>
           <Text style={styles.modalTitle}>Dostava plaćena!</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
-            {"Nalepnica za dostavu će ti biti poslana na e-mail.\n\nUpakuj predmet i odnesi ga na Box Now paketomat ili predaj GLS kuriru."}
+            {"Nalepnica za dostavu putem "}
+            <Text style={styles.disclaimerBold}>{paidMethodName}</Text>
+            {" bit će poslana na tvoj e-mail.\n\nUpakuj predmet i predaj ga kuriru ili odnesi na paketomat."}
           </Text>
           <Pressable
             onPress={onDone}
@@ -416,8 +452,7 @@ function EscrowModal({
           <Text style={styles.modalLabel}>OSOBNO PREUZIMANJE</Text>
           <Text style={styles.modalTitle}>Dogovorite se direktno</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 12 }]}>
-            {"Dogovorite se u chatu o terminu i mjestu preuzimanja.\n\n"}
-            {"Za sigurniju trampu, u budućnosti planiramo i opciju sigurnosnog depozita."}
+            {"Dogovorite se u chatu o terminu i mjestu preuzimanja.\n\nZa sigurniju trampu možete koristiti opciju sigurnosnog depozita."}
           </Text>
           <Pressable
             onPress={onDone}
@@ -425,10 +460,7 @@ function EscrowModal({
           >
             <Text style={styles.dealBtnText}>Razumijem →</Text>
           </Pressable>
-          <Pressable
-            onPress={onSkip}
-            style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
-          >
+          <Pressable onPress={onSkip} style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}>
             <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Zatvori</Text>
           </Pressable>
         </View>
@@ -438,55 +470,99 @@ function EscrowModal({
 
   return (
     <View style={styles.overlay}>
-      <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
-        <Text style={{ fontSize: 36, marginBottom: 8 }}>{shipping?.emoji ?? "📦"}</Text>
+      <View style={[styles.dealCard, { padding: 22, gap: 0, maxWidth: SW - 40 }]}>
+        <Text style={{ fontSize: 30, marginBottom: 4 }}>🚚</Text>
         <Text style={styles.modalLabel}>PLAĆANJE DOSTAVE</Text>
-        <Text style={styles.modalTitle}>{shipping?.label ?? "Dostava"}</Text>
+        <Text style={[styles.modalTitle, { marginBottom: 14 }]}>Odaberi kurira</Text>
 
-        <View style={{ marginTop: 16, backgroundColor: "rgba(56,189,248,0.07)", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "rgba(56,189,248,0.18)", width: "100%" }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Dostava</Text>
-            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{shipping?.amountEur ?? "—"}</Text>
+        {methodsLoading ? (
+          <View style={{ paddingVertical: 24, alignItems: "center" }}>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Učitavanje dostupnih metoda…</Text>
           </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Platformska naknada</Text>
-            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>uključena</Text>
+        ) : (
+          <View style={{ width: "100%", gap: 8 }}>
+            {methods.map((m) => {
+              const sel = m.id === selectedId;
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() => setSelectedId(m.id)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: sel ? "rgba(56,189,248,0.10)" : C.mutedBg,
+                    borderRadius: 10,
+                    padding: 12,
+                    borderWidth: 1.5,
+                    borderColor: sel ? C.secondary : "transparent",
+                    opacity: pressed ? 0.85 : 1,
+                    gap: 10,
+                  })}
+                >
+                  <Text style={{ fontSize: 22 }}>{carrierEmoji(m.carrier)}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{m.name}</Text>
+                    {m.deliveryDays && (
+                      <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 1 }}>
+                        Isporuka: {m.deliveryDays} {m.deliveryDays === 1 ? "dan" : "dana"}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={{ color: sel ? C.secondary : C.text, fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                    {fmtEurLocal(Math.round(m.priceEur * 100))}
+                  </Text>
+                  {sel && <Text style={{ fontSize: 16 }}>✓</Text>}
+                </Pressable>
+              );
+            })}
           </View>
-          <View style={{ height: 1, backgroundColor: "rgba(56,189,248,0.15)", marginVertical: 6 }} />
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15 }}>Ukupno</Text>
-            <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 15 }}>{shipping?.amountEur ?? "—"}</Text>
-          </View>
-        </View>
+        )}
 
-        <Text style={[styles.disclaimerBody, { marginTop: 12, fontSize: 12 }]}>
-          {"Plaćanje je sigurno putem Stripe platforme. Nalepinica za dostavu stiže na tvoj e-mail. 🔒"}
+        {selectedMethod && !methodsLoading && (
+          <View style={{ marginTop: 12, backgroundColor: "rgba(56,189,248,0.07)", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "rgba(56,189,248,0.18)", width: "100%" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Dostava</Text>
+              <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{fmtEurLocal(shippingCents)}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Naknada platforme</Text>
+              <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>{fmtEurLocal(platformFeeCents)}</Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: "rgba(56,189,248,0.15)", marginVertical: 5 }} />
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14 }}>Ukupno</Text>
+              <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{fmtEurLocal(totalCents)}</Text>
+            </View>
+          </View>
+        )}
+
+        <Text style={[styles.disclaimerBody, { marginTop: 10, fontSize: 11 }]}>
+          {"Plaćanje je sigurno putem Stripe platforme. Nalepnica za dostavu stiže na tvoj e-mail. 🔒"}
         </Text>
 
         {errMsg && (
-          <View style={{ marginTop: 10, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
+          <View style={{ marginTop: 8, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
             <Text style={{ color: "#EF4444", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" }}>{errMsg}</Text>
           </View>
         )}
 
         <Pressable
           onPress={handlePay}
-          disabled={loading}
+          disabled={loading || !selectedMethod || methodsLoading}
           style={({ pressed }) => [
             styles.dealBtn,
-            { marginTop: 16, width: "100%", backgroundColor: loading ? C.mutedBg : C.secondary, opacity: pressed ? 0.85 : 1 },
+            { marginTop: 12, width: "100%", backgroundColor: (loading || !selectedMethod) ? C.mutedBg : C.secondary, opacity: pressed ? 0.85 : 1 },
           ]}
         >
           {loading
             ? <Text style={[styles.dealBtnText, { color: C.muted }]}>Učitavanje…</Text>
-            : <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Plati {shipping?.amountEur ?? ""} karticom →</Text>
+            : <Text style={[styles.dealBtnText, { color: "#08152E" }]}>
+                {selectedMethod ? `Plati ${fmtEurLocal(totalCents)} karticom →` : "Odaberi kurira"}
+              </Text>
           }
         </Pressable>
-        <Pressable
-          onPress={onSkip}
-          style={({ pressed }) => [{ marginTop: 10, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}
-        >
-          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Plati kasni­je / preskoči</Text>
+        <Pressable onPress={onSkip} style={({ pressed }) => [{ marginTop: 8, padding: 8, opacity: pressed ? 0.7 : 1, alignSelf: "center" }]}>
+          <Text style={{ fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" }}>Plati kasnije / preskoči</Text>
         </Pressable>
       </View>
     </View>
