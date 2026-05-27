@@ -493,7 +493,13 @@ function EscrowModal({
   );
 }
 
-// ─── Deposit modal (5€ escrow hold) ──────────────────────────────────────────
+const QUICK_AMOUNTS = [5, 10, 20, 50];
+
+function fmtEur(cents: number) {
+  return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
+}
+
+// ─── Deposit modal (dogovorni escrow hold) ────────────────────────────────────
 function DepositModal({
   onDone,
   onSkip,
@@ -507,9 +513,19 @@ function DepositModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [paidAmount, setPaidAmount] = useState(0);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [amountText, setAmountText] = useState("");
+
+  const amountEur = parseFloat(amountText.replace(",", ".")) || 0;
+  const amountCents = Math.round(amountEur * 100);
+  const isValid = amountCents >= 100 && amountCents <= 50000;
 
   const handleDeposit = async () => {
+    if (!isValid) {
+      setErrMsg("Unesi iznos između 1€ i 500€.");
+      return;
+    }
     setLoading(true);
     setErrMsg(null);
     try {
@@ -522,17 +538,19 @@ function DepositModal({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ successUrl, cancelUrl }),
+        body: JSON.stringify({ successUrl, cancelUrl, amount: amountEur }),
       });
       const data = await resp.json() as {
         url?: string;
         alreadyPaid?: boolean;
         status?: string;
+        amount?: number;
         error?: string;
         code?: string;
       };
 
       if (data.alreadyPaid) {
+        setPaidAmount(data.amount ?? amountCents);
         setPaid(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         return;
@@ -550,7 +568,6 @@ function DepositModal({
       const result = await WebBrowser.openAuthSessionAsync(data.url, Linking.createURL("escrow"));
 
       if (result.type === "success" && result.url?.includes("escrow/success")) {
-        // Verify with backend
         const sessionId = data.url.match(/cs_[a-zA-Z0-9_]+/)?.[0];
         if (sessionId) {
           await fetch(`${API_BASE}/escrow/verify`, {
@@ -562,6 +579,7 @@ function DepositModal({
             body: JSON.stringify({ checkoutSessionId: sessionId, conversationId }),
           });
         }
+        setPaidAmount(amountCents);
         setPaid(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (result.type === "cancel" || (result.type === "success" && result.url?.includes("escrow/cancel"))) {
@@ -580,7 +598,7 @@ function DepositModal({
         <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
           <Text style={{ fontSize: 48, marginBottom: 8 }}>🔐</Text>
           <Text style={styles.modalLabel}>DEPOZIT AKTIVAN</Text>
-          <Text style={styles.modalTitle}>5,00 € zadržano</Text>
+          <Text style={styles.modalTitle}>{fmtEur(paidAmount)} zadržano</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 10, textAlign: "center" }]}>
             {"Novac je sigurno zadržan na tvojoj kartici — nismo ga naplatili.\n\n"}
             {"Kada obje strane potvrde primitak paketa, iznos se automatski oslobađa.\n\n"}
@@ -610,7 +628,7 @@ function DepositModal({
 
         <View style={{ marginTop: 14, width: "100%", gap: 10 }}>
           {[
-            { icon: "💳", text: "5,00 € se drži na kartici — NE naplaćuje se" },
+            { icon: "💳", text: "Drži se na kartici — NE naplaćuje se" },
             { icon: "✅", text: "Kad obje strane potvrde primitak — automatski se vraća" },
             { icon: "⚠️", text: "Ako pošiljatelj ne pošalje — iznos se dodjeljuje tebi" },
           ].map((row, i) => (
@@ -621,23 +639,76 @@ function DepositModal({
           ))}
         </View>
 
+        {/* Iznos — brzi odabir */}
+        <View style={{ marginTop: 16, width: "100%" }}>
+          <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 12, marginBottom: 8 }}>IZNOS DEPOZITA</Text>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+            {QUICK_AMOUNTS.map((q) => {
+              const selected = amountText === String(q);
+              return (
+                <Pressable
+                  key={q}
+                  onPress={() => setAmountText(String(q))}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    backgroundColor: selected ? C.primary : C.mutedBg,
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    alignItems: "center",
+                    opacity: pressed ? 0.8 : 1,
+                    borderWidth: 1,
+                    borderColor: selected ? C.primary : "transparent",
+                  })}
+                >
+                  <Text style={{ color: selected ? "#08152E" : C.text, fontFamily: "Inter_700Bold", fontSize: 13 }}>{q} €</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            value={amountText}
+            onChangeText={(t) => {
+              setAmountText(t.replace(/[^0-9,.]/, ""));
+              setErrMsg(null);
+            }}
+            placeholder="Ili unesi iznos (npr. 15)"
+            placeholderTextColor={C.muted}
+            keyboardType="decimal-pad"
+            style={{
+              backgroundColor: C.mutedBg,
+              borderRadius: 8,
+              padding: 12,
+              color: C.text,
+              fontFamily: "Inter_400Regular",
+              fontSize: 15,
+              borderWidth: 1,
+              borderColor: amountText && !isValid ? "#EF4444" : "transparent",
+            }}
+          />
+          {amountText !== "" && !isValid && (
+            <Text style={{ color: "#EF4444", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 4 }}>Iznos mora biti između 1€ i 500€</Text>
+          )}
+        </View>
+
         {errMsg && (
-          <View style={{ marginTop: 12, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
+          <View style={{ marginTop: 10, backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, padding: 10, borderWidth: 1, borderColor: "rgba(239,68,68,0.3)", width: "100%" }}>
             <Text style={{ color: "#EF4444", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center" }}>{errMsg}</Text>
           </View>
         )}
 
         <Pressable
           onPress={handleDeposit}
-          disabled={loading}
+          disabled={loading || !isValid}
           style={({ pressed }) => [
             styles.dealBtn,
-            { marginTop: 16, width: "100%", backgroundColor: loading ? C.mutedBg : C.primary, opacity: pressed ? 0.85 : 1 },
+            { marginTop: 14, width: "100%", backgroundColor: (loading || !isValid) ? C.mutedBg : C.primary, opacity: pressed ? 0.85 : 1 },
           ]}
         >
           {loading
             ? <Text style={[styles.dealBtnText, { color: C.muted }]}>Učitavanje…</Text>
-            : <Text style={[styles.dealBtnText, { color: "#08152E" }]}>Zaštiti trampu — 5,00 € 🔒</Text>
+            : <Text style={[styles.dealBtnText, { color: isValid ? "#08152E" : C.muted }]}>
+                {isValid ? `Zaštiti trampu — ${amountEur.toFixed(2).replace(".", ",")} € 🔒` : "Odaberi iznos"}
+              </Text>
           }
         </Pressable>
         <Pressable
@@ -700,7 +771,9 @@ function EscrowBanner({
     <View style={{ marginHorizontal: 12, marginBottom: 8, backgroundColor: "rgba(245,193,0,0.08)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(245,193,0,0.25)" }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <Text style={{ fontSize: 16 }}>🔒</Text>
-        <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 13 }}>Depozit aktivan — 5,00 € zadržano</Text>
+        <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 13 }}>
+          Depozit aktivan{escrowStatus.myAmount > 0 ? ` — ${fmtEur(escrowStatus.myAmount)} zadržano` : ""}
+        </Text>
       </View>
 
       <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>

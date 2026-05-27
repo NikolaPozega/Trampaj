@@ -25,7 +25,8 @@ export interface EscrowStatus {
   bothHeld: boolean;
   bothConfirmed: boolean;
   released: boolean;
-  amount: number;
+  myAmount: number;
+  theirAmount: number;
   currency: string;
 }
 
@@ -353,7 +354,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             bothConfirmed: result.bothConfirmed,
             released: result.released,
             bothHeld: c.escrowStatus?.bothHeld ?? false,
-            amount: c.escrowStatus?.amount ?? 500,
+            myAmount: c.escrowStatus?.myAmount ?? 0,
+            theirAmount: c.escrowStatus?.theirAmount ?? 0,
             currency: c.escrowStatus?.currency ?? "eur",
           },
         })

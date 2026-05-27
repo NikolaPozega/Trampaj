@@ -7,9 +7,10 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
-const ESCROW_AMOUNT_CENTS = 500;
 const ESCROW_CURRENCY = "eur";
 const ESCROW_DESCRIPTION = "Zaštitni depozit — Trampaj.hr";
+const ESCROW_MIN_CENTS = 100;
+const ESCROW_MAX_CENTS = 50000;
 
 // ─── Helper: verify user is participant of conversation ───────────────────────
 async function getConversationParticipant(conversationId: string, userId: string) {
@@ -64,10 +65,19 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
   try {
     const conversationId = req.params["conversationId"] as string;
     const userId = req.userId!;
-    const { successUrl, cancelUrl } = req.body as { successUrl?: string; cancelUrl?: string };
+    const { successUrl, cancelUrl, amount: amountEur } = req.body as {
+      successUrl?: string;
+      cancelUrl?: string;
+      amount?: number;
+    };
 
     if (!successUrl || !cancelUrl) {
       return res.status(400).json({ error: "successUrl i cancelUrl su obvezni" });
+    }
+
+    const amountCents = Math.round((amountEur ?? 5) * 100);
+    if (amountCents < ESCROW_MIN_CENTS || amountCents > ESCROW_MAX_CENTS) {
+      return res.status(400).json({ error: `Iznos mora biti između 1€ i 500€.` });
     }
 
     const participant = await getConversationParticipant(conversationId, userId);
@@ -90,6 +100,7 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
         alreadyPaid: true,
         status: existing[0].status,
         sessionId: existing[0].checkoutSessionId,
+        amount: existing[0].amount,
       });
     }
 
@@ -105,7 +116,7 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
               name: ESCROW_DESCRIPTION,
               description: "Drži se kao zalog dok obje strane potvrde primitak. Vraća se automatski.",
             },
-            unit_amount: ESCROW_AMOUNT_CENTS,
+            unit_amount: amountCents,
           },
           quantity: 1,
         },
@@ -134,7 +145,7 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
     if (existing[0]) {
       await db
         .update(escrowDepositsTable)
-        .set({ checkoutSessionId: session.id, status: "pending" })
+        .set({ checkoutSessionId: session.id, status: "pending", amount: amountCents })
         .where(eq(escrowDepositsTable.id, existing[0].id));
     } else {
       await db.insert(escrowDepositsTable).values({
@@ -142,7 +153,7 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
         conversationId,
         userId,
         checkoutSessionId: session.id,
-        amount: ESCROW_AMOUNT_CENTS,
+        amount: amountCents,
         currency: ESCROW_CURRENCY,
         status: "pending",
       });
@@ -151,7 +162,7 @@ router.post("/checkout/:conversationId", requireAuth, async (req: AuthRequest, r
     return res.json({
       sessionId: session.id,
       url: session.url,
-      amount: ESCROW_AMOUNT_CENTS,
+      amount: amountCents,
       currency: ESCROW_CURRENCY,
     });
   } catch (err) {
@@ -299,7 +310,8 @@ router.get("/status/:conversationId", requireAuth, async (req: AuthRequest, res)
       bothHeld,
       bothConfirmed,
       released,
-      amount: ESCROW_AMOUNT_CENTS,
+      myAmount: myDeposit?.amount ?? 0,
+      theirAmount: theirDeposit?.amount ?? 0,
       currency: ESCROW_CURRENCY,
     });
   } catch (err) {
