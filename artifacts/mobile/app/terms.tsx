@@ -91,7 +91,7 @@ export default function TermsScreen() {
 
         <Section title="6. Dostava i plaćanje dostave" colors={colors}>
           <Body colors={colors}>
-            {"Platforma ne naplaćuje proviziju niti posreduje u financijskim transakcijama.\n\nUkoliko korisnici dogovore kurirsku dostavu:\n• Svaki korisnik plaća dostavu paketa koji prima (Vinted model)\n• Trošak i organizacija dostave isključivo su dogovor između korisnika\n• Platforma ne snosi odgovornost za izgubljene, oštećene ili zakasnjele pošiljke\n\nZa predmete koji se ne mogu poslati kurirskom službom, korisnici se sami dogovaraju o osobnom preuzimanju."}
+            {"Platforma ne naplaćuje proviziju niti posreduje u financijskim transakcijama.\n\nUkoliko korisnici dogovore kurirsku dostavu:\n• Svaki korisnik plaća dostavu paketa koji prima\n• Trošak i organizacija dostave isključivo su dogovor između korisnika\n• Platforma ne snosi odgovornost za izgubljene, oštećene ili zakasnjele pošiljke\n\nZa predmete koji se ne mogu poslati kurirskom službom, korisnici se sami dogovaraju o osobnom preuzimanju."}
           </Body>
         </Section>
 

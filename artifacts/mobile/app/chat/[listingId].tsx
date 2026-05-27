@@ -276,9 +276,8 @@ function DeliveryModal({
         {method === "courier" && (
           <View style={styles.deliveryInfoBox}>
             <Text style={styles.deliveryInfoText}>
-              💡 <Text style={{ color: C.text }}>Plaćanje kao na Vintedu</Text>
-              {" — svaki plaća dostavu paketa koji prima. "}
-              {"Vi platite kuru za paket koji dobivate, "}
+              💡 <Text style={{ color: C.text }}>Svaki korisnik plaća svoju dostavu</Text>
+              {" — vi platite kuru za paket koji dobivate, "}
               {otherName}
               {" plati kuru za paket koji dobiva. Nema dijeljenja troškova."}
             </Text>

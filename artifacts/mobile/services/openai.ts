@@ -45,11 +45,13 @@ export async function analyzeImageForCategory(base64Image: string): Promise<{
       messages: [
         {
           role: "system",
-          content: `Ti si asistent koji prepoznaje predmete sa slika za oglas trampe na hrvatskom.
+          content: `Ti si asistent koji prepoznaje predmete sa slika za oglase trampe.
 Dostupne kategorije:
 ${CATEGORY_EXAMPLES}
 
-VAŽNO: Uvijek odgovaraj SAMO JSON-om na hrvatskom jeziku, bez ikakvog teksta oko JSON-a.`,
+KRITIČNO PRAVILO JEZIKA: Svi tekstovi u odgovoru moraju biti ISKLJUČIVO na standardnom hrvatskom jeziku. Ni jedan znak na engleskom, srpskom, bosanskom ni drugom jeziku. Ako je predmet stranog porijekla (npr. iPhone, Nike), naziv brendа ostavi, ali opis napiši na hrvatskom. Primjer: "iPhone 13 Pro" je ok naziv, ali opis mora biti "Pametni telefon u odličnom stanju, bez ogrebotina."
+
+VAŽNO: Odgovaraj SAMO validnim JSON-om, bez ikakvog teksta oko JSON-a.`,
         },
         {
           role: "user",
@@ -60,9 +62,9 @@ VAŽNO: Uvijek odgovaraj SAMO JSON-om na hrvatskom jeziku, bez ikakvog teksta ok
             },
             {
               type: "text",
-              text: `Što je na slici? Napiši konkretan oglasnički naziv i opis na HRVATSKOM.
+              text: `Što je na slici? Napiši oglasnički naziv i opis ISKLJUČIVO na hrvatskom jeziku. Strani brend u nazivu je u redu (npr. "Nike tenisice"), ali sav ostali tekst mora biti hrvatski.
 Odgovori SAMO ovim JSON-om (bez teksta oko njega):
-{"category":"<kategorija iz popisa>","title":"<konkretan naziv predmeta, max 6 riječi>","description":"<1-2 rečenice: materijal, boja, stanje, dimenzije ako su vidljive>"}`,
+{"category":"<kategorija iz popisa>","title":"<konkretan naziv predmeta na hrvatskom, max 6 riječi>","description":"<1-2 rečenice na hrvatskom: materijal, boja, stanje, dimenzije ako su vidljive>"}`,
             },
           ],
         },
@@ -194,7 +196,7 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
         messages: [
           {
             role: "system",
-            content: `Ti si asistent za oglas trampe. Uvijek ispravljaš tipfelere s mobitela (besmislene riječi zamijeni logičnom hrvatskom riječju) i generiraš bogate ključne riječi. Vrati SAMO validan JSON, bez ikakvog teksta oko njega.`,
+            content: `Ti si asistent za oglase trampe na Trampaj.hr. Uvijek ispravljaš tipfelere s mobitela (besmislene riječi zamijeni logičnom hrvatskom riječju) i generiraš bogate ključne riječi. KRITIČNO PRAVILO: correctedTitle i correctedDescription moraju biti ISKLJUČIVO na standardnom hrvatskom jeziku — nikad engleski, srpski ni bosanski. Nazivi stranih brendova su dopušteni (npr. Nike, iPhone, IKEA), ali svi opisi i atributi moraju biti na hrvatskom. Vrati SAMO validan JSON, bez ikakvog teksta oko njega.`,
           },
           {
             role: "user",
