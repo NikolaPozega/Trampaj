@@ -115,7 +115,7 @@ export default function TermsScreen() {
 
         <Section title="10. Rješavanje sporova" colors={colors}>
           <Body colors={colors}>
-            {"Za sporove između korisnika platforme preporučujemo rješavanje sporazumom.\n\nZa pritužbe na rad platforme pišite na: " + CONTACT + "\n\nNa ugovorne odnose primjenjuje se hrvatsko pravo. Nadležni sud je u Zagrebu.\n\nPotrošači imaju pravo koristiti platformu EU za mrežno rješavanje sporova:\nhttps://ec.europa.eu/consumers/odr"}
+            {"Za sporove između korisnika platforme preporučujemo rješavanje sporazumom.\n\nZa pritužbe na rad platforme pišite na: " + CONTACT + "\n\nNa ugovorne odnose primjenjuje se hrvatsko pravo. Nadležni sud je u Požegi.\n\nPotrošači imaju pravo koristiti platformu EU za mrežno rješavanje sporova:\nhttps://ec.europa.eu/consumers/odr"}
           </Body>
         </Section>
 

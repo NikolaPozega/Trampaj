@@ -11,11 +11,14 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useChat } from "@/context/ChatContext";
 import { useListings, type Listing } from "@/context/ListingsContext";
@@ -267,6 +270,8 @@ export default function ListingDetailScreen() {
   const [reportModal, setReportModal] = useState(false);
   const [reportCategory, setReportCategory] = useState<string | null>(null);
   const [reportSent, setReportSent] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const { getOrCreateConversation } = useChat();
 
   const listing = listings.find((l) => l.id === id);
@@ -330,6 +335,60 @@ export default function ListingDetailScreen() {
     router.push(`/user/${encodeURIComponent(listing.userName)}`);
   }
 
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"] ?? "trampaj.hr";
+  const listingUrl = `https://${domain}/listing/${id}`;
+  const shareText = `${listing?.title ?? "Oglas"} – ${listing?.wantedFor ? `Tražim: ${listing.wantedFor}` : ""}\n\nPogledaj na Trampaj.hr:`;
+
+  async function handleNativeShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShareModal(false);
+    try {
+      await Share.share({ message: `${shareText}\n${listingUrl}`, url: listingUrl, title: listing?.title });
+    } catch { /* user cancelled */ }
+  }
+
+  async function handleCopyLink() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await Clipboard.setStringAsync(listingUrl);
+    setLinkCopied(true);
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Link kopiran!", ToastAndroid.SHORT);
+    }
+    setTimeout(() => setLinkCopied(false), 2500);
+  }
+
+  function handleWhatsApp() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShareModal(false);
+    const encoded = encodeURIComponent(`${shareText}\n${listingUrl}`);
+    Linking.openURL(`whatsapp://send?text=${encoded}`).catch(() =>
+      Linking.openURL(`https://wa.me/?text=${encoded}`)
+    );
+  }
+
+  function handleViber() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShareModal(false);
+    const encoded = encodeURIComponent(`${shareText}\n${listingUrl}`);
+    Linking.openURL(`viber://forward?text=${encoded}`).catch(() => {
+      Alert.alert("Viber nije instaliran", "Instaliraj Viber ili koristi drugu opciju.");
+    });
+  }
+
+  function handleFacebook() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShareModal(false);
+    Linking.openURL(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingUrl)}`);
+  }
+
+  function handleEmail() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShareModal(false);
+    const subject = encodeURIComponent(`Pogledaj oglas: ${listing?.title}`);
+    const body = encodeURIComponent(`${shareText}\n${listingUrl}`);
+    Linking.openURL(`mailto:?subject=${subject}&body=${body}`);
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.topBar, { paddingTop: topPad, borderBottomColor: colors.border }]}>
@@ -342,7 +401,12 @@ export default function ListingDetailScreen() {
         <Text style={[styles.topBarTitle, { color: colors.foreground }]} numberOfLines={1}>
           {listing.category}
         </Text>
-        <View style={{ width: 36 }} />
+        <Pressable
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShareModal(true); }}
+          style={({ pressed }) => [styles.backCircle, { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Feather name="share-2" size={17} color={colors.foreground} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 120 }]} showsVerticalScrollIndicator={false}>
@@ -673,6 +737,82 @@ export default function ListingDetailScreen() {
                 </Pressable>
               </>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Share modal */}
+      <Modal visible={shareModal} transparent animationType="slide" onRequestClose={() => setShareModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShareModal(false)}>
+          <Pressable style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Podijeli oglas</Text>
+              <Pressable onPress={() => setShareModal(false)} hitSlop={12}>
+                <Feather name="x" size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={[styles.modalSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {listing.title}
+            </Text>
+
+            {/* Copy link row */}
+            <Pressable
+              onPress={handleCopyLink}
+              style={({ pressed }) => [{
+                flexDirection: "row" as const, alignItems: "center" as const, gap: 12,
+                paddingVertical: 13, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5,
+                borderColor: linkCopied ? "#4ADE80" : colors.border,
+                backgroundColor: linkCopied ? "#1A3A2A" : colors.muted,
+                opacity: pressed ? 0.8 : 1,
+              }]}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: linkCopied ? "#1A3A2A" : colors.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: linkCopied ? "#4ADE80" : colors.border }}>
+                <Feather name={linkCopied ? "check" : "link"} size={16} color={linkCopied ? "#4ADE80" : colors.foreground} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: linkCopied ? "#4ADE80" : colors.foreground }}>
+                  {linkCopied ? "Kopirano!" : "Kopiraj link"}
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
+                  {listingUrl}
+                </Text>
+              </View>
+            </Pressable>
+
+            {/* Social share grid */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {[
+                { label: "WhatsApp", icon: "message-circle", color: "#25D366", onPress: handleWhatsApp },
+                { label: "Viber", icon: "phone", color: "#7360F2", onPress: handleViber },
+                { label: "Facebook", icon: "facebook", color: "#1877F2", onPress: handleFacebook },
+                { label: "Email", icon: "mail", color: colors.secondary, onPress: handleEmail },
+              ].map(({ label, icon, color, onPress }) => (
+                <Pressable
+                  key={label}
+                  onPress={onPress}
+                  style={({ pressed }) => [{
+                    flex: 1, alignItems: "center" as const, gap: 6, paddingVertical: 12,
+                    borderRadius: 14, backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border,
+                    opacity: pressed ? 0.75 : 1,
+                  }]}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${color}22`, alignItems: "center", justifyContent: "center" }}>
+                    <Feather name={icon as keyof typeof Feather.glyphMap} size={18} color={color} />
+                  </View>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Native share — big button */}
+            <Pressable
+              onPress={handleNativeShare}
+              style={({ pressed }) => [styles.modalBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>
+                📤  Podijeli putem…
+              </Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
