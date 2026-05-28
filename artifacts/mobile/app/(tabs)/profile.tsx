@@ -305,6 +305,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const {
     listings,
+    myListings,
     myName,
     setMyName,
     markAsTraded,
@@ -317,6 +318,7 @@ export default function ProfileScreen() {
     deleteAllData,
     blockedUserNames,
     unblockUser,
+    refreshMyListings,
   } = useListings();
   const { user, logout, updateProfile, refreshUser } = useAuth();
   const { conversations, unreadCount } = useChat();
@@ -426,16 +428,16 @@ export default function ProfileScreen() {
 
   async function onRefresh() {
     setRefreshing(true);
-    await refreshUser();
+    await Promise.all([refreshUser(), refreshMyListings()]);
     setRefreshing(false);
   }
   const flatListRef = useRef<FlatList>(null);
 
   const displayName = user?.username ?? myName;
 
-  const myListings = listings.filter((l) => l.isMine);
-  const activeCount = myListings.filter((l) => l.status === "active").length;
+  const activeCount = myListings.filter((l) => l.status === "active" && l.moderationStatus === "active").length;
   const tradedCount = myListings.filter((l) => l.status === "traded").length;
+  const pendingCount = myListings.filter((l) => l.moderationStatus === "pending").length;
   const [statusFilter, setStatusFilter] = useState<"active" | "traded" | null>(null);
   const filteredMyListings = statusFilter ? myListings.filter((l) => l.status === statusFilter) : myListings;
 
@@ -763,6 +765,12 @@ export default function ProfileScreen() {
             active={statusFilter === "traded"}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(statusFilter === "traded" ? null : "traded"); }}
           />
+          {pendingCount > 0 && (
+            <StatPill label="Na čekanju" value={pendingCount} color="#F5C100" textColor={colors.foreground} bg={colors.muted}
+              active={false}
+              onPress={() => {}}
+            />
+          )}
           <StatPill label="Ukupno" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === null}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(null); }}
@@ -878,6 +886,16 @@ export default function ProfileScreen() {
         renderItem={({ item }) => (
           <View style={styles.cardWrapper}>
             <ListingCard listing={item} />
+            {item.moderationStatus === "pending" && (
+              <View style={styles.pendingOverlay} pointerEvents="none">
+                <Text style={styles.pendingOverlayText}>⏳ Na čekanju</Text>
+              </View>
+            )}
+            {item.moderationStatus === "rejected" && (
+              <View style={[styles.pendingOverlay, { backgroundColor: "rgba(239,68,68,0.82)" }]} pointerEvents="none">
+                <Text style={styles.pendingOverlayText}>❌ Odbijeno</Text>
+              </View>
+            )}
             {item.isMine && (
               <View style={styles.actions}>
                 <Pressable
@@ -1723,6 +1741,16 @@ const styles = StyleSheet.create({
   listEmpty: { flex: 1 },
   columnWrapper: { gap: 10, paddingHorizontal: 4, marginBottom: 0 },
   cardWrapper: { flex: 1 },
+  pendingOverlay: {
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center", justifyContent: "center",
+  },
+  pendingOverlayText: {
+    color: "#F5C100", fontFamily: "Inter_700Bold", fontSize: 13,
+    backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10,
+    paddingVertical: 5, borderRadius: 8, overflow: "hidden",
+  },
   actions: { flexDirection: "row", gap: 5, marginTop: -8, marginBottom: 12, paddingHorizontal: 2 },
   actionBtn: { alignItems: "center", justifyContent: "center", paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8 },
   actionBtnFlex: { flex: 1, flexDirection: "row", gap: 4 },

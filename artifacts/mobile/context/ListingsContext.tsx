@@ -51,6 +51,7 @@ export interface Listing {
   location: string;
   createdAt: number;
   status: "active" | "traded";
+  moderationStatus?: "pending" | "active" | "rejected";
   isMine: boolean;
   topup?: Topup | null;
   flexibility?: Flexibility | null;
@@ -74,6 +75,7 @@ export interface Review {
 
 interface ListingsContextType {
   listings: Listing[];
+  myListings: Listing[];
   myName: string;
   setMyName: (name: string) => void;
   addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => void;
@@ -92,6 +94,7 @@ interface ListingsContextType {
   blockUser: (userName: string) => void;
   unblockUser: (userName: string) => void;
   refreshListings: () => Promise<void>;
+  refreshMyListings: () => Promise<void>;
 }
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
@@ -116,6 +119,7 @@ const SAMPLE_LISTINGS: Listing[] = [
 export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const { user, token } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
+  const [myListings, setMyListings] = useState<Listing[]>([]);
   const [savedListingIds, setSavedListingIds] = useState<string[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [blockedUserNames, setBlockedUserNames] = useState<string[]>([]);
@@ -130,6 +134,30 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     const t = tokenRef.current;
     return t ? { Authorization: `Bearer ${t}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
   }, []);
+
+  // ─── Fetch MY listings (all statuses, including pending moderation) ─────────
+  const refreshMyListings = useCallback(async () => {
+    if (!user?.username) { setMyListings([]); return; }
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${API_BASE}/listings/by-user/${encodeURIComponent(user.username)}`, {
+        headers: authHeaders(),
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (res.ok) {
+        const data = await res.json() as { listings: Listing[] };
+        setMyListings(data.listings.map((l) => ({
+          ...l,
+          isMine: true,
+          imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
+          nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
+          trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
+        })));
+      }
+    } catch { /* offline */ }
+  }, [user?.username, authHeaders]);
 
   // ─── Fetch listings from API ───────────────────────────────────────────────
   const refreshListings = useCallback(async () => {
@@ -182,7 +210,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   // ─── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     setIsLoaded(false);
-    Promise.all([refreshListings(), loadSaved(), loadBlocked()]).finally(() => {
+    Promise.all([refreshListings(), refreshMyListings(), loadSaved(), loadBlocked()]).finally(() => {
       setIsLoaded(true);
     });
   }, [user?.id]); // re-run when user changes (login/logout)
@@ -196,10 +224,10 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         headers: authHeaders(),
         body: JSON.stringify(data),
       })
-        .then((r) => r.ok ? refreshListings() : null)
+        .then((r) => r.ok ? Promise.all([refreshListings(), refreshMyListings()]) : null)
         .catch(() => {});
     },
-    [authHeaders, refreshListings]
+    [authHeaders, refreshListings, refreshMyListings]
   );
 
   const updateListing = useCallback(
@@ -218,6 +246,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const markAsTraded = useCallback((id: string) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "traded" as const } : l)));
+    setMyListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "traded" as const } : l)));
     fetch(`${API_BASE}/listings/${id}/status`, {
       method: "PATCH",
       headers: authHeaders(),
@@ -227,6 +256,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const markAsActive = useCallback((id: string) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l)));
+    setMyListings((prev) => prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l)));
     fetch(`${API_BASE}/listings/${id}/status`, {
       method: "PATCH",
       headers: authHeaders(),
@@ -236,6 +266,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   const deleteListing = useCallback((id: string) => {
     setListings((prev) => prev.filter((l) => l.id !== id));
+    setMyListings((prev) => prev.filter((l) => l.id !== id));
     fetch(`${API_BASE}/listings/${id}`, {
       method: "DELETE",
       headers: authHeaders(),
@@ -310,6 +341,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     <ListingsContext.Provider
       value={{
         listings,
+        myListings,
         myName,
         setMyName,
         addListing,
@@ -328,6 +360,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         blockUser,
         unblockUser,
         refreshListings,
+        refreshMyListings,
       }}
     >
       {children}

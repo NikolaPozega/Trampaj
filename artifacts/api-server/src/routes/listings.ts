@@ -20,6 +20,7 @@ interface ListingRow {
   phone: string | null;
   location: string;
   status: string;
+  moderationStatus: string;
   topup: string | null;
   flexibility: string | null;
   cashFallback: boolean | null;
@@ -60,6 +61,7 @@ function parseListing(row: ListingRow, currentUserId?: string) {
     packageWeight: row.packageWeight,
     createdAt: row.createdAt.getTime(),
     isMine: row.userId === (currentUserId ?? "__none__"),
+    moderationStatus: row.moderationStatus,
   };
 }
 
