@@ -7,9 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { INTRO_DONE_KEY } from "@/utils/introKey";
 
 const { width: SW } = Dimensions.get("window");
-const INTRO_DONE_KEY = "@trampaj_intro_v1";
 
 const C = {
   bg: "#08152E",
@@ -142,4 +142,3 @@ const styles = StyleSheet.create({
   btnText: { fontFamily: "Inter_700Bold", fontSize: 17, color: "#08152E" },
 });
 
-export { INTRO_DONE_KEY };

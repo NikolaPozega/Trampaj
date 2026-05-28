@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useMemo, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { INTRO_DONE_KEY } from "../intro";
+import { INTRO_DONE_KEY } from "@/utils/introKey";
 import {
   FlatList,
   KeyboardAvoidingView,
