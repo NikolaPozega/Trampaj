@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, desc, count, and } from "drizzle-orm";
+import { eq, desc, count, and, sql, gte } from "drizzle-orm";
 import { db, listingsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
@@ -26,25 +26,50 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 // ─── GET /api/admin/stats ────────────────────────────────────────────────────
 router.get("/stats", requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const [[totalListings], [pendingListings], [totalUsers], [bannedUsers]] = await Promise.all([
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      [totalListings], [pendingListings], [totalUsers], [bannedUsers],
+      [activeListings], [rejectedListings],
+      [newListings7d], [newUsers7d], [newUsers30d],
+      categoryRows, cityRows,
+    ] = await Promise.all([
       db.select({ c: count() }).from(listingsTable),
       db.select({ c: count() }).from(listingsTable).where(eq(listingsTable.moderationStatus, "pending")),
       db.select({ c: count() }).from(usersTable),
       db.select({ c: count() }).from(usersTable).where(eq(usersTable.isBanned, true)),
+      db.select({ c: count() }).from(listingsTable).where(and(eq(listingsTable.status, "active"), eq(listingsTable.moderationStatus, "active"))),
+      db.select({ c: count() }).from(listingsTable).where(eq(listingsTable.moderationStatus, "rejected")),
+      db.select({ c: count() }).from(listingsTable).where(gte(listingsTable.createdAt, sevenDaysAgo)),
+      db.select({ c: count() }).from(usersTable).where(gte(usersTable.createdAt, sevenDaysAgo)),
+      db.select({ c: count() }).from(usersTable).where(gte(usersTable.createdAt, thirtyDaysAgo)),
+      db.select({ category: listingsTable.category, cnt: count() }).from(listingsTable)
+        .groupBy(listingsTable.category).orderBy(desc(count())).limit(8),
+      db.select({ location: listingsTable.location, cnt: count() }).from(listingsTable)
+        .where(sql`${listingsTable.location} != ''`)
+        .groupBy(listingsTable.location).orderBy(desc(count())).limit(6),
     ]);
 
-    const [activeListings] = await db.select({ c: count() }).from(listingsTable)
-      .where(and(eq(listingsTable.status, "active"), eq(listingsTable.moderationStatus, "active")));
-    const [rejectedListings] = await db.select({ c: count() }).from(listingsTable)
-      .where(eq(listingsTable.moderationStatus, "rejected"));
+    const total = totalListings?.c ?? 0;
+    const approved = activeListings?.c ?? 0;
+    const rejected = rejectedListings?.c ?? 0;
+    const moderated = approved + rejected;
+    const approvalRate = moderated > 0 ? Math.round((approved / moderated) * 100) : null;
 
     return res.json({
-      totalListings: totalListings?.c ?? 0,
-      activeListings: activeListings?.c ?? 0,
+      totalListings: total,
+      activeListings: approved,
       pendingListings: pendingListings?.c ?? 0,
-      rejectedListings: rejectedListings?.c ?? 0,
+      rejectedListings: rejected,
       totalUsers: totalUsers?.c ?? 0,
       bannedUsers: bannedUsers?.c ?? 0,
+      newListings7d: newListings7d?.c ?? 0,
+      newUsers7d: newUsers7d?.c ?? 0,
+      newUsers30d: newUsers30d?.c ?? 0,
+      approvalRate,
+      categoryBreakdown: categoryRows.map(r => ({ category: r.category, count: r.cnt })),
+      topCities: cityRows.map(r => ({ city: r.location, count: r.cnt })),
     });
   } catch (err) {
     req.log.error({ err }, "admin stats error");

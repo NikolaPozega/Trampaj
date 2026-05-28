@@ -4,7 +4,6 @@ import { Router as WouterRouter, Switch, Route, useLocation, Link } from "wouter
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "/admin";
 const API = "/api/admin";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem("admin_token");
   return fetch(`${API}${path}`, {
@@ -21,7 +20,7 @@ function fmtDate(ts: number) {
   return new Date(ts).toLocaleDateString("hr-HR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-// ─── Auth context ────────────────────────────────────────────────────────────
+// ─── Login ────────────────────────────────────────────────────────────────────
 function LoginPage({ onLogin }: { onLogin: (token: string) => void }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -30,8 +29,7 @@ function LoginPage({ onLogin }: { onLogin: (token: string) => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr("");
-    setLoading(true);
+    setErr(""); setLoading(true);
     try {
       const r = await fetch("/api/auth/login", {
         method: "POST",
@@ -54,14 +52,10 @@ function LoginPage({ onLogin }: { onLogin: (token: string) => void }) {
           <div className="text-3xl font-black text-primary tracking-tight">Trampaj</div>
           <div className="text-muted-foreground text-sm mt-1">Admin panel</div>
         </div>
-        <input
-          className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
-          type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} required
-        />
-        <input
-          className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
-          type="password" placeholder="Lozinka" value={pass} onChange={e => setPass(e.target.value)} required
-        />
+        <input className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+          type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} required />
+        <input className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+          type="password" placeholder="Lozinka" value={pass} onChange={e => setPass(e.target.value)} required />
         {err && <p className="text-destructive text-xs text-center">{err}</p>}
         <button type="submit" disabled={loading}
           className="bg-primary text-primary-foreground font-bold rounded-lg py-2 text-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
@@ -72,92 +66,268 @@ function LoginPage({ onLogin }: { onLogin: (token: string) => void }) {
   );
 }
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
+// ─── Nav ──────────────────────────────────────────────────────────────────────
 const NAV = [
-  { path: "/", label: "Dashboard", icon: "📊" },
+  { path: "/", label: "Nadzorna ploča", icon: "📊" },
   { path: "/listings", label: "Oglasi", icon: "📋" },
   { path: "/users", label: "Korisnici", icon: "👥" },
 ];
 
-function Sidebar({ onLogout }: { onLogout: () => void }) {
+function TopBar({ onLogout, menuOpen, setMenuOpen }: { onLogout: () => void; menuOpen: boolean; setMenuOpen: (v: boolean) => void }) {
   const [loc] = useLocation();
+  const current = NAV.find(n => n.path === "/" ? loc === "/" : loc.startsWith(n.path));
   return (
-    <aside className="w-56 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col min-h-screen">
-      <div className="px-5 py-5 border-b border-sidebar-border">
-        <div className="text-xl font-black text-primary tracking-tight">Trampaj</div>
-        <div className="text-xs text-muted-foreground mt-0.5">Admin panel</div>
-      </div>
-      <nav className="flex-1 py-4 flex flex-col gap-0.5 px-2">
+    <header className="sticky top-0 z-30 bg-sidebar border-b border-sidebar-border flex items-center px-4 h-14 gap-3">
+      <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent text-sidebar-foreground text-xl">
+        {menuOpen ? "✕" : "☰"}
+      </button>
+      <div className="text-lg font-black text-primary tracking-tight hidden md:block">Trampaj</div>
+      <div className="hidden md:flex items-center gap-1 ml-4">
         {NAV.map(n => {
           const active = n.path === "/" ? loc === "/" : loc.startsWith(n.path);
           return (
             <Link key={n.path} href={n.path}>
-              <span className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}>
-                <span>{n.icon}</span>{n.label}
+              <span className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}>
+                <span className="text-base">{n.icon}</span>{n.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+      <div className="flex-1 flex items-center md:hidden">
+        <span className="text-sm font-semibold text-foreground">{current?.label ?? "Admin"}</span>
+      </div>
+      <button onClick={onLogout} className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 px-3 rounded-lg hover:bg-accent">
+        Odjava
+      </button>
+    </header>
+  );
+}
+
+function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [loc] = useLocation();
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-20 md:hidden" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50" />
+      <nav className="absolute top-14 left-0 right-0 bg-sidebar border-b border-sidebar-border shadow-xl" onClick={e => e.stopPropagation()}>
+        {NAV.map(n => {
+          const active = n.path === "/" ? loc === "/" : loc.startsWith(n.path);
+          return (
+            <Link key={n.path} href={n.path}>
+              <span onClick={onClose} className={`flex items-center gap-3 px-5 py-3.5 text-sm cursor-pointer transition-colors border-b border-sidebar-border/40 ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}>
+                <span className="text-lg">{n.icon}</span>{n.label}
               </span>
             </Link>
           );
         })}
       </nav>
-      <button onClick={onLogout} className="m-3 text-xs text-muted-foreground hover:text-destructive transition-colors py-2 px-3 rounded-lg hover:bg-accent text-left">
-        🚪 Odjava
-      </button>
-    </aside>
-  );
-}
-
-// ─── Stats card ───────────────────────────────────────────────────────────────
-function StatCard({ label, value, color = "text-foreground", sub }: { label: string; value: number | string; color?: string; sub?: string }) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-1">
-      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</div>
-      <div className={`text-3xl font-black ${color}`}>{value}</div>
-      {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
     </div>
   );
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
-interface Stats { totalListings: number; activeListings: number; pendingListings: number; rejectedListings: number; totalUsers: number; bannedUsers: number; }
+// ─── Mini bar chart ────────────────────────────────────────────────────────────
+function BarChart({ data, color = "#F5C100" }: { data: { label: string; value: number }[]; color?: string }) {
+  const max = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div className="flex flex-col gap-2">
+      {data.map(d => (
+        <div key={d.label} className="flex items-center gap-2 text-xs">
+          <div className="w-24 shrink-0 text-muted-foreground truncate text-right">{d.label}</div>
+          <div className="flex-1 bg-muted rounded-full h-5 overflow-hidden relative">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max((d.value / max) * 100, 2)}%`, backgroundColor: color }} />
+          </div>
+          <div className="w-6 text-right font-semibold text-foreground">{d.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-function Dashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+// ─── Stat card variants ────────────────────────────────────────────────────────
+function StatCard({ label, value, color = "text-foreground", sub, icon }: { label: string; value: number | string; color?: string; sub?: string; icon?: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 flex items-start gap-3">
+      {icon && <span className="text-2xl mt-0.5">{icon}</span>}
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide leading-none mb-1">{label}</div>
+        <div className={`text-2xl font-black leading-none ${color}`}>{value}</div>
+        {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    apiFetch("/stats").then(r => r.json()).then((d: Stats) => setStats(d)).finally(() => setLoading(false));
-  }, []);
+function MiniStat({ label, value, color = "text-foreground" }: { label: string; value: number | string; color?: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={`text-sm font-bold ${color}`}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Donut / funnel display ────────────────────────────────────────────────────
+function ModerationFunnel({ total, active, pending, rejected }: { total: number; active: number; pending: number; rejected: number }) {
+  const moderated = active + rejected;
+  const approvalPct = moderated > 0 ? Math.round((active / moderated) * 100) : null;
+  const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-black mb-6 text-foreground">Dashboard</h1>
-      {loading ? (
-        <div className="text-muted-foreground">Učitavanje…</div>
-      ) : stats ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard label="Ukupno oglasa" value={stats.totalListings} />
-          <StatCard label="Aktivni oglasi" value={stats.activeListings} color="text-green-400" />
-          <StatCard label="Na čekanju" value={stats.pendingListings} color="text-yellow-400" sub="AI moderacija" />
-          <StatCard label="Odbijeni" value={stats.rejectedListings} color="text-destructive" />
-          <StatCard label="Korisnici" value={stats.totalUsers} />
-          <StatCard label="Banirani" value={stats.bannedUsers} color="text-destructive" />
+    <div className="flex flex-col gap-3">
+      <div>
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-muted-foreground">Odobreni</span>
+          <span className="text-green-400 font-semibold">{active} ({approvalPct != null ? approvalPct + "%" : "—"})</span>
         </div>
-      ) : <div className="text-destructive">Greška pri dohvatu statistika.</div>}
-
-      {stats && stats.pendingListings > 0 && (
-        <div className="mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl">⚠️</span>
-          <div>
-            <div className="font-bold text-yellow-400">{stats.pendingListings} oglasa čeka moderaciju</div>
-            <Link href="/listings?status=pending"><span className="text-xs text-yellow-300 underline cursor-pointer">Pregledaj odmah →</span></Link>
-          </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-green-500 rounded-full" style={{ width: total > 0 ? `${(active / total) * 100}%` : "0%" }} />
+        </div>
+      </div>
+      <div>
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-muted-foreground">Na čekanju</span>
+          <span className="text-yellow-400 font-semibold">{pending} ({pendingPct}%)</span>
+        </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-yellow-500 rounded-full" style={{ width: total > 0 ? `${(pending / total) * 100}%` : "0%" }} />
+        </div>
+      </div>
+      <div>
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-muted-foreground">Odbijeni</span>
+          <span className="text-red-400 font-semibold">{rejected} ({total > 0 ? Math.round((rejected / total) * 100) : 0}%)</span>
+        </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-red-500 rounded-full" style={{ width: total > 0 ? `${(rejected / total) * 100}%` : "0%" }} />
+        </div>
+      </div>
+      {approvalPct != null && (
+        <div className="mt-1 text-center text-xs text-muted-foreground">
+          AI odobrava <span className="text-green-400 font-bold">{approvalPct}%</span> moderiranih oglasa
         </div>
       )}
     </div>
   );
 }
 
-// ─── Listings ────────────────────────────────────────────────────────────────
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+interface Stats {
+  totalListings: number; activeListings: number; pendingListings: number; rejectedListings: number;
+  totalUsers: number; bannedUsers: number;
+  newListings7d: number; newUsers7d: number; newUsers30d: number;
+  approvalRate: number | null;
+  categoryBreakdown: { category: string; count: number }[];
+  topCities: { city: string; count: number }[];
+}
+
+function Dashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/stats").then(r => r.json()).then((d: Stats) => {
+      if ("error" in d) { setError(true); } else { setStats(d); }
+    }).catch(() => setError(true)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="p-6 text-muted-foreground text-sm">Učitavanje…</div>;
+  if (error || !stats) return <div className="p-6 text-destructive text-sm">Greška pri dohvatu statistika.</div>;
+
+  return (
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-black text-foreground">Nadzorna ploča</h1>
+        <button onClick={() => { setLoading(true); setError(false); apiFetch("/stats").then(r => r.json()).then((d: Stats) => setStats(d)).finally(() => setLoading(false)); }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-accent">
+          ↻ Osvježi
+        </button>
+      </div>
+
+      {stats.pendingListings > 0 && (
+        <Link href="/listings?status=pending">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:bg-yellow-500/15 transition-colors">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-yellow-400 text-sm">{stats.pendingListings} oglasa čeka moderaciju</div>
+              <div className="text-xs text-yellow-300/70">Klikni za pregled →</div>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {/* Primary stats */}
+      <div>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pregled</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Ukupno oglasa" value={stats.totalListings} icon="📋" />
+          <StatCard label="Aktivni" value={stats.activeListings} color="text-green-400" icon="✅" />
+          <StatCard label="Korisnici" value={stats.totalUsers} icon="👥" />
+          <StatCard label="Banirani" value={stats.bannedUsers} color={stats.bannedUsers > 0 ? "text-destructive" : "text-foreground"} icon="🚫" />
+        </div>
+      </div>
+
+      {/* Growth */}
+      <div>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Rast (zadnjih 7 dana)</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Novi oglasi" value={`+${stats.newListings7d}`} color="text-primary" icon="📈" />
+          <StatCard label="Novi korisnici" value={`+${stats.newUsers7d}`} color="text-sky-400" icon="🧑" />
+          <StatCard label="Korisnici (30d)" value={`+${stats.newUsers30d}`} color="text-sky-300" sub="zadnjih 30 dana" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Moderation funnel */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h2 className="text-sm font-bold text-foreground mb-4">🤖 AI Moderacija</h2>
+          <ModerationFunnel
+            total={stats.totalListings}
+            active={stats.activeListings}
+            pending={stats.pendingListings}
+            rejected={stats.rejectedListings}
+          />
+        </div>
+
+        {/* Top cities */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h2 className="text-sm font-bold text-foreground mb-4">📍 Top gradovi</h2>
+          {stats.topCities.length > 0 ? (
+            <BarChart
+              data={stats.topCities.map(c => ({ label: c.city || "—", value: c.count }))}
+              color="#38BDF8"
+            />
+          ) : (
+            <div className="text-xs text-muted-foreground text-center py-4">Nema podataka</div>
+          )}
+        </div>
+      </div>
+
+      {/* Category breakdown */}
+      {stats.categoryBreakdown.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h2 className="text-sm font-bold text-foreground mb-4">📦 Oglasi po kategorijama</h2>
+          <BarChart
+            data={stats.categoryBreakdown.map(c => ({ label: c.category, value: c.count }))}
+            color="#F5C100"
+          />
+        </div>
+      )}
+
+      {/* Quick user summary */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h2 className="text-sm font-bold text-foreground mb-3">👤 Sažetak korisnika</h2>
+        <MiniStat label="Ukupno registriranih" value={stats.totalUsers} />
+        <MiniStat label="Novi ovaj tjedan" value={`+${stats.newUsers7d}`} color="text-sky-400" />
+        <MiniStat label="Novi ovaj mjesec" value={`+${stats.newUsers30d}`} color="text-sky-300" />
+        <MiniStat label="Banirani" value={stats.bannedUsers} color={stats.bannedUsers > 0 ? "text-destructive" : "text-muted-foreground"} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Listings ─────────────────────────────────────────────────────────────────
 interface AdminListing {
   id: string; title: string; category: string; status: string;
   moderationStatus: string; moderationNote: string | null;
@@ -170,8 +340,10 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
+const STATUS_LABEL: Record<string, string> = { active: "Aktivan", pending: "Na čekanju", rejected: "Odbijen" };
+
 function Badge({ status }: { status: string }) {
-  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[status] ?? "bg-muted text-muted-foreground border-border"}`}>{status}</span>;
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[status] ?? "bg-muted text-muted-foreground border-border"}`}>{STATUS_LABEL[status] ?? status}</span>;
 }
 
 function ListingsPage() {
@@ -193,28 +365,21 @@ function ListingsPage() {
 
   const moderate = async (id: string, status: "active" | "rejected", noteText?: string) => {
     setActionLoading(id);
-    await apiFetch(`/listings/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ moderationStatus: status, moderationNote: noteText ?? null }),
-    });
-    setActionLoading(null);
-    setNoteId(null);
-    setNote("");
-    load();
+    await apiFetch(`/listings/${id}`, { method: "PATCH", body: JSON.stringify({ moderationStatus: status, moderationNote: noteText ?? null }) });
+    setActionLoading(null); setNoteId(null); setNote(""); load();
   };
 
   const del = async (id: string) => {
     if (!confirm("Obriši oglas?")) return;
     setActionLoading(id + "_del");
     await apiFetch(`/listings/${id}`, { method: "DELETE" });
-    setActionLoading(null);
-    load();
+    setActionLoading(null); load();
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-black text-foreground">Oglasi</h1>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <h1 className="text-xl font-black text-foreground">Oglasi</h1>
         <div className="flex gap-1 bg-muted rounded-lg p-1 ml-auto">
           {["pending","active","rejected"].map(s => (
             <button key={s} onClick={() => setFilterStatus(s)}
@@ -226,20 +391,22 @@ function ListingsPage() {
       </div>
 
       {loading ? (
-        <div className="text-muted-foreground">Učitavanje…</div>
+        <div className="text-muted-foreground text-sm">Učitavanje…</div>
       ) : listings.length === 0 ? (
-        <div className="text-muted-foreground text-center py-16">Nema oglasa u ovoj kategoriji.</div>
+        <div className="text-muted-foreground text-center py-16 text-sm">Nema oglasa u ovoj kategoriji.</div>
       ) : (
         <div className="flex flex-col gap-3">
           {listings.map(l => (
-            <div key={l.id} className="bg-card border border-border rounded-xl p-4 flex gap-4">
-              {l.imageUris[0] && (
-                <img src={l.imageUris[0]} alt="" className="w-20 h-20 object-cover rounded-lg shrink-0 bg-muted" />
+            <div key={l.id} className="bg-card border border-border rounded-xl p-4 flex gap-3">
+              {l.imageUris[0] ? (
+                <img src={l.imageUris[0]} alt="" className="w-16 h-16 object-cover rounded-lg shrink-0 bg-muted" />
+              ) : (
+                <div className="w-16 h-16 rounded-lg shrink-0 bg-muted flex items-center justify-center text-2xl">📦</div>
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
-                    <div className="font-bold text-foreground text-sm">{l.title}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-foreground text-sm truncate">{l.title}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">@{l.userName} · {l.category} · {fmtDate(l.createdAt)}</div>
                   </div>
                   <Badge status={l.moderationStatus} />
@@ -272,7 +439,7 @@ function ListingsPage() {
                   )}
                   <button onClick={() => del(l.id)} disabled={actionLoading === l.id + "_del"}
                     className="text-xs bg-muted text-muted-foreground hover:text-destructive rounded-lg px-3 py-1 transition-colors disabled:opacity-50">
-                    🗑 Obriši
+                    🗑
                   </button>
                 </div>
               </div>
@@ -305,8 +472,7 @@ function UsersPage() {
   const patch = async (id: string, data: Partial<AdminUser>) => {
     setActionLoading(id);
     await apiFetch(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) });
-    setActionLoading(null);
-    load();
+    setActionLoading(null); load();
   };
 
   const filtered = users.filter(u =>
@@ -315,59 +481,94 @@ function UsersPage() {
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-black text-foreground">Korisnici</h1>
-        <input className="ml-auto bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40 w-52"
-          placeholder="Pretraži korisnika…" value={search} onChange={e => setSearch(e.target.value)} />
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <h1 className="text-xl font-black text-foreground">Korisnici</h1>
+        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">{users.length} ukupno</span>
+        <input className="ml-auto bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40 w-48"
+          placeholder="Pretraži…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
       {loading ? (
-        <div className="text-muted-foreground">Učitavanje…</div>
+        <div className="text-muted-foreground text-sm">Učitavanje…</div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wide">
-                <th className="text-left px-4 py-3">Korisnik</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Registriran</th>
-                <th className="text-right px-4 py-3">Akcije</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((u, i) => (
-                <tr key={u.id} className={`border-b border-border/50 ${i % 2 === 0 ? "" : "bg-accent/30"} hover:bg-accent/50 transition-colors`}>
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-foreground">@{u.username}</div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {u.isAdmin && <span className="text-xs bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Admin</span>}
-                      {u.isBanned && <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-semibold">Baniran</span>}
-                      {u.isVerified && <span className="text-xs bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">✓ Verificiran</span>}
-                      {!u.isBanned && !u.isAdmin && !u.isVerified && <span className="text-xs text-muted-foreground">Aktivan</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(u.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex gap-1.5 justify-end flex-wrap">
-                      <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isBanned: !u.isBanned })}
-                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors disabled:opacity-50 ${u.isBanned ? "bg-green-500/15 text-green-400 border border-green-500/30 hover:bg-green-500/25" : "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25"}`}>
-                        {u.isBanned ? "Odbani" : "Baniraj"}
-                      </button>
-                      <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isAdmin: !u.isAdmin })}
-                        className="text-xs px-2.5 py-1 rounded-lg font-semibold bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors disabled:opacity-50">
-                        {u.isAdmin ? "Makni admin" : "Postavi admin"}
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wide">
+                  <th className="text-left px-4 py-3">Korisnik</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                  <th className="text-left px-4 py-3">Registriran</th>
+                  <th className="text-right px-4 py-3">Akcije</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && <div className="text-center text-muted-foreground py-10">Nema korisnika.</div>}
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((u, i) => (
+                  <tr key={u.id} className={`border-b border-border/50 ${i % 2 === 0 ? "" : "bg-accent/20"} hover:bg-accent/40 transition-colors`}>
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-foreground">@{u.username}</div>
+                      <div className="text-xs text-muted-foreground">{u.email}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {u.isAdmin && <span className="text-xs bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Admin</span>}
+                        {u.isBanned && <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-semibold">Baniran</span>}
+                        {u.isVerified && <span className="text-xs bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">✓</span>}
+                        {!u.isBanned && !u.isAdmin && !u.isVerified && <span className="text-xs text-muted-foreground">Aktivan</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{fmtDate(u.createdAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex gap-1.5 justify-end">
+                        <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isBanned: !u.isBanned })}
+                          className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors disabled:opacity-50 ${u.isBanned ? "bg-green-500/15 text-green-400 border border-green-500/30" : "bg-red-500/15 text-red-400 border border-red-500/30"}`}>
+                          {u.isBanned ? "Odbani" : "Baniraj"}
+                        </button>
+                        <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isAdmin: !u.isAdmin })}
+                          className="text-xs px-2.5 py-1 rounded-lg font-semibold bg-muted text-muted-foreground border border-border transition-colors disabled:opacity-50">
+                          {u.isAdmin ? "Makni admin" : "Admin"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && <div className="text-center text-muted-foreground py-10 text-sm">Nema korisnika.</div>}
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden flex flex-col gap-3">
+            {filtered.map(u => (
+              <div key={u.id} className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <div className="font-bold text-foreground text-sm">@{u.username}</div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{fmtDate(u.createdAt)}</div>
+                  </div>
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {u.isAdmin && <span className="text-xs bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Admin</span>}
+                    {u.isBanned && <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-semibold">Baniran</span>}
+                    {u.isVerified && <span className="text-xs bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">✓ Verif.</span>}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isBanned: !u.isBanned })}
+                    className={`flex-1 text-xs py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 ${u.isBanned ? "bg-green-500/15 text-green-400 border border-green-500/30" : "bg-red-500/15 text-red-400 border border-red-500/30"}`}>
+                    {u.isBanned ? "Odbani" : "Baniraj"}
+                  </button>
+                  <button disabled={actionLoading === u.id} onClick={() => patch(u.id, { isAdmin: !u.isAdmin })}
+                    className="flex-1 text-xs py-1.5 rounded-lg font-semibold bg-muted text-muted-foreground border border-border transition-colors disabled:opacity-50">
+                    {u.isAdmin ? "Makni admin" : "Postavi admin"}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && <div className="text-center text-muted-foreground py-10 text-sm">Nema korisnika.</div>}
+          </div>
+        </>
       )}
     </div>
   );
@@ -376,26 +577,23 @@ function UsersPage() {
 // ─── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_token");
-    setToken(null);
-  };
+  const handleLogout = () => { localStorage.removeItem("admin_token"); setToken(null); };
 
   if (!token) return <LoginPage onLogin={setToken} />;
 
   return (
     <WouterRouter base={BASE}>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar onLogout={handleLogout} />
+      <div className="min-h-screen bg-background flex flex-col">
+        <TopBar onLogout={handleLogout} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
         <main className="flex-1 overflow-auto">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/listings" component={ListingsPage} />
             <Route path="/users" component={UsersPage} />
-            <Route>
-              <div className="p-10 text-muted-foreground text-center">Stranica nije pronađena.</div>
-            </Route>
+            <Route><div className="p-10 text-muted-foreground text-center text-sm">Stranica nije pronađena.</div></Route>
           </Switch>
         </main>
       </div>
