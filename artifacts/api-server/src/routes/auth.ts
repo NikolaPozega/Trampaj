@@ -191,18 +191,20 @@ router.post("/auth/register", async (req, res) => {
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 router.post("/auth/login", async (req, res) => {
-  const { username, password } = req.body as { username?: string; password?: string };
+  const { username, email, password } = req.body as { username?: string; email?: string; password?: string };
+  const identifier = (username ?? email ?? "").trim();
 
-  if (!username?.trim() || !password) {
-    res.status(400).json({ error: "Korisničko ime i lozinka su obavezni" });
+  if (!identifier || !password) {
+    res.status(400).json({ error: "Korisničko ime/email i lozinka su obavezni" });
     return;
   }
 
   try {
+    const isEmail = identifier.includes("@");
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.username, username.trim()))
+      .where(isEmail ? eq(usersTable.email, identifier) : eq(usersTable.username, identifier))
       .limit(1);
 
     if (!user) {
@@ -229,7 +231,7 @@ router.post("/auth/login", async (req, res) => {
       expiresIn: "30d",
     });
 
-    res.json({ token, user: toPublicUser(user) });
+    res.json({ token, user: toPublicUser(user), isAdmin: user.isAdmin });
   } catch (err) {
     req.log.error({ err }, "login error");
     res.status(500).json({ error: "Greška pri prijavi" });

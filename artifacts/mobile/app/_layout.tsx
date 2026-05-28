@@ -28,6 +28,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: "Natrag" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+      <Stack.Screen name="intro" options={{ headerShown: false, presentation: "fullScreenModal", gestureEnabled: false }} />
       <Stack.Screen name="login" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="verify-email" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="listing/[id]" options={{ headerShown: false, presentation: "card" }} />

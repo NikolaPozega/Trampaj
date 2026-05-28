@@ -23,6 +23,8 @@ export const listingsTable = pgTable("listings", {
   packageSize: text("package_size"),
   packageBoxSize: text("package_box_size"),
   packageWeight: real("package_weight"),
+  moderationStatus: text("moderation_status").notNull().default("active"),
+  moderationNote: text("moderation_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -2,7 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { INTRO_DONE_KEY } from "../intro";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -212,6 +214,12 @@ export default function BrowseScreen() {
   const [searchTrazim, setSearchTrazim] = useState("");
   const [searchNudim, setSearchNudim] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(INTRO_DONE_KEY).then((val) => {
+      if (!val) router.replace("/intro");
+    });
+  }, []);
 
   React.useEffect(() => {
     searchBus.clearSearch = () => { setSearchTrazim(""); setSearchNudim(""); };

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { eq, and, or, ilike, desc, getTableColumns } from "drizzle-orm";
 import { db, listingsTable, usersTable, savedListingsTable } from "@workspace/db";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth";
+import { moderateListing } from "../moderationService";
 
 const router: IRouter = Router();
 
@@ -76,6 +77,8 @@ router.get("/listings", optionalAuth, async (req: AuthRequest, res) => {
     } else if (!status) {
       conditions.push(eq(listingsTable.status, "active"));
     }
+    // Public feed shows only AI-approved listings
+    conditions.push(eq(listingsTable.moderationStatus, "active"));
     if (category && category !== "Sve") {
       conditions.push(eq(listingsTable.category, category));
     }
@@ -157,6 +160,11 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
 
   try {
     const id = randomUUID();
+    const imgs = Array.isArray(imageUris) ? imageUris as string[] : [];
+
+    // Start with 'pending' if OpenAI key exists, otherwise 'active'
+    const initialModerationStatus = process.env["OPENAI_API_KEY"] ? "pending" : "active";
+
     await db.insert(listingsTable).values({
       id,
       userId: req.userId!,
@@ -166,7 +174,7 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
       condition: condition ? String(condition) : null,
       wantedFor: wantedFor ? String(wantedFor) : "",
       price: typeof price === "number" ? price : null,
-      imageUris: JSON.stringify(Array.isArray(imageUris) ? imageUris : []),
+      imageUris: JSON.stringify(imgs),
       phone: phone ? String(phone) : null,
       location: location ? String(location) : "",
       topup: topup ? String(topup) : null,
@@ -178,7 +186,22 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
       packageSize: packageSize ? String(packageSize) : null,
       packageBoxSize: packageBoxSize ? String(packageBoxSize) : null,
       packageWeight: typeof packageWeight === "number" ? packageWeight : null,
+      moderationStatus: initialModerationStatus,
     });
+
+    // Async AI moderation — ne blokira odgovor
+    if (process.env["OPENAI_API_KEY"]) {
+      setImmediate(async () => {
+        try {
+          const result = await moderateListing(
+            String(title), String(description), wantedFor ? String(wantedFor) : "", imgs,
+          );
+          await db.update(listingsTable)
+            .set({ moderationStatus: result.status, moderationNote: result.note })
+            .where(eq(listingsTable.id, id));
+        } catch { /* silent */ }
+      });
+    }
 
     const [row] = await db
       .select(listingFields)

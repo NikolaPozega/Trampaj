@@ -8,6 +8,8 @@ import listingsRouter from "./listings";
 import conversationsRouter from "./conversations";
 import reviewsRouter from "./reviews";
 import blockedRouter from "./blocked";
+import adminRouter from "./admin";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -16,6 +18,8 @@ router.use(authRouter);
 router.use("/escrow", escrowRouter);
 router.use("/payments", paymentsRouter);
 router.use("/sendcloud", sendcloudRouter);
+router.use("/admin", adminRouter);
+router.use("/push", pushRouter);
 router.use(listingsRouter);
 router.use(conversationsRouter);
 router.use(reviewsRouter);
