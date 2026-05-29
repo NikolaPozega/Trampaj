@@ -100,4 +100,45 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
 
+// ─── Landing stranica — samo logo, bez aplikacije ─────────────────────────────
+app.get("/", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trampaj.hr — Uskoro</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:24px}
+    .logo{width:140px;height:140px;border-radius:28px;overflow:hidden}
+    .logo svg{width:100%;height:100%}
+    .name{color:#38BDF8;font-size:2.2rem;font-weight:800;letter-spacing:.5px}
+    .slogan{color:#F5C100;font-size:1rem;font-weight:500;text-align:center}
+    .soon{color:rgba(255,255,255,.35);font-size:.8rem;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="140" height="140" fill="#08152E" rx="28"/>
+      <rect x="22" y="32" width="52" height="52" rx="10" stroke="#38BDF8" stroke-width="5" fill="none"/>
+      <rect x="66" y="56" width="52" height="52" rx="10" stroke="#F5C100" stroke-width="5" fill="none"/>
+      <path d="M58 58 Q70 45 82 58" stroke="#38BDF8" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#a)"/>
+      <path d="M82 82 Q70 95 58 82" stroke="#F5C100" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#b)"/>
+      <defs>
+        <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38BDF8"/></marker>
+        <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F5C100"/></marker>
+      </defs>
+    </svg>
+  </div>
+  <div class="name">Trampaj.hr</div>
+  <div class="slogan">Jedna trampa, dvije sretne strane!</div>
+  <div class="soon">Uskoro dostupno</div>
+</body>
+</html>`);
+});
+
 export default app;
