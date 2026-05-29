@@ -2,3 +2,4 @@
 - [Ad injection pattern](ad-injection.md) — ads at row3col3, row6col1, row9col3, row12col1... (every 3 rows, alternating col); must be infinite (dynamic, not fixed count).
 - [Backend architecture](backend-arch.md) — PostgreSQL + Drizzle ORM; all new tables use text UUID PKs; Drizzle join spread uses getTableColumns(), not table spread directly.
 - [Mobile context API pattern](mobile-context-api.md) — ListingsContext/ChatContext use API_BASE from EXPO_PUBLIC_DOMAIN; token from useAuth(); SAMPLE_LISTINGS shown when DB empty or offline.
+- [Expo splash screen fix](expo-splash-fix.md) — must import SplashScreen from "expo-router" not "expo-splash-screen"; never call preventAutoHideAsync() manually.
