@@ -1,8 +1,31 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "_0vd1JqQNVPg8OSEUIlsV"
 uri = "file://artifacts/mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "ePIxWluLRsxaYtKXA6oeF"
+uri = "file://attached_assets/trampaj_profile.png"
+type = "image"
+title = "trampaj profile picture"
+
+[[generated]]
+id = "jcIf8VbL_fD24YP8ozSrn"
+uri = "file://attached_assets/trampaj_cover.png"
+type = "image"
+title = "trampaj facebook cover"
+
+[[outputs]]
+id = "BQ3upFCsGN8b0gGwDiP5q"
+uri = "file://attached_assets/trampaj_profile.png"
+type = "image"
+title = "Profilna slika (1:1)"
+
+[[outputs]]
+id = "85GrxruIpgK3vgXjoHX6z"
+uri = "file://attached_assets/trampaj_cover.png"
+type = "image"
+title = "Naslovna slika (16:9)"
