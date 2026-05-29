@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -26,9 +28,53 @@ app.use(
     },
   }),
 );
-app.use(cors());
 
-// Stripe webhook mora biti PRIJE express.json() middleware-a
+// ─── Sigurnosni headeri ────────────────────────────────────────────────────────
+app.use(helmet());
+
+// ─── CORS — dopuštamo samo naše domene ────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  /\.replit\.app$/,
+  /\.replit\.dev$/,
+  /trampaj\.hr$/,
+  /localhost/,
+  /127\.0\.0\.1/,
+];
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || ALLOWED_ORIGINS.some(r => r.test(origin))) {
+        cb(null, true);
+      } else {
+        cb(new Error("CORS: nedozvoljen izvor"));
+      }
+    },
+    credentials: true,
+  }),
+);
+
+// ─── Rate limiting — zaštita od hakera i botova ────────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Previše zahtjeva. Pokušaj za 15 minuta." },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Previše pokušaja prijave. Pokušaj za 15 minuta." },
+});
+
+app.use("/api", globalLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+
+// ─── Stripe webhook mora biti PRIJE express.json() middleware-a ───────────────
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
