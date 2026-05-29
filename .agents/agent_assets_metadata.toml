@@ -18,6 +18,18 @@ uri = "file://attached_assets/trampaj_cover.png"
 type = "image"
 title = "trampaj facebook cover"
 
+[[generated]]
+id = "yzf5y28ly0whFj04hM8xg"
+uri = "file://attached_assets/trampaj_profile_v2.png"
+type = "image"
+title = "trampaj logo profile"
+
+[[generated]]
+id = "KR0QED25nHSz5aFA9iGVL"
+uri = "file://attached_assets/trampaj_cover_v2.png"
+type = "image"
+title = "trampaj facebook cover v2"
+
 [[outputs]]
 id = "BQ3upFCsGN8b0gGwDiP5q"
 uri = "file://attached_assets/trampaj_profile.png"
@@ -29,3 +41,15 @@ id = "85GrxruIpgK3vgXjoHX6z"
 uri = "file://attached_assets/trampaj_cover.png"
 type = "image"
 title = "Naslovna slika (16:9)"
+
+[[outputs]]
+id = "h7MTKDuLEuukSSCW9DKzK"
+uri = "file://attached_assets/trampaj_profile_v2.png"
+type = "image"
+title = "Profilna slika v2"
+
+[[outputs]]
+id = "BALYmPd04Y4JtgWjZXcVu"
+uri = "file://attached_assets/trampaj_cover_v2.png"
+type = "image"
+title = "Naslovna slika v2 (tekst desno, lijevo slobodno za profilnu)"
