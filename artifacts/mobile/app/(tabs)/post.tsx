@@ -17,7 +17,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CONDITIONS,
@@ -520,13 +519,12 @@ export default function PostScreen() {
   ];
 
   return (
-    <KeyboardAwareScrollView
+    <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[
         styles.content,
         { paddingTop: topPad, paddingBottom: bottomPad + 80 },
       ]}
-      bottomOffset={20}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -1241,7 +1239,7 @@ export default function PostScreen() {
           )}
         </Pressable>
       </View>
-    </KeyboardAwareScrollView>
+    </ScrollView>
   );
 }
 
