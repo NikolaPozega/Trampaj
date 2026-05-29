@@ -4,6 +4,7 @@ import { eq, and, or, ilike, desc, getTableColumns } from "drizzle-orm";
 import { db, listingsTable, usersTable, savedListingsTable } from "@workspace/db";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth";
 import { moderateListing } from "../moderationService";
+import { postToSocialMedia } from "../lib/socialMedia";
 
 const router: IRouter = Router();
 
@@ -201,6 +202,18 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
           await db.update(listingsTable)
             .set({ moderationStatus: result.status, moderationNote: result.note })
             .where(eq(listingsTable.id, id));
+
+          // Objavi na društvene mreže samo ako oglas prođe moderaciju
+          if (result.status === "active") {
+            await postToSocialMedia({
+              id,
+              title: String(title),
+              wantedFor: wantedFor ? String(wantedFor) : "",
+              description: String(description),
+              location: location ? String(location) : "",
+              imageUris: imgs,
+            });
+          }
         } catch { /* silent */ }
       });
     }

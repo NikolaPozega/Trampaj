@@ -11,6 +11,7 @@ import blockedRouter from "./blocked";
 import adminRouter from "./admin";
 import pushRouter from "./push";
 import monitorRouter from "./monitor";
+import socialRouter from "./social";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,7 @@ router.use("/payments", paymentsRouter);
 router.use("/sendcloud", sendcloudRouter);
 router.use("/admin", adminRouter);
 router.use("/push", pushRouter);
+router.use(socialRouter);
 router.use(listingsRouter);
 router.use(conversationsRouter);
 router.use(reviewsRouter);
