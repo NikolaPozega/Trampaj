@@ -8,9 +8,17 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ScrollView, Text, View } from "react-native";
+
+// ─── Global JS error catcher (shows crash on-screen for debugging) ────────────
+let _globalError: string | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(global as any).ErrorUtils?.setGlobalHandler?.((error: Error, isFatal: boolean) => {
+  _globalError = `[${isFatal ? "FATAL" : "non-fatal"}] ${error?.message ?? String(error)}\n\n${error?.stack ?? ""}`;
+});
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChatProvider } from "@/context/ChatContext";
@@ -48,12 +56,18 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
+  const [globalError, setGlobalError] = useState<string | null>(null);
+
   const responseListener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
+    // Expose setter so the ErrorUtils handler (module level) can trigger a re-render
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).__setLayoutError = setGlobalError;
+    if (_globalError) setGlobalError(_globalError);
+
     setupNotifications();
 
-    // Tap na notifikaciju → otvori chat
     responseListener.current = addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data as { listingId?: string };
       if (data?.listingId) {
@@ -71,6 +85,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  if (globalError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0D1117", padding: 16, paddingTop: 60 }}>
+        <Text style={{ color: "#F5C100", fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
+          ⚠️ Crash — kopiraj tekst ispod i pošalji:
+        </Text>
+        <ScrollView style={{ flex: 1 }}>
+          <Text selectable style={{ color: "#FF6B6B", fontSize: 11, fontFamily: "monospace", lineHeight: 16 }}>
+            {globalError}
+          </Text>
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (!fontsLoaded && !fontError) return null;
 
