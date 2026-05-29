@@ -1,16 +1,25 @@
 import { Stack } from "expo-router";
-import React from "react";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect } from "react";
 import { View, Text } from "react-native";
 
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#08152E", alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ color: "#F5C100", fontSize: 24, fontWeight: "bold" }}>
-        Trampaj.hr — Radi! ✓
-      </Text>
-      <Text style={{ color: "#38BDF8", fontSize: 14, marginTop: 8 }}>
-        Konekcija OK
-      </Text>
+    <View style={{ flex: 1, backgroundColor: "#08152E" }}>
+      <View style={{ position: "absolute", top: 80, left: 0, right: 0, alignItems: "center", zIndex: 999 }}>
+        <Text style={{ color: "#F5C100", fontSize: 22, fontWeight: "bold" }}>
+          Trampaj.hr TEST
+        </Text>
+        <Text style={{ color: "#38BDF8", fontSize: 14, marginTop: 6 }}>
+          Konekcija radi ✓
+        </Text>
+      </View>
       <Stack screenOptions={{ headerShown: false }} />
     </View>
   );
