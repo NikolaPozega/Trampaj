@@ -73,9 +73,11 @@ const NAV = [
   { path: "/users", label: "Korisnici", icon: "👥" },
 ];
 
-function TopBar({ onLogout, menuOpen, setMenuOpen }: { onLogout: () => void; menuOpen: boolean; setMenuOpen: (v: boolean) => void }) {
+type NavItem = { path: string; label: string; icon: string };
+
+function TopBar({ onLogout, menuOpen, setMenuOpen, navItems }: { onLogout: () => void; menuOpen: boolean; setMenuOpen: (v: boolean) => void; navItems: NavItem[] }) {
   const [loc] = useLocation();
-  const current = NAV.find(n => n.path === "/" ? loc === "/" : loc.startsWith(n.path));
+  const current = navItems.find(n => n.path === "/" ? loc === "/" : loc.startsWith(n.path));
   return (
     <header className="sticky top-0 z-30 bg-sidebar border-b border-sidebar-border flex items-center px-4 h-14 gap-3">
       <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent text-sidebar-foreground text-xl">
@@ -83,7 +85,7 @@ function TopBar({ onLogout, menuOpen, setMenuOpen }: { onLogout: () => void; men
       </button>
       <div className="text-lg font-black text-primary tracking-tight hidden md:block">Trampaj</div>
       <div className="hidden md:flex items-center gap-1 ml-4">
-        {NAV.map(n => {
+        {navItems.map(n => {
           const active = n.path === "/" ? loc === "/" : loc.startsWith(n.path);
           return (
             <Link key={n.path} href={n.path}>
@@ -104,14 +106,14 @@ function TopBar({ onLogout, menuOpen, setMenuOpen }: { onLogout: () => void; men
   );
 }
 
-function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+function MobileMenu({ open, onClose, navItems }: { open: boolean; onClose: () => void; navItems: NavItem[] }) {
   const [loc] = useLocation();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-20 md:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <nav className="absolute top-14 left-0 right-0 bg-sidebar border-b border-sidebar-border shadow-xl" onClick={e => e.stopPropagation()}>
-        {NAV.map(n => {
+        {navItems.map(n => {
           const active = n.path === "/" ? loc === "/" : loc.startsWith(n.path);
           return (
             <Link key={n.path} href={n.path}>
@@ -574,6 +576,117 @@ function UsersPage() {
   );
 }
 
+// ─── Monitor ──────────────────────────────────────────────────────────────────
+interface MonitorCheck { name: string; status: "ok" | "error"; latencyMs: number; detail?: string; }
+interface MonitorStatus { ok: boolean; timestamp: number; checks: MonitorCheck[]; }
+
+const STATUS_DOT: Record<string, string> = {
+  ok: "bg-green-500",
+  error: "bg-red-500",
+};
+
+function MonitorPage() {
+  const [data, setData] = useState<MonitorStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/monitor/status");
+      const d = await r.json() as MonitorStatus;
+      setData(d);
+      setLastRefresh(new Date());
+    } catch {
+      setData(null);
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const sendTestAlert = async () => {
+    setTestLoading(true); setTestResult(null);
+    try {
+      const token = localStorage.getItem("admin_token");
+      const r = await fetch("/api/monitor/test-alert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const d = await r.json() as { ok: boolean; message?: string };
+      setTestResult(d.ok ? "✅ Test email poslan!" : `❌ ${d.message ?? "Greška"}`);
+    } catch { setTestResult("❌ Greška slanja"); }
+    finally { setTestLoading(false); }
+  };
+
+  return (
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-5">
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-black text-foreground">Monitor</h1>
+        <div className={`w-3 h-3 rounded-full ${data ? (data.ok ? "bg-green-500" : "bg-red-500") : "bg-muted"} animate-pulse`} />
+        <span className="text-xs text-muted-foreground">{data?.ok ? "Sve radi" : data ? "Greška" : "Provjera…"}</span>
+        <button onClick={refresh} className="ml-auto text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent transition-colors">↻ Osvježi</button>
+      </div>
+
+      {lastRefresh && (
+        <div className="text-xs text-muted-foreground">Zadnja provjera: {lastRefresh.toLocaleTimeString("hr-HR")} · automatski svakih 30s</div>
+      )}
+
+      {loading && !data ? (
+        <div className="text-muted-foreground text-sm">Provjera servisa…</div>
+      ) : data ? (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {data.checks.map((c, i) => (
+            <div key={c.name} className={`flex items-center gap-4 px-4 py-3.5 ${i > 0 ? "border-t border-border/50" : ""}`}>
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_DOT[c.status] ?? "bg-muted"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-foreground">{c.name}</div>
+                {c.detail && <div className="text-xs text-muted-foreground mt-0.5">{c.detail}</div>}
+              </div>
+              <div className="text-right shrink-0">
+                <div className={`text-xs font-bold ${c.status === "ok" ? "text-green-400" : "text-red-400"}`}>
+                  {c.status === "ok" ? "OK" : "GREŠKA"}
+                </div>
+                {c.latencyMs > 0 && <div className="text-xs text-muted-foreground">{c.latencyMs}ms</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+          ❌ Ne mogu dohvatiti status servera
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <h2 className="text-sm font-bold text-foreground">📧 Email notifikacije</h2>
+        <p className="text-xs text-muted-foreground">
+          Email alert se šalje automatski kad server ima grešku (max jednom svakih 15 minuta).
+          Pošalji test email da provjeriš radi li.
+        </p>
+        <button onClick={sendTestAlert} disabled={testLoading}
+          className="text-sm bg-primary text-primary-foreground font-bold rounded-lg px-4 py-2 hover:opacity-90 disabled:opacity-50 transition-opacity">
+          {testLoading ? "Šaljem…" : "Pošalji test email"}
+        </button>
+        {testResult && <div className="text-sm font-medium">{testResult}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Nav update ──────────────────────────────────────────────────────────────
+const NAV_UPDATED = [
+  { path: "/", label: "Nadzorna ploča", icon: "📊" },
+  { path: "/listings", label: "Oglasi", icon: "📋" },
+  { path: "/users", label: "Korisnici", icon: "👥" },
+  { path: "/monitor", label: "Monitor", icon: "🟢" },
+];
+
 // ─── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
@@ -586,13 +699,14 @@ export default function App() {
   return (
     <WouterRouter base={BASE}>
       <div className="min-h-screen bg-background flex flex-col">
-        <TopBar onLogout={handleLogout} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <TopBar onLogout={handleLogout} menuOpen={menuOpen} setMenuOpen={setMenuOpen} navItems={NAV_UPDATED} />
+        <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} navItems={NAV_UPDATED} />
         <main className="flex-1 overflow-auto">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/listings" component={ListingsPage} />
             <Route path="/users" component={UsersPage} />
+            <Route path="/monitor" component={MonitorPage} />
             <Route><div className="p-10 text-muted-foreground text-center text-sm">Stranica nije pronađena.</div></Route>
           </Switch>
         </main>

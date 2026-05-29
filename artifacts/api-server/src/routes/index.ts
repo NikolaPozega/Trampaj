@@ -10,10 +10,12 @@ import reviewsRouter from "./reviews";
 import blockedRouter from "./blocked";
 import adminRouter from "./admin";
 import pushRouter from "./push";
+import monitorRouter from "./monitor";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(monitorRouter);
 router.use(authRouter);
 router.use("/escrow", escrowRouter);
 router.use("/payments", paymentsRouter);
