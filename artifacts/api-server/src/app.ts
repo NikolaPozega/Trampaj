@@ -10,6 +10,9 @@ import { WebhookHandlers } from "./webhookHandlers";
 
 const app: Express = express();
 
+// Replit i ostali reverse proxy-ji postavljaju X-Forwarded-For
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
