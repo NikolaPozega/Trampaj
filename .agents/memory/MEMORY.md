@@ -3,4 +3,4 @@
 - [Backend architecture](backend-arch.md) — PostgreSQL + Drizzle ORM; all new tables use text UUID PKs; Drizzle join spread uses getTableColumns(), not table spread directly.
 - [Mobile context API pattern](mobile-context-api.md) — ListingsContext/ChatContext use API_BASE from EXPO_PUBLIC_DOMAIN; token from useAuth(); SAMPLE_LISTINGS shown when DB empty or offline.
 - [Expo splash screen fix](expo-splash-fix.md) — must import SplashScreen from "expo-router" not "expo-splash-screen"; never call preventAutoHideAsync() manually.
-- [Expo bundle proxy fix](expo-bundle-proxy.md) — Replit shared proxy forwards FULL path (no stripping); must add "/artifacts/mobile" to artifact.toml paths so bundle URL routes to Metro.
+- [Expo Go connection on Replit](expo-go-replit.md) — full solution for making Expo Go connect in Replit's proxy environment.

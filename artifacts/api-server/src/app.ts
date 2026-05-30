@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
+import http from "node:http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
@@ -99,6 +100,37 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
+
+// ─── Expo Go manifest proxy (samo u razvoju) ───────────────────────────────────
+// API server je na "/" pa intercepts Expo Go manifest request.
+// Kad Expo Go traži manifest s Accept: application/expo+json ili Expo-Platform
+// headerom, proxyiramo na Metro dev server (localhost:18115).
+app.get("/", (req, res, next) => {
+  if (process.env.NODE_ENV !== "development") return next();
+  const accept = req.headers["accept"] ?? "";
+  const platform = req.headers["expo-platform"];
+  if (!accept.includes("application/expo+json") && !platform) return next();
+
+  const proxyReq = http.get(
+    {
+      hostname: "localhost",
+      port: 18115,
+      path: "/",
+      headers: { ...req.headers, host: "localhost:18115" },
+    },
+    (proxyRes) => {
+      res.statusCode = proxyRes.statusCode ?? 200;
+      for (const [k, v] of Object.entries(proxyRes.headers)) {
+        if (v !== undefined) res.setHeader(k, v);
+      }
+      proxyRes.pipe(res);
+    },
+  );
+  proxyReq.on("error", (err) => {
+    logger.warn({ err }, "Expo manifest proxy error — Metro nije pokrenut?");
+    next();
+  });
+});
 
 // ─── Landing stranica — samo logo, bez aplikacije ─────────────────────────────
 app.get("/", (_req, res) => {
