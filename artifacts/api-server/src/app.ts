@@ -251,7 +251,8 @@ app.get("/prijava", (_req, res) => {
         .then(function(res) {
           if (!res.ok) { showMsg('l-msg', res.d.error || 'Greška', false); return; }
           localStorage.setItem('trampaj_token', res.d.token);
-          showMsg('l-msg', '✓ Prijava uspješna!', true);
+          showMsg('l-msg', '✓ Prijava uspješna! Preusmjeravam...', true);
+          setTimeout(function() { window.location.href = '/profil'; }, 800);
         })
         .catch(function() { showMsg('l-msg', 'Greška pri spajanju na server', false); })
         .finally(function() { btn.disabled = false; btn.textContent = 'Prijavi se'; });
@@ -268,8 +269,14 @@ app.get("/prijava", (_req, res) => {
         .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
         .then(function(res) {
           if (!res.ok) { showMsg('r-msg', res.d.error || 'Greška', false); return; }
-          showMsg('r-msg', '✓ Račun stvoren! Prijavi se.', true);
-          setTimeout(function() { switchTab('login'); }, 1500);
+          if (res.d.token) {
+            localStorage.setItem('trampaj_token', res.d.token);
+            showMsg('r-msg', '✓ Račun stvoren! Preusmjeravam...', true);
+            setTimeout(function() { window.location.href = '/profil'; }, 800);
+          } else {
+            showMsg('r-msg', '✓ Račun stvoren! Prijavi se.', true);
+            setTimeout(function() { switchTab('login'); }, 1500);
+          }
         })
         .catch(function() { showMsg('r-msg', 'Greška pri spajanju na server', false); })
         .finally(function() { btn.disabled = false; btn.textContent = 'Registriraj se'; });
@@ -281,6 +288,108 @@ app.get("/prijava", (_req, res) => {
       if (active && active.id === 'form-login') document.getElementById('btn-login').click();
       else document.getElementById('btn-register').click();
     });
+  </script>
+</body>
+</html>`);
+});
+
+// ─── Profil stranica (zahtjeva JWT token u localStorage) ──────────────────────
+app.get("/profil", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'");
+  res.send(`<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trampaj.hr — Moj profil</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{min-height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff}
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:36px 32px;width:100%;max-width:420px}
+    .header{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+    .header svg{width:40px;height:40px;border-radius:10px;flex-shrink:0}
+    .header-name{font-size:1.4rem;font-weight:800;color:#38BDF8}
+    .avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;margin:0 auto 20px;text-transform:uppercase}
+    .username{font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:4px}
+    .email{font-size:.9rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:24px}
+    .badge{display:inline-block;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600;margin:0 auto 24px;display:block;text-align:center;width:fit-content;margin:0 auto 20px}
+    .divider{height:1px;background:rgba(255,255,255,.08);margin:20px 0}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0}
+    .info-label{font-size:.8rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
+    .info-val{font-size:.9rem;font-weight:600;color:rgba(255,255,255,.85)}
+    .btn-row{display:flex;gap:10px;margin-top:24px}
+    .btn{flex:1;padding:12px;border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;transition:.15s}
+    .btn-primary{background:#F5C100;color:#08152E}
+    .btn-primary:hover{background:#ffd426}
+    .btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12)}
+    .btn-secondary:hover{background:rgba(255,255,255,.12)}
+    .loading{text-align:center;color:rgba(255,255,255,.4);padding:40px 0}
+    .err-box{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:14px;border-radius:10px;text-align:center;margin-top:16px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="140" fill="#08152E" rx="28"/>
+        <rect x="22" y="32" width="52" height="52" rx="10" stroke="#38BDF8" stroke-width="5" fill="none"/>
+        <rect x="66" y="56" width="52" height="52" rx="10" stroke="#F5C100" stroke-width="5" fill="none"/>
+        <path d="M58 58 Q70 45 82 58" stroke="#38BDF8" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#a)"/>
+        <path d="M82 82 Q70 95 58 82" stroke="#F5C100" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#b)"/>
+        <defs>
+          <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38BDF8"/></marker>
+          <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F5C100"/></marker>
+        </defs>
+      </svg>
+      <span class="header-name">Trampaj.hr</span>
+    </div>
+    <div id="content"><div class="loading">Učitavam profil...</div></div>
+  </div>
+
+  <script>
+    var token = localStorage.getItem('trampaj_token');
+    if (!token) { window.location.href = '/prijava'; }
+
+    fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          localStorage.removeItem('trampaj_token');
+          window.location.href = '/prijava';
+          return;
+        }
+        var u = res.d.user;
+        var initials = (u.username || 'U').substring(0, 2).toUpperCase();
+        var joined = new Date(u.createdAt).toLocaleDateString('hr-HR', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('content').innerHTML =
+          '<div class="avatar">' + initials + '</div>' +
+          '<div class="username">' + escHtml(u.username) + '</div>' +
+          '<div class="email">' + escHtml(u.email) + '</div>' +
+          '<div class="badge">✓ Račun aktivan</div>' +
+          '<div class="divider"></div>' +
+          '<div class="info-row"><span class="info-label">Email</span><span class="info-val">' + escHtml(u.email) + '</span></div>' +
+          (u.city ? '<div class="info-row"><span class="info-label">Grad</span><span class="info-val">' + escHtml(u.city) + '</span></div>' : '') +
+          (u.phone ? '<div class="info-row"><span class="info-label">Telefon</span><span class="info-val">' + escHtml(u.phone) + '</span></div>' : '') +
+          '<div class="info-row"><span class="info-label">Član od</span><span class="info-val">' + joined + '</span></div>' +
+          '<div class="divider"></div>' +
+          '<div class="btn-row">' +
+          '<button class="btn btn-primary" onclick="window.location.href=\'/prijava\'">← Promijeni račun</button>' +
+          '<button class="btn btn-secondary" id="btn-odjava">Odjavi se</button>' +
+          '</div>';
+        document.getElementById('btn-odjava').addEventListener('click', function() {
+          localStorage.removeItem('trampaj_token');
+          window.location.href = '/prijava';
+        });
+      })
+      .catch(function() {
+        document.getElementById('content').innerHTML = '<div class="err-box">Greška pri dohvaćanju profila. <a href="/prijava" style="color:#F5C100">Prijavi se ponovo</a></div>';
+      });
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
   </script>
 </body>
 </html>`);
