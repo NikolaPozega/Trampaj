@@ -589,6 +589,10 @@ export default function ListingDetailScreen() {
                   router.push("/login");
                   return;
                 }
+                if (listing.id.startsWith("sample_")) {
+                  Alert.alert("Demo oglas", "Ovo je demo oglas koji prikazujemo dok nema pravih oglasa. Objavi vlastiti oglas da počneš trampu!");
+                  return;
+                }
                 void getOrCreateConversation(listing.id, listing.title, listing.userName);
                 router.push(`/chat/${listing.id}?listingTitle=${encodeURIComponent(listing.title)}&otherUser=${encodeURIComponent(listing.userName)}`);
               }}

@@ -2,6 +2,8 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { eq, desc, count, and, sql, gte } from "drizzle-orm";
 import { db, listingsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 
@@ -193,6 +195,73 @@ router.delete("/listings/:id", requireAdmin, async (req: AuthRequest, res) => {
   } catch (err) {
     req.log.error({ err }, "admin listing delete error");
     return res.status(500).json({ error: "Greška" });
+  }
+});
+
+// ─── POST /api/admin/seed-demo ───────────────────────────────────────────────
+// Idempotent — safe to call multiple times; uses ON CONFLICT DO NOTHING
+router.post("/seed-demo", requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
+    const DEMO_EMAIL = "demo@trampaj.hr";
+
+    // Create or skip demo user
+    const existing = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.id, DEMO_USER_ID)).limit(1);
+
+    if (existing.length === 0) {
+      const passwordHash = await bcrypt.hash("TrampaDemo2025!", 12);
+      await db.insert(usersTable).values({
+        id: DEMO_USER_ID,
+        username: "TrampaDemo",
+        email: DEMO_EMAIL,
+        passwordHash,
+        isVerified: true,
+      });
+    }
+
+    const demoListings = [
+      { id: randomUUID(), title: "Sony slušalice WH-1000XM4", description: "Odlične slušalice s redukcijom buke, malo korištene. U originalnoj kutiji, sve ispravno radi.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Bežična tipkovnica ili miš visokog kvaliteta", price: 180, imageUris: JSON.stringify(["https://picsum.photos/seed/headphones1/400/300"]), phone: "091 123 4567", location: "Zagreb", packageSize: "small", packageBoxSize: "M" },
+      { id: randomUUID(), title: "Zimska jakna XL, North Face", description: "Topla zimska jakna, nosio je jednu sezonu. Boja tamno plava, odlično stanje.", category: "Odjeća", condition: "Jako dobro", wantedFor: "Ljetna jakna ili sportska oprema", price: null, imageUris: JSON.stringify(["https://picsum.photos/seed/jacket2/400/300"]), phone: null, location: "Split", packageSize: "small", packageBoxSize: "M" },
+      { id: randomUUID(), title: "Skup knjiga - fantazija (10 knjiga)", description: "Komplet knjiga Patricka Rothfussa i Brandona Sandersona. Sve u odličnom stanju.", category: "Knjige", condition: "Kao novo", wantedFor: "Sci-fi knjige ili stripovi", price: 60, imageUris: JSON.stringify(["https://picsum.photos/seed/books3/400/300"]), phone: "095 765 4321", location: "Rijeka", packageSize: "medium", packageBoxSize: null },
+      { id: randomUUID(), title: "Bicikl - gradski, 26\"", description: "Gradski bicikl, servisiran prošle godine. Nova guma naprijed. Boja srebrna.", category: "Sport", condition: "Dobro", wantedFor: "Roleri ili električni romobil", price: 350, imageUris: JSON.stringify(["https://picsum.photos/seed/bicycle4/400/300"]), phone: "098 111 2233", location: "Osijek", packageSize: "large", packageBoxSize: null },
+      { id: randomUUID(), title: "Stolna lampa - industrijski stil", description: "Metalna lampa, crna boja, LED žarulja uključena. Idealna za radni stol.", category: "Namještaj", condition: "Dobro", wantedFor: "Polica za knjige ili mali stol", price: null, imageUris: JSON.stringify(["https://picsum.photos/seed/lamp5/400/300"]), phone: null, location: "Zagreb", packageSize: "medium", packageBoxSize: null },
+      { id: randomUUID(), title: "Roleri Rollerblade, vel. 42", description: "Inline roleri u odličnom stanju, korišteni svega par puta. Kaciga uključena.", category: "Sport", condition: "Kao novo", wantedFor: "Bicikl gradski ili električni romobil", price: 120, imageUris: JSON.stringify(["https://picsum.photos/seed/skates6/400/300"]), phone: "091 555 7788", location: "Zagreb", packageSize: "small", packageBoxSize: "L" },
+      { id: randomUUID(), title: "Bežični miš Logitech MX Master 3", description: "Premium miš, ergonomski, savršen za dugotrajni rad. Baterija traje 70 dana.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Mehanička tipkovnica ili slušalice", price: 90, imageUris: JSON.stringify(["https://picsum.photos/seed/mouse7/400/300"]), phone: null, location: "Zagreb", packageSize: "small", packageBoxSize: "S" },
+      { id: randomUUID(), title: "iPad 9. generacija, 64GB", description: "iPad u odličnom stanju, s torbom i punjačem. Bez ogrebotina na ekranu.", category: "Elektronika", condition: "Jako dobro", wantedFor: "Laptop ili MacBook bilo koje generacije", price: 300, imageUris: JSON.stringify(["https://picsum.photos/seed/ipad9/400/300"]), phone: "098 444 5566", location: "Zagreb", packageSize: "small", packageBoxSize: "S" },
+    ];
+
+    let inserted = 0;
+    for (const l of demoListings) {
+      const exists = await db.select({ id: listingsTable.id })
+        .from(listingsTable).where(eq(listingsTable.title, l.title)).limit(1);
+      if (exists.length === 0) {
+        await db.insert(listingsTable).values({
+          id: l.id,
+          userId: DEMO_USER_ID,
+          title: l.title,
+          description: l.description,
+          category: l.category,
+          condition: l.condition ?? undefined,
+          wantedFor: l.wantedFor,
+          price: l.price ?? undefined,
+          imageUris: l.imageUris,
+          phone: l.phone ?? undefined,
+          location: l.location,
+          packageSize: l.packageSize ?? undefined,
+          packageBoxSize: l.packageBoxSize ?? undefined,
+          status: "active",
+          moderationStatus: "active",
+        });
+        inserted++;
+      }
+    }
+
+    req.log.info({ inserted }, "seed-demo completed");
+    return res.json({ ok: true, inserted, total: demoListings.length });
+  } catch (err) {
+    req.log.error({ err }, "seed-demo error");
+    return res.status(500).json({ error: "Greška pri seedanju" });
   }
 });
 

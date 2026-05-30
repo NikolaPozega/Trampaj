@@ -302,11 +302,13 @@ export default function PostScreen() {
   async function pickImage(fromCamera: boolean) {
     let result;
     const isWeb = Platform.OS === "web";
-    if (fromCamera && !isWeb) {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("Dozvola potrebna", "Potrebna je dozvola za kameru.");
-        return;
+    if (fromCamera) {
+      if (!isWeb) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert("Dozvola potrebna", "Potrebna je dozvola za kameru.");
+          return;
+        }
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
@@ -373,10 +375,6 @@ export default function PostScreen() {
   }
 
   function showImagePicker() {
-    if (Platform.OS === "web") {
-      pickImage(false);
-      return;
-    }
     Alert.alert("Dodaj sliku", "Odaberi izvor", [
       { text: "Kamera", onPress: () => pickImage(true) },
       { text: "Galerija", onPress: () => pickImage(false) },
