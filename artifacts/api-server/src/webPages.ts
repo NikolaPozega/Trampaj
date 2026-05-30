@@ -13,8 +13,6 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-function catColor(cat: string) { return CAT_COLORS[cat] ?? "#64748b"; }
-
 const SHARED_CSS = `
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{min-height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff}
@@ -53,9 +51,8 @@ const SHARED_CSS = `
 
 function NAV(active: string): string {
   const link = (href: string, label: string, id: string) =>
-    `<a href="${href}" class="nav-link${active===id?' active':''}">${label}</a>`;
-  return `
-<nav class="nav">
+    `<a href="${href}" class="nav-link${active===id?" active":""}">${label}</a>`;
+  return `<nav class="nav">
   <div class="nav-inner">
     <a href="/oglasi" class="nav-logo">
       <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -67,11 +64,38 @@ function NAV(active: string): string {
     </a>
     ${link("/oglasi","Oglasi","oglasi")}
     ${link("/objavi","+ Objavi","objavi")}
-    ${link("/razgovori","💬","razgovori")}
+    ${link("/razgovori","\u{1F4AC}","razgovori")}
     ${link("/profil","Profil","profil")}
   </div>
 </nav>`;
 }
+
+// Shared JS — no single quotes around URLs in JS string context
+const SHARED_JS = `
+function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function getToken(){return localStorage.getItem('trampaj_token')}
+function requireAuth(){var t=getToken();if(!t){location.href='/prijava';return null;}return t;}
+function authHdr(){return{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}}
+function showMsg(id,msg,ok){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='msg '+(ok?'ok':'err');el.style.display='block';}
+function timeAgo(ms){var d=Date.now()-ms;if(d<60000)return 'upravo';if(d<3600000)return Math.floor(d/60000)+'min';if(d<86400000)return Math.floor(d/3600000)+'h';return Math.floor(d/86400000)+'d';}
+var CAT_COLORS=${JSON.stringify(CAT_COLORS)};
+function catPill(cat){
+  var c=CAT_COLORS[cat]||'#64748b';
+  var el=document.createElement('span');
+  el.className='pill';
+  el.style.cssText='background:'+c+'20;color:'+c+';border:1px solid '+c+'40';
+  el.textContent=cat;
+  return el.outerHTML;
+}
+// Delegated navigation: elements with data-nav get click-to-navigate
+document.addEventListener('click',function(e){
+  var t=e.target;
+  while(t&&t!==document.body){
+    if(t.dataset&&t.dataset.nav){location.href=t.dataset.nav;return;}
+    t=t.parentElement;
+  }
+});
+`;
 
 function PAGE(title: string, active: string, body: string, script: string = ""): string {
   return `<!DOCTYPE html>
@@ -79,21 +103,14 @@ function PAGE(title: string, active: string, body: string, script: string = ""):
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>${esc(title)} — Trampaj.hr</title>
+  <title>${esc(title)} &mdash; Trampaj.hr</title>
   <style>${SHARED_CSS}</style>
 </head>
 <body>
 ${NAV(active)}
 <div class="wrap">${body}</div>
 <script>
-function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function getToken(){return localStorage.getItem('trampaj_token')}
-function requireAuth(){var t=getToken();if(!t){window.location.href='/prijava';return null;}return t;}
-function authHeaders(){return{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}}
-function showMsg(id,msg,ok){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='msg '+(ok?'ok':'err');el.style.display='block';}
-function timeAgo(ms){var diff=Date.now()-ms;if(diff<60000)return'upravo';if(diff<3600000)return Math.floor(diff/60000)+'min';if(diff<86400000)return Math.floor(diff/3600000)+'h';return Math.floor(diff/86400000)+'d';}
-var CAT_COLORS=${JSON.stringify(CAT_COLORS)};
-function catPill(cat){var c=CAT_COLORS[cat]||'#64748b';return'<span class="pill" style="background:'+c+'20;color:'+c+';border:1px solid '+c+'40">'+esc(cat)+'</span>';}
+${SHARED_JS}
 ${script}
 </script>
 </body>
@@ -104,17 +121,18 @@ ${script}
 router.get("/oglasi", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'");
+
   const catPills = ["Sve", ...CATEGORIES].map(c =>
     `<button class="cat-pill" data-cat="${esc(c)}">${esc(c)}</button>`
   ).join("");
 
   res.send(PAGE("Oglasi", "oglasi", `
 <div style="margin-bottom:14px">
-  <input id="search" class="input" placeholder="🔍 Pretraži oglase..." style="margin-bottom:10px"/>
+  <input id="search" class="input" placeholder="Pretrazi oglase..." style="margin-bottom:10px"/>
   <div id="cats" style="display:flex;gap:6px;flex-wrap:wrap">${catPills}</div>
 </div>
 <div id="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-  <div class="loader">Učitavam oglase...</div>
+  <div class="loader">Ucitavam oglase...</div>
 </div>
 <style>
   .cat-pill{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s}
@@ -130,7 +148,7 @@ router.get("/oglasi", (_req, res) => {
 document.addEventListener('DOMContentLoaded', function() {
   var activeCat = 'Sve';
   var searchTerm = '';
-  var debounce;
+  var debTimer;
 
   document.querySelectorAll('.cat-pill').forEach(function(btn) {
     if (btn.dataset.cat === 'Sve') btn.classList.add('active');
@@ -142,39 +160,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  document.getElementById('search').addEventListener('input', function() {
-    clearTimeout(debounce);
-    searchTerm = this.value;
-    debounce = setTimeout(loadListings, 300);
-  });
+  var searchEl = document.getElementById('search');
+  if (searchEl) {
+    searchEl.addEventListener('input', function() {
+      clearTimeout(debTimer);
+      searchTerm = this.value;
+      debTimer = setTimeout(loadListings, 350);
+    });
+  }
 
   function loadListings() {
     var grid = document.getElementById('grid');
-    grid.innerHTML = '<div class="loader">Učitavam...</div>';
+    if (!grid) return;
+    grid.innerHTML = '<div class="loader">Ucitavam...</div>';
     var params = new URLSearchParams();
     if (activeCat !== 'Sve') params.set('category', activeCat);
     if (searchTerm.trim()) params.set('search', searchTerm.trim());
     var token = getToken();
-    var headers = token ? {'Authorization': 'Bearer ' + token} : {};
-    fetch('/api/listings?' + params.toString(), {headers: headers})
+    var hdrs = token ? {'Authorization': 'Bearer ' + token} : {};
+    fetch('/api/listings?' + params.toString(), {headers: hdrs})
       .then(function(r){ return r.json(); })
       .then(function(d) {
         var listings = d.listings || [];
         if (!listings.length) {
-          grid.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div>Nema oglasa</div></div>';
+          grid.innerHTML = '<div class="empty"><div class="empty-icon">&#128230;</div><div>Nema oglasa</div></div>';
           return;
         }
-        grid.innerHTML = listings.map(function(l) {
-          return '<div class="listing-card" onclick="window.location.href=\'/oglas/'+esc(l.id)+'\'">' +
+        var html = '';
+        for (var i = 0; i < listings.length; i++) {
+          var l = listings[i];
+          html += '<div class="listing-card" data-nav="/oglas/' + encodeURIComponent(l.id) + '">' +
             catPill(l.category) +
-            '<div class="listing-title">' + esc(l.title) + '</div>' +
-            '<div class="listing-desc">' + esc(l.description) + '</div>' +
-            '<div class="listing-wanted">⇄ ' + esc(l.wantedFor || 'Otvoreno') + '</div>' +
-            '<div class="listing-meta"><span>📍 ' + esc(l.location || 'HR') + '</span><span>' + timeAgo(l.createdAt) + '</span></div>' +
-          '</div>';
-        }).join('');
+            '<div class="listing-title">' + escH(l.title) + '</div>' +
+            '<div class="listing-desc">' + escH(l.description) + '</div>' +
+            '<div class="listing-wanted">&#8644; ' + escH(l.wantedFor || 'Otvoreno') + '</div>' +
+            '<div class="listing-meta"><span>&#128205; ' + escH(l.location || 'HR') + '</span><span>' + timeAgo(l.createdAt) + '</span></div>' +
+            '</div>';
+        }
+        grid.innerHTML = html;
       })
-      .catch(function(){ grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div>Greška pri učitavanju</div></div>'; });
+      .catch(function() {
+        grid.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div>Gre&#353;ka pri u&#269;itavanju</div></div>';
+      });
   }
 
   loadListings();
@@ -184,101 +211,132 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ─── /oglas/:id ───────────────────────────────────────────────────────────────
 router.get("/oglas/:id", (req, res) => {
-  const id = esc(req.params["id"] ?? "");
+  const listingId = String(req.params["id"] ?? "").replace(/[^a-zA-Z0-9-]/g, "");
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'");
   res.send(PAGE("Oglas", "", `
 <div style="margin-bottom:12px">
-  <a href="/oglasi" style="color:rgba(255,255,255,.5);font-size:.85rem;font-weight:600">← Natrag</a>
+  <a href="/oglasi" style="color:rgba(255,255,255,.5);font-size:.85rem;font-weight:600">&larr; Natrag</a>
 </div>
-<div id="detail" class="loader">Učitavam oglas...</div>
+<div id="detail" class="loader">Ucitavam oglas...</div>
 <style>
   .oglas-img{width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-bottom:14px;display:block}
-  .oglas-img-placeholder{width:100%;height:180px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:3rem;margin-bottom:14px;color:rgba(255,255,255,.15)}
+  .oglas-ph{width:100%;height:160px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:3rem;margin-bottom:14px;color:rgba(255,255,255,.15)}
   .oglas-title{font-size:1.3rem;font-weight:800;margin:10px 0 6px}
   .oglas-desc{color:rgba(255,255,255,.7);font-size:.9rem;line-height:1.6;margin-bottom:14px}
   .oglas-wanted{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px}
-  .oglas-wanted-label{font-size:.7rem;font-weight:700;color:#38BDF8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .oglas-wanted-lbl{font-size:.7rem;font-weight:700;color:#38BDF8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
   .oglas-wanted-val{font-weight:600;color:#e0f2fe}
   .oglas-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
   .oglas-meta-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 12px;font-size:.78rem;color:rgba(255,255,255,.6)}
   .oglas-user{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-  .oglas-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;flex-shrink:0}
-  .action-row{display:flex;flex-direction:column;gap:10px}
+  .oglas-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;flex-shrink:0}
 </style>
 `, `
 document.addEventListener('DOMContentLoaded', function() {
-  var listingId = '${id}';
+  var listingId = '${listingId}';
   var token = getToken();
-  var headers = token ? {'Authorization': 'Bearer ' + token} : {};
+  var hdrs = token ? {'Authorization': 'Bearer ' + token} : {};
+  var detailEl = document.getElementById('detail');
 
-  fetch('/api/listings/' + listingId, {headers: headers})
+  fetch('/api/listings/' + listingId, {headers: hdrs})
     .then(function(r){ return r.json(); })
     .then(function(d) {
-      if (!d.listing) { document.getElementById('detail').innerHTML = '<div class="empty"><div class="empty-icon">😕</div><div>Oglas nije pronađen</div></div>'; return; }
+      if (!d.listing) {
+        detailEl.innerHTML = '<div class="empty"><div class="empty-icon">&#128533;</div><div>Oglas nije prona&#273;en</div></div>';
+        return;
+      }
       var l = d.listing;
       var imgs = Array.isArray(l.imageUris) ? l.imageUris : [];
-      var imgHtml = imgs.length
-        ? '<img class="oglas-img" src="' + esc(imgs[0]) + '" onerror="this.style.display=\'none\'">'
-        : '<div class="oglas-img-placeholder">📦</div>';
-      var cond = {'novo':'🆕 Novo','kao novo':'✨ Kao novo','dobro':'👍 Dobro','prihvatljivo':'✅ Prihvatljivo'}[l.condition] || l.condition || '';
-      var joined = l.createdAt ? new Date(l.createdAt).toLocaleDateString('hr-HR',{day:'numeric',month:'long',year:'numeric'}) : '';
+      var imgHtml = imgs.length ? '<img class="oglas-img" src="' + escH(imgs[0]) + '">' : '<div class="oglas-ph">&#128230;</div>';
+      var condMap = {'novo':'Novo','kao novo':'Kao novo','dobro':'Dobro','prihvatljivo':'Prihvatljivo'};
+      var cond = condMap[l.condition] || l.condition || '';
+      var joined = '';
+      try { joined = new Date(l.createdAt).toLocaleDateString('hr-HR',{day:'numeric',month:'long',year:'numeric'}); } catch(e) {}
       var initials = ((l.userName||'U')+'?').substring(0,2).toUpperCase();
 
-      var actionHtml = '';
-      if (!token) {
-        actionHtml = '<a href="/prijava" class="btn btn-yellow" style="width:100%;display:block">Prijavi se za trampu</a>';
-      } else if (l.isMine) {
-        actionHtml =
-          '<div style="padding:10px;background:rgba(245,193,0,.08);border:1px solid rgba(245,193,0,.2);border-radius:10px;text-align:center;font-size:.85rem;color:#F5C100">To je tvoj oglas</div>' +
-          '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-ghost" style="flex:1" onclick="markTraded(\''+esc(l.id)+'\')">Označi kao trampu ✓</button>' +
-          '<button class="btn btn-red" style="flex:1" onclick="deleteListng(\''+esc(l.id)+'\')">Obriši</button>' +
-          '</div>';
-      } else {
-        actionHtml = '<button class="btn btn-yellow" style="width:100%" onclick="startChat(\''+esc(l.id)+'\')">⇄ Ponudi trampu</button>';
-      }
-
-      document.getElementById('detail').innerHTML =
+      detailEl.innerHTML =
         imgHtml +
         catPill(l.category) +
-        '<div class="oglas-title">' + esc(l.title) + '</div>' +
-        '<div class="oglas-desc">' + esc(l.description) + '</div>' +
-        (l.wantedFor ? '<div class="oglas-wanted"><div class="oglas-wanted-label">Traži u zamjenu</div><div class="oglas-wanted-val">' + esc(l.wantedFor) + '</div></div>' : '') +
+        '<div class="oglas-title">' + escH(l.title) + '</div>' +
+        '<div class="oglas-desc">' + escH(l.description) + '</div>' +
+        (l.wantedFor ? '<div class="oglas-wanted"><div class="oglas-wanted-lbl">Trazi u zamjenu</div><div class="oglas-wanted-val">' + escH(l.wantedFor) + '</div></div>' : '') +
         '<div class="oglas-meta">' +
-          (l.location ? '<span class="oglas-meta-item">📍 ' + esc(l.location) + '</span>' : '') +
-          (cond ? '<span class="oglas-meta-item">' + esc(cond) + '</span>' : '') +
-          (joined ? '<span class="oglas-meta-item">📅 ' + joined + '</span>' : '') +
+          (l.location ? '<span class="oglas-meta-item">&#128205; ' + escH(l.location) + '</span>' : '') +
+          (cond ? '<span class="oglas-meta-item">' + escH(cond) + '</span>' : '') +
+          (joined ? '<span class="oglas-meta-item">&#128197; ' + joined + '</span>' : '') +
         '</div>' +
-        '<div class="oglas-user"><div class="oglas-avatar">' + esc(initials) + '</div><div><div style="font-weight:700">' + esc(l.userName||'') + '</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">Prodavač</div></div></div>' +
+        '<div class="oglas-user"><div class="oglas-av">' + escH(initials) + '</div><div><div style="font-weight:700">' + escH(l.userName||'') + '</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">Objavio</div></div></div>' +
         '<div class="divider"></div>' +
-        '<div class="action-row" id="actions">' + actionHtml + '</div>' +
+        '<div id="actions" style="display:flex;flex-direction:column;gap:10px"></div>' +
         '<div id="act-msg" class="msg"></div>';
-    })
-    .catch(function(){ document.getElementById('detail').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div>Greška pri učitavanju</div></div>'; });
 
-  window.startChat = function(lid) {
+      var actEl = document.getElementById('actions');
+      if (!token) {
+        var aLink = document.createElement('a');
+        aLink.href = '/prijava';
+        aLink.className = 'btn btn-yellow';
+        aLink.style.cssText = 'width:100%;display:block';
+        aLink.textContent = 'Prijavi se za trampu';
+        actEl.appendChild(aLink);
+      } else if (l.isMine) {
+        var info = document.createElement('div');
+        info.style.cssText = 'padding:10px;background:rgba(245,193,0,.08);border:1px solid rgba(245,193,0,.2);border-radius:10px;text-align:center;font-size:.85rem;color:#F5C100';
+        info.textContent = 'To je tvoj oglas';
+        actEl.appendChild(info);
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px';
+        var btnT = document.createElement('button');
+        btnT.className = 'btn btn-ghost';
+        btnT.style.flex = '1';
+        btnT.textContent = 'Oznaci kao trampu';
+        btnT.addEventListener('click', function() { markTraded(l.id); });
+        var btnD = document.createElement('button');
+        btnD.className = 'btn btn-red';
+        btnD.style.flex = '1';
+        btnD.textContent = 'Obrisi';
+        btnD.addEventListener('click', function() { deleteListing(l.id); });
+        row.appendChild(btnT);
+        row.appendChild(btnD);
+        actEl.appendChild(row);
+      } else {
+        var btnC = document.createElement('button');
+        btnC.className = 'btn btn-yellow';
+        btnC.style.cssText = 'width:100%';
+        btnC.textContent = 'Ponudi trampu';
+        btnC.addEventListener('click', function() { startChat(l.id); });
+        actEl.appendChild(btnC);
+      }
+    })
+    .catch(function() {
+      detailEl.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div>Gre&#353;ka pri u&#269;itavanju</div></div>';
+    });
+
+  function startChat(lid) {
     var t = requireAuth(); if (!t) return;
-    fetch('/api/conversations', {method:'POST', headers:authHeaders(), body:JSON.stringify({listingId:lid})})
+    fetch('/api/conversations', {method:'POST', headers:authHdr(), body:JSON.stringify({listingId:lid})})
       .then(function(r){ return r.json(); })
       .then(function(d) {
-        if (d.conversation) { window.location.href = '/razgovor/' + d.conversation.id; }
-        else { showMsg('act-msg', d.error||'Greška', false); }
+        if (d.conversation) { location.href = '/razgovor/' + d.conversation.id; }
+        else { showMsg('act-msg', d.error||'Gre\u0161ka', false); }
       })
-      .catch(function(){ showMsg('act-msg','Greška pri spajanju',false); });
-  };
-  window.markTraded = function(lid) {
-    fetch('/api/listings/'+lid+'/status', {method:'PATCH', headers:authHeaders(), body:JSON.stringify({status:'traded'})})
+      .catch(function(){ showMsg('act-msg','Gre\u0161ka pri spajanju',false); });
+  }
+  function markTraded(lid) {
+    fetch('/api/listings/'+lid+'/status', {method:'PATCH', headers:authHdr(), body:JSON.stringify({status:'traded'})})
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(d.listing||d.ok){ showMsg('act-msg','Označeno kao trampa ✓',true); }else{ showMsg('act-msg',d.error||'Greška',false); } })
-      .catch(function(){ showMsg('act-msg','Greška',false); });
-  };
-  window.deleteListng = function(lid) {
+      .then(function(d){ showMsg('act-msg', d.listing||d.ok ? 'Oznaceno kao trampa!' : (d.error||'Gre\u0161ka'), d.listing||d.ok); })
+      .catch(function(){ showMsg('act-msg','Gre\u0161ka',false); });
+  }
+  function deleteListing(lid) {
     if (!confirm('Obrisati oglas?')) return;
-    fetch('/api/listings/'+lid, {method:'DELETE', headers:authHeaders()})
-      .then(function(r){ if(r.ok){ window.location.href='/profil'; }else{ return r.json().then(function(d){ showMsg('act-msg',d.error||'Greška',false); }); } })
-      .catch(function(){ showMsg('act-msg','Greška',false); });
-  };
+    fetch('/api/listings/'+lid, {method:'DELETE', headers:authHdr()})
+      .then(function(r){
+        if (r.ok) { location.href='/profil'; }
+        else { r.json().then(function(d){ showMsg('act-msg',d.error||'Gre\u0161ka',false); }); }
+      })
+      .catch(function(){ showMsg('act-msg','Gre\u0161ka',false); });
+  }
 });
 `));
 });
@@ -292,36 +350,36 @@ router.get("/objavi", (_req, res) => {
 <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px">Novi oglas</h2>
 <div class="card">
   <div class="field">
-    <label class="label" for="title">Naslov *</label>
-    <input id="title" class="input" placeholder="Npr. iPhone 13 128GB"/>
+    <label class="label" for="f-title">Naslov *</label>
+    <input id="f-title" class="input" placeholder="Npr. iPhone 13 128GB"/>
   </div>
   <div class="field">
-    <label class="label" for="desc">Opis *</label>
-    <textarea id="desc" class="input" rows="4" placeholder="Opiši predmet — stanje, dimenzije, detalji..."></textarea>
+    <label class="label" for="f-desc">Opis *</label>
+    <textarea id="f-desc" class="input" rows="4" placeholder="Opisi predmet — stanje, dimenzije, detalji..."></textarea>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
     <div class="field">
-      <label class="label" for="cat">Kategorija *</label>
-      <select id="cat" class="input">${catOptions}</select>
+      <label class="label" for="f-cat">Kategorija *</label>
+      <select id="f-cat" class="input">${catOptions}</select>
     </div>
     <div class="field">
-      <label class="label" for="cond">Stanje</label>
-      <select id="cond" class="input">
-        <option value="">— nije navedeno</option>
-        <option value="novo">🆕 Novo</option>
-        <option value="kao novo">✨ Kao novo</option>
-        <option value="dobro">👍 Dobro</option>
-        <option value="prihvatljivo">✅ Prihvatljivo</option>
+      <label class="label" for="f-cond">Stanje</label>
+      <select id="f-cond" class="input">
+        <option value="">nije navedeno</option>
+        <option value="novo">Novo</option>
+        <option value="kao novo">Kao novo</option>
+        <option value="dobro">Dobro</option>
+        <option value="prihvatljivo">Prihvatljivo</option>
       </select>
     </div>
   </div>
   <div class="field">
-    <label class="label" for="wanted">Što tražiš u zamjenu *</label>
-    <input id="wanted" class="input" placeholder="Npr. laptop, bicikl, slušalice..."/>
+    <label class="label" for="f-wanted">Sto traxis u zamjenu *</label>
+    <input id="f-wanted" class="input" placeholder="Npr. laptop, bicikl, slusالice..."/>
   </div>
   <div class="field">
-    <label class="label" for="loc">Lokacija</label>
-    <input id="loc" class="input" placeholder="Npr. Zagreb, Split..."/>
+    <label class="label" for="f-loc">Lokacija</label>
+    <input id="f-loc" class="input" placeholder="Npr. Zagreb, Split..."/>
   </div>
   <div id="form-msg" class="msg"></div>
   <button id="submit-btn" class="btn btn-yellow" style="width:100%;margin-top:6px">Objavi oglas</button>
@@ -332,28 +390,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('submit-btn').addEventListener('click', function() {
     var btn = this;
-    var title = document.getElementById('title').value.trim();
-    var desc = document.getElementById('desc').value.trim();
-    var cat = document.getElementById('cat').value;
-    var cond = document.getElementById('cond').value;
-    var wanted = document.getElementById('wanted').value.trim();
-    var loc = document.getElementById('loc').value.trim();
+    var title   = (document.getElementById('f-title').value  || '').trim();
+    var desc    = (document.getElementById('f-desc').value   || '').trim();
+    var cat     = document.getElementById('f-cat').value;
+    var cond    = document.getElementById('f-cond').value;
+    var wanted  = (document.getElementById('f-wanted').value || '').trim();
+    var loc     = (document.getElementById('f-loc').value    || '').trim();
 
-    if (!title || !desc || !wanted) { showMsg('form-msg','Popuni obavezna polja (naslov, opis, zamjena)',false); return; }
-
-    btn.disabled = true; btn.textContent = 'Objavljujem...';
+    if (!title || !desc || !wanted) {
+      showMsg('form-msg', 'Popuni obavezna polja: naslov, opis, zamjena', false);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Objavljujem...';
     fetch('/api/listings', {
       method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({title:title, description:desc, category:cat, condition:cond||null, wantedFor:wanted, location:loc||'Hrvatska'})
+      headers: authHdr(),
+      body: JSON.stringify({
+        title: title, description: desc, category: cat,
+        condition: cond || null, wantedFor: wanted,
+        location: loc || 'Hrvatska'
+      })
     })
-    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
     .then(function(res) {
-      if (!res.ok) { showMsg('form-msg', res.d.error||'Greška', false); btn.disabled=false; btn.textContent='Objavi oglas'; return; }
-      showMsg('form-msg', '✓ Oglas objavljen! Preusmjeravam...', true);
-      setTimeout(function(){ window.location.href = '/oglas/' + res.d.listing.id; }, 800);
+      if (!res.ok) {
+        showMsg('form-msg', res.d.error || 'Gre\u0161ka', false);
+        btn.disabled = false;
+        btn.textContent = 'Objavi oglas';
+        return;
+      }
+      showMsg('form-msg', 'Oglas objavljen!', true);
+      setTimeout(function(){ location.href = '/oglas/' + res.d.listing.id; }, 800);
     })
-    .catch(function(){ showMsg('form-msg','Greška pri spajanju',false); btn.disabled=false; btn.textContent='Objavi oglas'; });
+    .catch(function() {
+      showMsg('form-msg', 'Gre\u0161ka pri spajanju', false);
+      btn.disabled = false;
+      btn.textContent = 'Objavi oglas';
+    });
   });
 });
 `));
@@ -365,11 +439,11 @@ router.get("/razgovori", (_req, res) => {
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'");
   res.send(PAGE("Razgovori", "razgovori", `
 <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px">Razgovori</h2>
-<div id="list" class="loader">Učitavam razgovore...</div>
+<div id="conv-list" class="loader">Ucitavam...</div>
 <style>
   .conv-item{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;cursor:pointer;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);margin-bottom:8px;transition:.15s}
   .conv-item:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.15)}
-  .conv-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+  .conv-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-size:.9rem}
   .conv-body{flex:1;min-width:0}
   .conv-user{font-weight:700;font-size:.9rem}
   .conv-listing{font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:2px}
@@ -379,120 +453,133 @@ router.get("/razgovori", (_req, res) => {
 `, `
 document.addEventListener('DOMContentLoaded', function() {
   var t = requireAuth(); if (!t) return;
-  fetch('/api/conversations', {headers:{'Authorization':'Bearer '+t}})
+  var listEl = document.getElementById('conv-list');
+
+  fetch('/api/conversations', {headers: {'Authorization': 'Bearer ' + t}})
     .then(function(r){ return r.json(); })
     .then(function(d) {
       var convs = d.conversations || [];
       if (!convs.length) {
-        document.getElementById('list').innerHTML = '<div class="empty"><div class="empty-icon">💬</div><div>Nema razgovora</div><div style="margin-top:8px"><a href="/oglasi" class="btn btn-ghost" style="font-size:.85rem">Pronađi oglas</a></div></div>';
+        listEl.innerHTML = '<div class="empty"><div class="empty-icon">&#128172;</div><div>Nema razgovora</div></div>';
         return;
       }
       convs.sort(function(a,b){ return b.updatedAt - a.updatedAt; });
-      document.getElementById('list').innerHTML = convs.map(function(c) {
+      var html = '';
+      for (var i = 0; i < convs.length; i++) {
+        var c = convs[i];
         var initials = ((c.otherUserName||'K')+'?').substring(0,2).toUpperCase();
-        var lastMsg = c.messages && c.messages.length ? c.messages[c.messages.length-1] : null;
-        var preview = lastMsg ? (lastMsg.fromMe ? 'Ti: ' : '') + lastMsg.text : 'Nema poruka';
-        return '<div class="conv-item" onclick="window.location.href=\'/razgovor/'+esc(c.id)+'\'">' +
-          '<div class="conv-avatar">'+esc(initials)+'</div>' +
+        var msgs = c.messages || [];
+        var last = msgs.length ? msgs[msgs.length-1] : null;
+        var preview = last ? (last.fromMe ? 'Ti: ' + last.text : last.text) : 'Nema poruka';
+        if (preview.length > 50) preview = preview.substring(0,50) + '...';
+        html += '<div class="conv-item" data-nav="/razgovor/' + encodeURIComponent(c.id) + '">' +
+          '<div class="conv-av">' + escH(initials) + '</div>' +
           '<div class="conv-body">' +
-            '<div class="conv-user">'+esc(c.otherUserName||'Korisnik')+'</div>' +
-            '<div class="conv-listing">re: '+esc(c.listingTitle||'Oglas')+'</div>' +
-            '<div class="conv-last">'+esc(preview)+'</div>' +
+            '<div class="conv-user">' + escH(c.otherUserName||'Korisnik') + '</div>' +
+            '<div class="conv-listing">re: ' + escH(c.listingTitle||'Oglas') + '</div>' +
+            '<div class="conv-last">' + escH(preview) + '</div>' +
           '</div>' +
-          '<div class="conv-time">'+timeAgo(c.updatedAt)+'</div>' +
+          '<div class="conv-time">' + timeAgo(c.updatedAt) + '</div>' +
           '</div>';
-      }).join('');
+      }
+      listEl.innerHTML = html;
     })
-    .catch(function(){ document.getElementById('list').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div>Greška pri učitavanju</div></div>'; });
+    .catch(function() {
+      listEl.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div>Gre\u0161ka pri u\u010ditavanju</div></div>';
+    });
 });
 `));
 });
 
 // ─── /razgovor/:id ────────────────────────────────────────────────────────────
 router.get("/razgovor/:id", (req, res) => {
-  const convId = esc(req.params["id"] ?? "");
+  const convId = String(req.params["id"] ?? "").replace(/[^a-zA-Z0-9-]/g, "");
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'");
   res.send(PAGE("Razgovor", "razgovori", `
-<div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
-  <a href="/razgovori" style="color:rgba(255,255,255,.5);font-size:.85rem;font-weight:600">← Razgovori</a>
-  <div id="chat-header" style="font-weight:700;font-size:.9rem;color:rgba(255,255,255,.8)"></div>
+<div style="margin-bottom:10px;display:flex;align-items:center;gap:12px">
+  <a href="/razgovori" style="color:rgba(255,255,255,.5);font-size:.85rem;font-weight:600">&larr;</a>
+  <div id="chat-header" style="font-weight:700;font-size:.9rem;color:rgba(255,255,255,.8);flex:1"></div>
 </div>
 <div id="msgs" style="display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:55vh;overflow-y:auto;padding:4px 0;margin-bottom:12px">
-  <div class="loader">Učitavam...</div>
+  <div class="loader">Ucitavam...</div>
 </div>
-<div style="display:flex;gap:8px;position:sticky;bottom:0;background:#08152E;padding:8px 0">
-  <input id="msg-input" class="input" placeholder="Napiši poruku..." style="flex:1" autocomplete="off"/>
-  <button id="send-btn" class="btn btn-yellow" style="flex-shrink:0;padding:11px 18px">→</button>
+<div style="display:flex;gap:8px;background:#08152E;padding:8px 0">
+  <input id="msg-input" class="input" placeholder="Napisi poruku..." style="flex:1" autocomplete="off"/>
+  <button id="send-btn" class="btn btn-yellow" style="flex-shrink:0;padding:11px 18px">&#8594;</button>
 </div>
 <style>
   .bubble{max-width:78%;padding:9px 13px;border-radius:14px;font-size:.88rem;line-height:1.5;word-break:break-word}
-  .bubble-mine{align-self:flex-end;background:#F5C100;color:#08152E;border-bottom-right-radius:4px}
-  .bubble-theirs{align-self:flex-start;background:rgba(255,255,255,.08);color:#fff;border-bottom-left-radius:4px}
-  .bubble-time{font-size:.65rem;opacity:.5;margin-top:3px;text-align:right}
+  .mine{align-self:flex-end;background:#F5C100;color:#08152E;border-bottom-right-radius:4px}
+  .theirs{align-self:flex-start;background:rgba(255,255,255,.08);color:#fff;border-bottom-left-radius:4px}
+  .btime{font-size:.65rem;opacity:.5;margin-top:3px;text-align:right}
 </style>
 `, `
 document.addEventListener('DOMContentLoaded', function() {
   var t = requireAuth(); if (!t) return;
   var convId = '${convId}';
-  var lastMsgCount = 0;
-  var pollInterval;
+  var lastCount = 0;
+  var pollTimer;
+  var msgsEl = document.getElementById('msgs');
 
-  function loadMessages(scroll) {
-    fetch('/api/conversations/'+convId+'/messages', {headers:{'Authorization':'Bearer '+t}})
+  fetch('/api/conversations', {headers: {'Authorization': 'Bearer ' + t}})
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var c = (d.conversations||[]).filter(function(x){ return x.id === convId; })[0];
+      if (c) {
+        var hdr = document.getElementById('chat-header');
+        if (hdr) hdr.textContent = (c.otherUserName||'Korisnik') + ' \u2022 ' + (c.listingTitle||'Oglas');
+      }
+    }).catch(function(){});
+
+  function loadMsgs(scroll) {
+    fetch('/api/conversations/' + convId + '/messages', {headers: {'Authorization': 'Bearer ' + t}})
       .then(function(r){ return r.json(); })
       .then(function(d) {
         var msgs = d.messages || [];
-        if (msgs.length === lastMsgCount && !scroll) return;
-        lastMsgCount = msgs.length;
-        var el = document.getElementById('msgs');
-        if (!msgs.length) { el.innerHTML='<div class="empty" style="padding:40px 0">Nema poruka — pošalji prvu!</div>'; return; }
-        el.innerHTML = msgs.map(function(m) {
-          var mine = m.fromMe;
-          var t2 = new Date(m.createdAt).toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'});
-          return '<div class="bubble '+(mine?'bubble-mine':'bubble-theirs')+'">' +
-            esc(m.text) +
-            '<div class="bubble-time">'+t2+'</div>' +
-          '</div>';
-        }).join('');
-        if (scroll) el.scrollTop = el.scrollHeight;
+        if (msgs.length === lastCount && !scroll) return;
+        lastCount = msgs.length;
+        if (!msgs.length) {
+          msgsEl.innerHTML = '<div class="empty" style="padding:40px 0">Nema poruka &mdash; posalji prvu!</div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < msgs.length; i++) {
+          var m = msgs[i];
+          var tm = new Date(m.createdAt).toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'});
+          html += '<div class="bubble ' + (m.fromMe ? 'mine' : 'theirs') + '">' +
+            escH(m.text) +
+            '<div class="btime">' + tm + '</div>' +
+            '</div>';
+        }
+        msgsEl.innerHTML = html;
+        if (scroll) msgsEl.scrollTop = msgsEl.scrollHeight;
       })
       .catch(function(){});
   }
 
-  function loadConv() {
-    fetch('/api/conversations', {headers:{'Authorization':'Bearer '+t}})
-      .then(function(r){ return r.json(); })
-      .then(function(d) {
-        var c = (d.conversations||[]).find(function(x){ return x.id===convId; });
-        if (c) document.getElementById('chat-header').textContent = c.otherUserName + ' • ' + (c.listingTitle||'Oglas');
-      }).catch(function(){});
-  }
-
   function sendMsg() {
     var inp = document.getElementById('msg-input');
-    var text = inp.value.trim();
+    var text = (inp.value || '').trim();
     if (!text) return;
     inp.value = '';
-    fetch('/api/conversations/'+convId+'/messages', {
-      method:'POST', headers:authHeaders(),
-      body: JSON.stringify({text:text, type:'text'})
+    fetch('/api/conversations/' + convId + '/messages', {
+      method: 'POST',
+      headers: authHdr(),
+      body: JSON.stringify({text: text, type: 'text'})
     })
-    .then(function(r){ return r.json(); })
-    .then(function(){ loadMessages(true); })
+    .then(function(){ loadMsgs(true); })
     .catch(function(){});
   }
 
   document.getElementById('send-btn').addEventListener('click', sendMsg);
   document.getElementById('msg-input').addEventListener('keydown', function(e) {
-    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
   });
 
-  loadConv();
-  loadMessages(true);
-  pollInterval = setInterval(function(){ loadMessages(false); }, 3000);
-
-  window.addEventListener('beforeunload', function(){ clearInterval(pollInterval); });
+  loadMsgs(true);
+  pollTimer = setInterval(function(){ loadMsgs(false); }, 3000);
+  window.addEventListener('beforeunload', function(){ clearInterval(pollTimer); });
 });
 `));
 });
@@ -503,77 +590,77 @@ router.get("/profil", (_req, res) => {
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'");
   res.send(PAGE("Moj profil", "profil", `
 <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-  <div id="p-avatar" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;flex-shrink:0">?</div>
-  <div>
-    <div id="p-name" style="font-size:1.2rem;font-weight:800">Učitavam...</div>
-    <div id="p-email" style="font-size:.82rem;color:rgba(255,255,255,.4)"></div>
+  <div id="p-av" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;flex-shrink:0;color:#fff">?</div>
+  <div style="flex:1;min-width:0">
+    <div id="p-name" style="font-size:1.2rem;font-weight:800">Ucitavam...</div>
+    <div id="p-email" style="font-size:.82rem;color:rgba(255,255,255,.4);margin-top:2px"></div>
     <div id="p-joined" style="font-size:.75rem;color:rgba(255,255,255,.3);margin-top:2px"></div>
   </div>
-  <button id="btn-odjava" class="btn btn-ghost" style="margin-left:auto;font-size:.8rem;padding:8px 14px">Odjava</button>
+  <button id="btn-odjava" class="btn btn-ghost" style="font-size:.8rem;padding:8px 14px;flex-shrink:0">Odjava</button>
 </div>
 <a href="/objavi" class="btn btn-yellow" style="display:block;width:100%;margin-bottom:20px;text-align:center">+ Objavi novi oglas</a>
-<h3 style="font-size:.85rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Moji oglasi</h3>
-<div id="my-listings" class="loader">Učitavam...</div>
+<div style="font-size:.8rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Moji oglasi</div>
+<div id="my-list" class="loader">Ucitavam...</div>
 <style>
-  .my-listing{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:8px;cursor:pointer;transition:.15s}
-  .my-listing:hover{background:rgba(255,255,255,.07)}
-  .my-listing-body{flex:1;min-width:0}
-  .my-listing-title{font-weight:700;font-size:.9rem;margin-bottom:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  .my-listing-sub{font-size:.75rem;color:rgba(255,255,255,.4)}
-  .status-badge{padding:3px 9px;border-radius:10px;font-size:.7rem;font-weight:700;white-space:nowrap;flex-shrink:0}
-  .status-active{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
-  .status-traded{background:rgba(245,193,0,.12);color:#F5C100;border:1px solid rgba(245,193,0,.25)}
-  .status-pending{background:rgba(148,163,184,.1);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}
+  .ml-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:8px;cursor:pointer;transition:.15s}
+  .ml-item:hover{background:rgba(255,255,255,.07)}
+  .ml-title{font-weight:700;font-size:.9rem;margin-bottom:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .ml-sub{font-size:.75rem;color:rgba(255,255,255,.4)}
+  .ml-badge{padding:3px 9px;border-radius:10px;font-size:.7rem;font-weight:700;white-space:nowrap;flex-shrink:0}
+  .s-active{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+  .s-traded{background:rgba(245,193,0,.12);color:#F5C100;border:1px solid rgba(245,193,0,.25)}
+  .s-other{background:rgba(148,163,184,.1);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}
 </style>
 `, `
 document.addEventListener('DOMContentLoaded', function() {
   var t = requireAuth(); if (!t) return;
 
-  fetch('/api/auth/me', {headers: {'Authorization':'Bearer '+t}, cache:'no-store'})
+  document.getElementById('btn-odjava').addEventListener('click', function() {
+    localStorage.removeItem('trampaj_token');
+    location.href = '/prijava';
+  });
+
+  fetch('/api/auth/me', {headers: {'Authorization': 'Bearer ' + t}, cache: 'no-store'})
     .then(function(r){ return r.json(); })
     .then(function(d) {
-      if (!d.user) { localStorage.removeItem('trampaj_token'); window.location.href='/prijava'; return; }
+      if (!d.user) { localStorage.removeItem('trampaj_token'); location.href='/prijava'; return; }
       var u = d.user;
       var initials = ((u.username||'U')+'?').substring(0,2).toUpperCase();
-      document.getElementById('p-avatar').textContent = initials;
+      document.getElementById('p-av').textContent = initials;
       document.getElementById('p-name').textContent = u.username || '';
       document.getElementById('p-email').textContent = u.email || '';
       try {
-        document.getElementById('p-joined').textContent = 'Član od ' + new Date(u.createdAt).toLocaleDateString('hr-HR',{day:'numeric',month:'long',year:'numeric'});
+        document.getElementById('p-joined').textContent = 'Clan od ' +
+          new Date(u.createdAt).toLocaleDateString('hr-HR',{day:'numeric',month:'long',year:'numeric'});
       } catch(e) {}
-
-      document.getElementById('btn-odjava').addEventListener('click', function() {
-        localStorage.removeItem('trampaj_token');
-        window.location.href = '/prijava';
-      });
-
-      return fetch('/api/listings/by-user/'+encodeURIComponent(u.username), {headers:{'Authorization':'Bearer '+t}});
+      return fetch('/api/listings/by-user/' + encodeURIComponent(u.username), {headers: {'Authorization': 'Bearer ' + t}});
     })
-    .then(function(r){ if (!r) return; return r.json(); })
+    .then(function(r){ if (!r) return null; return r.json(); })
     .then(function(d) {
       if (!d) return;
       var listings = d.listings || [];
-      var el = document.getElementById('my-listings');
+      var el = document.getElementById('my-list');
       if (!listings.length) {
-        el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div>Nemaš još nijedan oglas</div></div>';
+        el.innerHTML = '<div class="empty"><div class="empty-icon">&#128230;</div><div>Nemas jos nijedan oglas</div></div>';
         return;
       }
-      var statusLabel = {'active':'Aktivan','traded':'Trampa!','pending':'Na čekanju','rejected':'Odbijen'};
-      var statusCls = {'active':'status-active','traded':'status-traded','pending':'status-pending','rejected':'status-pending'};
-      el.innerHTML = listings.map(function(l) {
-        var label = statusLabel[l.status] || l.status;
-        var cls = statusCls[l.status] || 'status-pending';
-        return '<div class="my-listing" onclick="window.location.href=\'/oglas/'+esc(l.id)+'\'">' +
-          '<div class="my-listing-body">' +
-            '<div class="my-listing-title">'+esc(l.title)+'</div>' +
-            '<div class="my-listing-sub">⇄ '+esc(l.wantedFor||'Otvoreno')+'</div>' +
-          '</div>' +
-          '<span class="status-badge '+cls+'">'+esc(label)+'</span>' +
+      var lbl = {active:'Aktivan',traded:'Trampa!',pending:'Na cekanju',rejected:'Odbijen'};
+      var cls = {active:'s-active',traded:'s-traded'};
+      var html = '';
+      for (var i = 0; i < listings.length; i++) {
+        var l = listings[i];
+        var sc = cls[l.status] || 's-other';
+        var lb = lbl[l.status] || l.status || '';
+        html += '<div class="ml-item" data-nav="/oglas/' + encodeURIComponent(l.id) + '">' +
+          '<div style="flex:1;min-width:0"><div class="ml-title">' + escH(l.title) + '</div>' +
+          '<div class="ml-sub">&#8644; ' + escH(l.wantedFor||'Otvoreno') + '</div></div>' +
+          '<span class="ml-badge ' + sc + '">' + escH(lb) + '</span>' +
           '</div>';
-      }).join('');
+      }
+      el.innerHTML = html;
     })
-    .catch(function(err) {
-      document.getElementById('my-listings').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div>Greška pri učitavanju</div></div>';
+    .catch(function() {
+      document.getElementById('my-list').innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div>Gre\u0161ka</div></div>';
     });
 });
 `));
