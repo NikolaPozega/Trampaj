@@ -138,6 +138,8 @@ app.get("/", (req, res, next) => {
 // ─── Web stranica za prijavu / registraciju ────────────────────────────────────
 app.get("/prijava", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
+  // Helmet postavlja strict CSP koji blokira inline <script> — override za ovu stranicu
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'");
   res.send(`<!DOCTYPE html>
 <html lang="hr">
 <head>
