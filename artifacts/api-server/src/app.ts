@@ -349,47 +349,63 @@ app.get("/profil", (_req, res) => {
   </div>
 
   <script>
-    var token = localStorage.getItem('trampaj_token');
-    if (!token) { window.location.href = '/prijava'; }
-
-    fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
-      .then(function(res) {
-        if (!res.ok) {
-          localStorage.removeItem('trampaj_token');
-          window.location.href = '/prijava';
-          return;
-        }
-        var u = res.d.user;
-        var initials = (u.username || 'U').substring(0, 2).toUpperCase();
-        var joined = new Date(u.createdAt).toLocaleDateString('hr-HR', { day: 'numeric', month: 'long', year: 'numeric' });
-        document.getElementById('content').innerHTML =
-          '<div class="avatar">' + initials + '</div>' +
-          '<div class="username">' + escHtml(u.username) + '</div>' +
-          '<div class="email">' + escHtml(u.email) + '</div>' +
-          '<div class="badge">✓ Račun aktivan</div>' +
-          '<div class="divider"></div>' +
-          '<div class="info-row"><span class="info-label">Email</span><span class="info-val">' + escHtml(u.email) + '</span></div>' +
-          (u.city ? '<div class="info-row"><span class="info-label">Grad</span><span class="info-val">' + escHtml(u.city) + '</span></div>' : '') +
-          (u.phone ? '<div class="info-row"><span class="info-label">Telefon</span><span class="info-val">' + escHtml(u.phone) + '</span></div>' : '') +
-          '<div class="info-row"><span class="info-label">Član od</span><span class="info-val">' + joined + '</span></div>' +
-          '<div class="divider"></div>' +
-          '<div class="btn-row">' +
-          '<button class="btn btn-primary" onclick="window.location.href=\'/prijava\'">← Promijeni račun</button>' +
-          '<button class="btn btn-secondary" id="btn-odjava">Odjavi se</button>' +
-          '</div>';
-        document.getElementById('btn-odjava').addEventListener('click', function() {
-          localStorage.removeItem('trampaj_token');
-          window.location.href = '/prijava';
-        });
-      })
-      .catch(function() {
-        document.getElementById('content').innerHTML = '<div class="err-box">Greška pri dohvaćanju profila. <a href="/prijava" style="color:#F5C100">Prijavi se ponovo</a></div>';
-      });
-
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+    function showErr(msg) {
+      var el = document.getElementById('content');
+      if (el) el.innerHTML = '<div class="err-box">' + msg + '<br><br><a href="/prijava" style="color:#F5C100;font-weight:700">→ Idi na prijavu</a></div>';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var token = localStorage.getItem('trampaj_token');
+      if (!token) {
+        window.location.href = '/prijava';
+        return;
+      }
+
+      fetch('/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token },
+        cache: 'no-store'
+      })
+      .then(function(r) {
+        if (!r.ok) {
+          return r.json().then(function(d) {
+            localStorage.removeItem('trampaj_token');
+            showErr('Sesija je istekla. Molimo prijavite se ponovo.');
+            setTimeout(function() { window.location.href = '/prijava'; }, 2000);
+          });
+        }
+        return r.json().then(function(d) {
+          var u = d.user;
+          var initials = ((u.username || 'U') + '?').substring(0, 2).toUpperCase();
+          var joined = '';
+          try { joined = new Date(u.createdAt).toLocaleDateString('hr-HR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch(e) { joined = '-'; }
+          var el = document.getElementById('content');
+          if (!el) return;
+          el.innerHTML =
+            '<div class="avatar">' + initials + '</div>' +
+            '<div class="username">' + escHtml(u.username || '') + '</div>' +
+            '<div class="email">' + escHtml(u.email || '') + '</div>' +
+            '<div class="badge">✓ Račun aktivan</div>' +
+            '<div class="divider"></div>' +
+            '<div class="info-row"><span class="info-label">Email</span><span class="info-val">' + escHtml(u.email || '') + '</span></div>' +
+            (u.city ? '<div class="info-row"><span class="info-label">Grad</span><span class="info-val">' + escHtml(u.city) + '</span></div>' : '') +
+            '<div class="info-row"><span class="info-label">Član od</span><span class="info-val">' + joined + '</span></div>' +
+            '<div class="divider"></div>' +
+            '<div class="btn-row">' +
+            '<button class="btn btn-secondary" id="btn-odjava">Odjavi se</button>' +
+            '</div>';
+          document.getElementById('btn-odjava').addEventListener('click', function() {
+            localStorage.removeItem('trampaj_token');
+            window.location.href = '/prijava';
+          });
+        });
+      })
+      .catch(function(err) {
+        showErr('Nije moguće dohvatiti profil. Provjerite vezu.');
+      });
+    });
   </script>
 </body>
 </html>`);
