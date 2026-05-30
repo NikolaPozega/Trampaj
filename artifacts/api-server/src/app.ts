@@ -190,8 +190,8 @@ app.get("/prijava", (_req, res) => {
     </div>
 
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('login')">Prijava</div>
-      <div class="tab" onclick="switchTab('register')">Registracija</div>
+      <div class="tab active" id="tab-login">Prijava</div>
+      <div class="tab" id="tab-register">Registracija</div>
     </div>
 
     <!-- Login -->
@@ -201,7 +201,7 @@ app.get("/prijava", (_req, res) => {
       <input id="l-user" type="text" placeholder="korisnik ili email@primjer.hr" autocomplete="username"/>
       <label>Lozinka</label>
       <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"/>
-      <button class="btn" onclick="doLogin()">Prijavi se</button>
+      <button class="btn" id="btn-login">Prijavi se</button>
       <div class="msg" id="l-msg"></div>
     </div>
 
@@ -214,80 +214,72 @@ app.get("/prijava", (_req, res) => {
       <input id="r-email" type="email" placeholder="ivica@primjer.hr" autocomplete="email"/>
       <label>Lozinka</label>
       <input id="r-pass" type="password" placeholder="najmanje 6 znakova" autocomplete="new-password"/>
-      <button class="btn" onclick="doRegister()">Registriraj se</button>
+      <button class="btn" id="btn-register">Registriraj se</button>
       <div class="msg" id="r-msg"></div>
     </div>
   </div>
 
   <script>
-    const API = '';
-
     function switchTab(t) {
-      document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='login')||(i===1&&t==='register')));
-      document.getElementById('form-login').classList.toggle('active', t==='login');
-      document.getElementById('form-register').classList.toggle('active', t==='register');
+      document.getElementById('tab-login').classList.toggle('active', t === 'login');
+      document.getElementById('tab-register').classList.toggle('active', t === 'register');
+      document.getElementById('form-login').classList.toggle('active', t === 'login');
+      document.getElementById('form-register').classList.toggle('active', t === 'register');
     }
 
     function showMsg(id, text, ok) {
-      const el = document.getElementById(id);
+      var el = document.getElementById(id);
       el.textContent = text;
       el.className = 'msg ' + (ok ? 'ok' : 'err');
       el.style.display = 'block';
     }
 
-    async function doLogin() {
-      const btn = event.target;
-      const identifier = document.getElementById('l-user').value.trim();
-      const password = document.getElementById('l-pass').value;
-      if (!identifier || !password) { showMsg('l-msg','Popuni sva polja',false); return; }
+    document.getElementById('tab-login').addEventListener('click', function() { switchTab('login'); });
+    document.getElementById('tab-register').addEventListener('click', function() { switchTab('register'); });
+
+    document.getElementById('btn-login').addEventListener('click', function() {
+      var btn = this;
+      var identifier = document.getElementById('l-user').value.trim();
+      var password = document.getElementById('l-pass').value;
+      if (!identifier || !password) { showMsg('l-msg', 'Popuni sva polja', false); return; }
       btn.disabled = true; btn.textContent = 'Prijavljivanje...';
-      try {
-        const r = await fetch(API + '/api/auth/login', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(identifier.includes('@') ? {email:identifier,password} : {username:identifier,password})
-        });
-        const d = await r.json();
-        if (!r.ok) { showMsg('l-msg', d.error || 'Greška', false); return; }
-        localStorage.setItem('trampaj_token', d.token);
-        showMsg('l-msg', '✓ Prijava uspješna! Token je pohranjen.', true);
-        setTimeout(() => {
-          document.getElementById('l-msg').textContent = '🔑 Token: ' + d.token.substring(0,40) + '...';
-        }, 1200);
-      } catch { showMsg('l-msg','Greška pri spajanju na server',false); }
-      finally { btn.disabled = false; btn.textContent = 'Prijavi se'; }
-    }
+      var body = identifier.indexOf('@') >= 0
+        ? JSON.stringify({email: identifier, password: password})
+        : JSON.stringify({username: identifier, password: password});
+      fetch('/api/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: body})
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+        .then(function(res) {
+          if (!res.ok) { showMsg('l-msg', res.d.error || 'Greška', false); return; }
+          localStorage.setItem('trampaj_token', res.d.token);
+          showMsg('l-msg', '✓ Prijava uspješna!', true);
+        })
+        .catch(function() { showMsg('l-msg', 'Greška pri spajanju na server', false); })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Prijavi se'; });
+    });
 
-    async function doRegister() {
-      const btn = event.target;
-      const username = document.getElementById('r-user').value.trim();
-      const email = document.getElementById('r-email').value.trim();
-      const password = document.getElementById('r-pass').value;
-      if (!username || !email || !password) { showMsg('r-msg','Popuni sva polja',false); return; }
+    document.getElementById('btn-register').addEventListener('click', function() {
+      var btn = this;
+      var username = document.getElementById('r-user').value.trim();
+      var email = document.getElementById('r-email').value.trim();
+      var password = document.getElementById('r-pass').value;
+      if (!username || !email || !password) { showMsg('r-msg', 'Popuni sva polja', false); return; }
       btn.disabled = true; btn.textContent = 'Registracija...';
-      try {
-        const r = await fetch(API + '/api/auth/register', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({username, email, password})
-        });
-        const d = await r.json();
-        if (!r.ok) { showMsg('r-msg', d.error || 'Greška', false); return; }
-        if (d.autoVerified) {
-          localStorage.setItem('trampaj_token', d.token);
-          showMsg('r-msg', '✓ Račun stvoren! Možeš se odmah prijaviti.', true);
-          setTimeout(() => switchTab('login'), 1500);
-        } else {
-          showMsg('r-msg', '✓ Registracija uspješna! Provjeri email za potvrdu.', true);
-        }
-      } catch { showMsg('r-msg','Greška pri spajanju na server',false); }
-      finally { btn.disabled = false; btn.textContent = 'Registriraj se'; }
-    }
+      fetch('/api/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username: username, email: email, password: password})})
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+        .then(function(res) {
+          if (!res.ok) { showMsg('r-msg', res.d.error || 'Greška', false); return; }
+          showMsg('r-msg', '✓ Račun stvoren! Prijavi se.', true);
+          setTimeout(function() { switchTab('login'); }, 1500);
+        })
+        .catch(function() { showMsg('r-msg', 'Greška pri spajanju na server', false); })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Registriraj se'; });
+    });
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const active = document.querySelector('.form.active');
-        if (active.id === 'form-login') doLogin();
-        else doRegister();
-      }
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      var active = document.querySelector('.form.active');
+      if (active && active.id === 'form-login') document.getElementById('btn-login').click();
+      else document.getElementById('btn-register').click();
     });
   </script>
 </body>
