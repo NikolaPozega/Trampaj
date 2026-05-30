@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import http from "node:http";
 import router from "./routes";
+import webPages from "./webPages";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
 
@@ -103,6 +104,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
+app.use(webPages);
 
 // ─── Expo Go manifest proxy (samo u razvoju) ───────────────────────────────────
 // API server je na "/" pa intercepts Expo Go manifest request.
@@ -293,163 +295,20 @@ app.get("/prijava", (_req, res) => {
 </html>`);
 });
 
-// ─── Profil stranica (zahtjeva JWT token u localStorage) ──────────────────────
-app.get("/profil", (_req, res) => {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'");
-  res.send(`<!DOCTYPE html>
-<html lang="hr">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trampaj.hr — Moj profil</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{min-height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff}
-    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:36px 32px;width:100%;max-width:420px}
-    .header{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-    .header svg{width:40px;height:40px;border-radius:10px;flex-shrink:0}
-    .header-name{font-size:1.4rem;font-weight:800;color:#38BDF8}
-    .avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#0f4f7a);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;margin:0 auto 20px;text-transform:uppercase}
-    .username{font-size:1.4rem;font-weight:800;text-align:center;margin-bottom:4px}
-    .email{font-size:.9rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:24px}
-    .badge{display:inline-block;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600;margin:0 auto 24px;display:block;text-align:center;width:fit-content;margin:0 auto 20px}
-    .divider{height:1px;background:rgba(255,255,255,.08);margin:20px 0}
-    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0}
-    .info-label{font-size:.8rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px}
-    .info-val{font-size:.9rem;font-weight:600;color:rgba(255,255,255,.85)}
-    .btn-row{display:flex;gap:10px;margin-top:24px}
-    .btn{flex:1;padding:12px;border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;transition:.15s}
-    .btn-primary{background:#F5C100;color:#08152E}
-    .btn-primary:hover{background:#ffd426}
-    .btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12)}
-    .btn-secondary:hover{background:rgba(255,255,255,.12)}
-    .loading{text-align:center;color:rgba(255,255,255,.4);padding:40px 0}
-    .err-box{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:14px;border-radius:10px;text-align:center;margin-top:16px}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="header">
-      <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="140" height="140" fill="#08152E" rx="28"/>
-        <rect x="22" y="32" width="52" height="52" rx="10" stroke="#38BDF8" stroke-width="5" fill="none"/>
-        <rect x="66" y="56" width="52" height="52" rx="10" stroke="#F5C100" stroke-width="5" fill="none"/>
-        <path d="M58 58 Q70 45 82 58" stroke="#38BDF8" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#a)"/>
-        <path d="M82 82 Q70 95 58 82" stroke="#F5C100" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#b)"/>
-        <defs>
-          <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38BDF8"/></marker>
-          <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F5C100"/></marker>
-        </defs>
-      </svg>
-      <span class="header-name">Trampaj.hr</span>
-    </div>
-    <div id="content"><div class="loading">Učitavam profil...</div></div>
-  </div>
+// ─── Profil (prebačen u webPages.ts) ─────────────────────────────────────────
+// (profil ruta je sada u webPages router-u)
 
-  <script>
-    function escHtml(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ─── Landing — redirect na /oglasi ────────────────────────────────────────────
+app.get("/", (req, res, next) => {
+  // Expo Go manifest proxy (samo dev)
+  if (process.env.NODE_ENV === "development") {
+    const accept = req.headers["accept"] ?? "";
+    const platform = req.headers["expo-platform"];
+    if (accept.includes("application/expo+json") || platform) {
+      return next();
     }
-    function showErr(msg) {
-      var el = document.getElementById('content');
-      if (el) el.innerHTML = '<div class="err-box">' + msg + '<br><br><a href="/prijava" style="color:#F5C100;font-weight:700">→ Idi na prijavu</a></div>';
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      var token = localStorage.getItem('trampaj_token');
-      if (!token) {
-        window.location.href = '/prijava';
-        return;
-      }
-
-      fetch('/api/auth/me', {
-        headers: { 'Authorization': 'Bearer ' + token },
-        cache: 'no-store'
-      })
-      .then(function(r) {
-        if (!r.ok) {
-          return r.json().then(function(d) {
-            localStorage.removeItem('trampaj_token');
-            showErr('Sesija je istekla. Molimo prijavite se ponovo.');
-            setTimeout(function() { window.location.href = '/prijava'; }, 2000);
-          });
-        }
-        return r.json().then(function(d) {
-          var u = d.user;
-          var initials = ((u.username || 'U') + '?').substring(0, 2).toUpperCase();
-          var joined = '';
-          try { joined = new Date(u.createdAt).toLocaleDateString('hr-HR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch(e) { joined = '-'; }
-          var el = document.getElementById('content');
-          if (!el) return;
-          el.innerHTML =
-            '<div class="avatar">' + initials + '</div>' +
-            '<div class="username">' + escHtml(u.username || '') + '</div>' +
-            '<div class="email">' + escHtml(u.email || '') + '</div>' +
-            '<div class="badge">✓ Račun aktivan</div>' +
-            '<div class="divider"></div>' +
-            '<div class="info-row"><span class="info-label">Email</span><span class="info-val">' + escHtml(u.email || '') + '</span></div>' +
-            (u.city ? '<div class="info-row"><span class="info-label">Grad</span><span class="info-val">' + escHtml(u.city) + '</span></div>' : '') +
-            '<div class="info-row"><span class="info-label">Član od</span><span class="info-val">' + joined + '</span></div>' +
-            '<div class="divider"></div>' +
-            '<div class="btn-row">' +
-            '<button class="btn btn-secondary" id="btn-odjava">Odjavi se</button>' +
-            '</div>';
-          document.getElementById('btn-odjava').addEventListener('click', function() {
-            localStorage.removeItem('trampaj_token');
-            window.location.href = '/prijava';
-          });
-        });
-      })
-      .catch(function(err) {
-        showErr('Nije moguće dohvatiti profil. Provjerite vezu.');
-      });
-    });
-  </script>
-</body>
-</html>`);
-});
-
-// ─── Landing stranica — samo logo, bez aplikacije ─────────────────────────────
-app.get("/", (_req, res) => {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(`<!DOCTYPE html>
-<html lang="hr">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trampaj.hr — Uskoro</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:24px}
-    .logo{width:140px;height:140px;border-radius:28px;overflow:hidden}
-    .logo svg{width:100%;height:100%}
-    .name{color:#38BDF8;font-size:2.2rem;font-weight:800;letter-spacing:.5px}
-    .slogan{color:#F5C100;font-size:1rem;font-weight:500;text-align:center}
-    .soon{color:rgba(255,255,255,.35);font-size:.8rem;margin-top:8px}
-  </style>
-</head>
-<body>
-  <div class="logo">
-    <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="140" height="140" fill="#08152E" rx="28"/>
-      <rect x="22" y="32" width="52" height="52" rx="10" stroke="#38BDF8" stroke-width="5" fill="none"/>
-      <rect x="66" y="56" width="52" height="52" rx="10" stroke="#F5C100" stroke-width="5" fill="none"/>
-      <path d="M58 58 Q70 45 82 58" stroke="#38BDF8" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#a)"/>
-      <path d="M82 82 Q70 95 58 82" stroke="#F5C100" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#b)"/>
-      <defs>
-        <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38BDF8"/></marker>
-        <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F5C100"/></marker>
-      </defs>
-    </svg>
-  </div>
-  <div class="name">Trampaj.hr</div>
-  <div class="slogan">Jedna trampa, dvije sretne strane!</div>
-  <div class="soon">Uskoro dostupno</div>
-</body>
-</html>`);
+  }
+  res.redirect(302, "/oglasi");
 });
 
 export default app;
