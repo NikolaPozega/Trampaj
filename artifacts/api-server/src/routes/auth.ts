@@ -157,6 +157,10 @@ router.post("/auth/register", async (req, res) => {
     const verificationToken = randomUUID();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
+    const hasSmtp = !!process.env["SMTP_HOST"];
+    // Bez SMTP-a (dev/beta): odmah verificiraj korisnika
+    const autoVerified = !hasSmtp;
+
     const id = randomUUID();
     await db.insert(usersTable).values({
       id,
@@ -167,21 +171,33 @@ router.post("/auth/register", async (req, res) => {
       address: address?.trim() || null,
       city: city?.trim() || null,
       avatarBase64: avatarBase64 || null,
-      verificationToken,
-      verificationExpiry,
+      verificationToken: autoVerified ? null : verificationToken,
+      verificationExpiry: autoVerified ? null : verificationExpiry,
+      isVerified: autoVerified,
     });
 
-    const emailResult = await sendVerificationEmail(
-      email.toLowerCase().trim(),
-      username.trim(),
-      verificationToken,
-    );
+    if (!autoVerified) {
+      const emailResult = await sendVerificationEmail(
+        email.toLowerCase().trim(),
+        username.trim(),
+        verificationToken,
+      );
+      res.status(201).json({
+        message: "Registracija uspješna. Provjeri email za potvrdu.",
+        emailSent: emailResult.sent,
+        devVerifyLink: emailResult.devLink,
+      });
+      return;
+    }
+
+    const token = jwt.sign({ userId: id, username: username.trim() }, JWT_SECRET, {
+      expiresIn: "30d",
+    });
 
     res.status(201).json({
-      message: "Registracija uspješna. Provjeri email za potvrdu.",
-      emailSent: emailResult.sent,
-      // Only in dev mode (no SMTP configured)
-      devVerifyLink: emailResult.devLink,
+      message: "Registracija uspješna! Možeš se odmah prijaviti.",
+      autoVerified: true,
+      token,
     });
   } catch (err) {
     req.log.error({ err }, "register error");

@@ -132,6 +132,163 @@ app.get("/", (req, res, next) => {
   });
 });
 
+// ─── Web stranica za prijavu / registraciju ────────────────────────────────────
+app.get("/prijava", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trampaj.hr — Prijava</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{min-height:100%;background:#08152E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff}
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:36px 32px;width:100%;max-width:400px;backdrop-filter:blur(12px)}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;justify-content:center}
+    .logo svg{width:48px;height:48px;border-radius:12px}
+    .logo-name{font-size:1.6rem;font-weight:800;color:#38BDF8}
+    h2{font-size:1.1rem;font-weight:600;color:rgba(255,255,255,.7);text-align:center;margin-bottom:24px}
+    .tabs{display:flex;background:rgba(255,255,255,.07);border-radius:10px;padding:4px;margin-bottom:24px}
+    .tab{flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:600;color:rgba(255,255,255,.5);transition:.2s}
+    .tab.active{background:#F5C100;color:#08152E}
+    label{display:block;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.5);margin-bottom:6px;margin-top:16px;text-transform:uppercase;letter-spacing:.5px}
+    input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;color:#fff;font-size:.95rem;outline:none;transition:.2s}
+    input:focus{border-color:#38BDF8;background:rgba(56,189,248,.08)}
+    input::placeholder{color:rgba(255,255,255,.3)}
+    .btn{width:100%;margin-top:24px;padding:14px;background:#F5C100;color:#08152E;font-weight:800;font-size:1rem;border:none;border-radius:12px;cursor:pointer;transition:.15s}
+    .btn:hover{background:#ffd426;transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .msg{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.9rem;text-align:center;display:none}
+    .msg.ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac}
+    .msg.err{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+    .form{display:none} .form.active{display:block}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="140" fill="#08152E" rx="28"/>
+        <rect x="22" y="32" width="52" height="52" rx="10" stroke="#38BDF8" stroke-width="5" fill="none"/>
+        <rect x="66" y="56" width="52" height="52" rx="10" stroke="#F5C100" stroke-width="5" fill="none"/>
+        <path d="M58 58 Q70 45 82 58" stroke="#38BDF8" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#a)"/>
+        <path d="M82 82 Q70 95 58 82" stroke="#F5C100" stroke-width="4" fill="none" stroke-linecap="round" marker-end="url(#b)"/>
+        <defs>
+          <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38BDF8"/></marker>
+          <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F5C100"/></marker>
+        </defs>
+      </svg>
+      <span class="logo-name">Trampaj.hr</span>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('login')">Prijava</div>
+      <div class="tab" onclick="switchTab('register')">Registracija</div>
+    </div>
+
+    <!-- Login -->
+    <div class="form active" id="form-login">
+      <h2>Dobrodošao nazad!</h2>
+      <label>Korisničko ime ili email</label>
+      <input id="l-user" type="text" placeholder="korisnik ili email@primjer.hr" autocomplete="username"/>
+      <label>Lozinka</label>
+      <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      <button class="btn" onclick="doLogin()">Prijavi se</button>
+      <div class="msg" id="l-msg"></div>
+    </div>
+
+    <!-- Register -->
+    <div class="form" id="form-register">
+      <h2>Stvori novi račun</h2>
+      <label>Korisničko ime</label>
+      <input id="r-user" type="text" placeholder="Ivica123" autocomplete="username"/>
+      <label>Email adresa</label>
+      <input id="r-email" type="email" placeholder="ivica@primjer.hr" autocomplete="email"/>
+      <label>Lozinka</label>
+      <input id="r-pass" type="password" placeholder="najmanje 6 znakova" autocomplete="new-password"/>
+      <button class="btn" onclick="doRegister()">Registriraj se</button>
+      <div class="msg" id="r-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    function switchTab(t) {
+      document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='login')||(i===1&&t==='register')));
+      document.getElementById('form-login').classList.toggle('active', t==='login');
+      document.getElementById('form-register').classList.toggle('active', t==='register');
+    }
+
+    function showMsg(id, text, ok) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + (ok ? 'ok' : 'err');
+      el.style.display = 'block';
+    }
+
+    async function doLogin() {
+      const btn = event.target;
+      const identifier = document.getElementById('l-user').value.trim();
+      const password = document.getElementById('l-pass').value;
+      if (!identifier || !password) { showMsg('l-msg','Popuni sva polja',false); return; }
+      btn.disabled = true; btn.textContent = 'Prijavljivanje...';
+      try {
+        const r = await fetch(API + '/api/auth/login', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(identifier.includes('@') ? {email:identifier,password} : {username:identifier,password})
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('l-msg', d.error || 'Greška', false); return; }
+        localStorage.setItem('trampaj_token', d.token);
+        showMsg('l-msg', '✓ Prijava uspješna! Token je pohranjen.', true);
+        setTimeout(() => {
+          document.getElementById('l-msg').textContent = '🔑 Token: ' + d.token.substring(0,40) + '...';
+        }, 1200);
+      } catch { showMsg('l-msg','Greška pri spajanju na server',false); }
+      finally { btn.disabled = false; btn.textContent = 'Prijavi se'; }
+    }
+
+    async function doRegister() {
+      const btn = event.target;
+      const username = document.getElementById('r-user').value.trim();
+      const email = document.getElementById('r-email').value.trim();
+      const password = document.getElementById('r-pass').value;
+      if (!username || !email || !password) { showMsg('r-msg','Popuni sva polja',false); return; }
+      btn.disabled = true; btn.textContent = 'Registracija...';
+      try {
+        const r = await fetch(API + '/api/auth/register', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({username, email, password})
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('r-msg', d.error || 'Greška', false); return; }
+        if (d.autoVerified) {
+          localStorage.setItem('trampaj_token', d.token);
+          showMsg('r-msg', '✓ Račun stvoren! Možeš se odmah prijaviti.', true);
+          setTimeout(() => switchTab('login'), 1500);
+        } else {
+          showMsg('r-msg', '✓ Registracija uspješna! Provjeri email za potvrdu.', true);
+        }
+      } catch { showMsg('r-msg','Greška pri spajanju na server',false); }
+      finally { btn.disabled = false; btn.textContent = 'Registriraj se'; }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const active = document.querySelector('.form.active');
+        if (active.id === 'form-login') doLogin();
+        else doRegister();
+      }
+    });
+  </script>
+</body>
+</html>`);
+});
+
 // ─── Landing stranica — samo logo, bez aplikacije ─────────────────────────────
 app.get("/", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
