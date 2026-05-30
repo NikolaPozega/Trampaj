@@ -88,6 +88,7 @@ if (fs.existsSync(WEB_ROOT)) {
     maxAge: "1y",
     immutable: true,
     index: false,
+    dotfiles: "allow",
     setHeaders: (res, filePath) => {
       if (filePath.endsWith(".html")) {
         res.setHeader("Cache-Control", "no-cache");
