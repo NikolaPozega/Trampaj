@@ -3,21 +3,11 @@ const path = require("path");
 
 const projectRoot = path.resolve(__dirname, "..");
 
-function getDeploymentDomain() {
-  const d =
-    process.env.REPLIT_INTERNAL_APP_DOMAIN ||
-    process.env.REPLIT_DEV_DOMAIN ||
-    process.env.EXPO_PUBLIC_DOMAIN;
-  if (!d) {
-    console.error("ERROR: No deployment domain found.");
-    process.exit(1);
-  }
-  return d.replace(/^https?:\/\//, "");
-}
-
-const domain = getDeploymentDomain();
-
 console.log("Building Expo web export...");
+// For the web build, we intentionally leave EXPO_PUBLIC_DOMAIN empty so
+// AuthContext/ListingsContext fall back to the relative "/api" base URL.
+// The Expo web app is served from the same domain as the API server, so
+// relative URLs work correctly on every deployment domain (trampaj.hr, staging, etc.)
 execSync(
   `pnpm exec expo export --platform web --output-dir dist/web`,
   {
@@ -25,7 +15,7 @@ execSync(
     stdio: "inherit",
     env: {
       ...process.env,
-      EXPO_PUBLIC_DOMAIN: domain,
+      EXPO_PUBLIC_DOMAIN: "",
     },
   }
 );
