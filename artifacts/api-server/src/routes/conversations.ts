@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "crypto";
-import { eq, and, or, asc, getTableColumns } from "drizzle-orm";
+import { eq, and, or, asc } from "drizzle-orm";
 import { db, conversationsTable, messagesTable, listingsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+
+const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const router: IRouter = Router();
 
@@ -187,6 +189,29 @@ router.post("/conversations/:id/messages", requireAuth, async (req: AuthRequest,
 
     const [msg] = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1) as MessageRow[];
     res.status(201).json({ message: formatMessage(msg!, req.userId!) });
+
+    // ── TrampaDemo bot: auto-respond to handshake_request ─────────────────────
+    if (type === "handshake_request") {
+      const otherUserId = conv.initiatorId === req.userId ? conv.ownerId : conv.initiatorId;
+      if (otherUserId === DEMO_USER_ID) {
+        setTimeout(() => {
+          void (async () => {
+            try {
+              await db.insert(messagesTable).values({
+                id: randomUUID(),
+                conversationId: id,
+                fromUserId: DEMO_USER_ID,
+                text: "",
+                type: "handshake_accepted",
+              });
+              await db.update(conversationsTable)
+                .set({ updatedAt: new Date() })
+                .where(eq(conversationsTable.id, id));
+            } catch { /* silent */ }
+          })();
+        }, 2000);
+      }
+    }
   } catch (err) {
     req.log.error({ err }, "message send error");
     res.status(500).json({ error: "Greška pri slanju poruke" });
