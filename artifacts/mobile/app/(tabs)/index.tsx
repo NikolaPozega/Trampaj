@@ -216,6 +216,7 @@ export default function BrowseScreen() {
   const [searchNudim, setSearchNudim] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshDone, setRefreshDone] = useState(false);
+  const [bottomAdSeed] = useState(() => `guest-bottom-${Date.now()}`);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const spinLoop = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -494,7 +495,7 @@ export default function BrowseScreen() {
             },
           ]}
         >
-          <AdBannerSlot size="bottom" seed="guest-bottom" />
+          <AdBannerSlot size="bottom" seed={bottomAdSeed} />
         </View>
       )}
     </KeyboardAvoidingView>
