@@ -208,7 +208,7 @@ function injectAds(listings: Listing[]): FlatItem[] {
 export default function BrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { listings, isLoaded, blockedUserNames } = useListings();
+  const { listings, isLoaded, blockedUserNames, refreshListings } = useListings();
   const { user, logout } = useAuth();
   const { unreadCount } = useChat();
   const [searchTrazim, setSearchTrazim] = useState("");
@@ -228,8 +228,11 @@ export default function BrowseScreen() {
 
   async function onRefresh() {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setRefreshing(false);
+    try {
+      await refreshListings();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function normSearch(s: string) {
