@@ -299,7 +299,7 @@ export default function BrowseScreen() {
         <View style={styles.logoRow}>
           <Pressable
             style={styles.logoBrand}
-            onPress={() => { searchBus.clearSearch?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            onPress={() => { searchBus.clearSearch?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); void onRefresh(); }}
           >
             <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Feather name="refresh-cw" size={22} color={colors.primary} />

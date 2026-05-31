@@ -314,7 +314,7 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
-        allowsEditing: true,
+        allowsEditing: !isWeb,
         aspect: [4, 3],
       });
     } else {
@@ -327,23 +327,30 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
-        allowsEditing: true,
+        allowsEditing: !isWeb,
         aspect: [4, 3],
       });
     }
     if (!result.canceled && result.assets[0]) {
       const isFirst = imageUris.length === 0;
-      const compressed = await compressImage(result.assets[0].uri, 800, 0.65);
+      let finalUri = result.assets[0].uri;
+      let finalBase64 = "";
+      try {
+        const compressed = await compressImage(finalUri, 800, 0.65);
+        finalUri = compressed.uri;
+        finalBase64 = compressed.base64;
+      } catch {
+        // expo-image-manipulator fails on web blob URLs — use original URI directly
+      }
       setImageUris((prev) =>
-        prev.length < MAX_IMAGES ? [...prev, compressed.uri] : prev
+        prev.length < MAX_IMAGES ? [...prev, finalUri] : prev
       );
-      if (isFirst && compressed.base64) {
+      if (isFirst && finalBase64) {
         setAnalyzing(true);
         try {
-          const ai = await analyzeImageForCategory(compressed.base64);
+          const ai = await analyzeImageForCategory(finalBase64);
           console.log("[AI] analyzeImageForCategory rezultat:", JSON.stringify(ai));
           if (ai.category && !categoryManuallySet) setCategory(ai.category);
-          // Samo upiši ako korisnik još nije ništa utipkao — ne pregazi ručni unos
           if (ai.title && !title.trim()) {
             setTitle(ai.title);
             titleFromAI.current = true;
@@ -363,8 +370,7 @@ export default function PostScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (err) {
           console.log("[AI] analyzeImageForCategory greška:", String(err));
-        }
-        finally {
+        } finally {
           setAnalyzing(false);
         }
       }
@@ -1707,35 +1713,39 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  webPickerMenu: {
-    position: "absolute",
-    top: 90,
-    left: 0,
-    zIndex: 100,
-    borderRadius: 10,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    minWidth: 140,
-    overflow: "hidden",
+  webPickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
   },
-  webPickerItem: {
+  webPickerSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingBottom: 32,
+    paddingTop: 4,
+  },
+  webPickerTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+    paddingVertical: 12,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  webPickerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  webPickerText: {
-    fontSize: 14,
+  webPickerRowText: {
+    fontSize: 16,
     fontFamily: "Inter_500Medium",
   },
-  webPickerDivider: {
+  webPickerLine: {
     height: 1,
-    marginHorizontal: 0,
   },
 
   aiBanner: {
