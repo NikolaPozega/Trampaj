@@ -249,6 +249,7 @@ export default function PostScreen() {
   const descriptionFromAI = useRef(false);
   const [titleAIBadge, setTitleAIBadge] = useState(false);
   const [descriptionAIBadge, setDescriptionAIBadge] = useState(false);
+  const [showWebPicker, setShowWebPicker] = useState(false);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
@@ -375,6 +376,10 @@ export default function PostScreen() {
   }
 
   function showImagePicker() {
+    if (Platform.OS === "web") {
+      setShowWebPicker(true);
+      return;
+    }
     Alert.alert("Dodaj sliku", "Odaberi izvor", [
       { text: "Kamera", onPress: () => pickImage(true) },
       { text: "Galerija", onPress: () => pickImage(false) },
@@ -593,32 +598,61 @@ export default function PostScreen() {
             </View>
           ))}
           {imageUris.length < MAX_IMAGES && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.imageThumbAdd,
-                {
-                  borderColor: analyzing
-                    ? colors.primary
-                    : colors.secondary,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-              onPress={showImagePicker}
-            >
-              {analyzing ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Feather name="plus" size={24} color={colors.secondary} />
-              )}
-              <Text
-                style={[
-                  styles.imageAddLabel,
-                  { color: colors.mutedForeground },
+            <View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.imageThumbAdd,
+                  {
+                    borderColor: analyzing
+                      ? colors.primary
+                      : colors.secondary,
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}
+                onPress={showImagePicker}
               >
-                {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
-              </Text>
-            </Pressable>
+                {analyzing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="plus" size={24} color={colors.secondary} />
+                )}
+                <Text
+                  style={[
+                    styles.imageAddLabel,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
+                </Text>
+              </Pressable>
+              {showWebPicker && Platform.OS === "web" && (
+                <View style={[styles.webPickerMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Pressable
+                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => { setShowWebPicker(false); void pickImage(true); }}
+                  >
+                    <Feather name="camera" size={16} color={colors.foreground} />
+                    <Text style={[styles.webPickerText, { color: colors.foreground }]}>Kamera</Text>
+                  </Pressable>
+                  <View style={[styles.webPickerDivider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => { setShowWebPicker(false); void pickImage(false); }}
+                  >
+                    <Feather name="image" size={16} color={colors.foreground} />
+                    <Text style={[styles.webPickerText, { color: colors.foreground }]}>Galerija</Text>
+                  </Pressable>
+                  <View style={[styles.webPickerDivider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => setShowWebPicker(false)}
+                  >
+                    <Feather name="x" size={16} color={colors.mutedForeground} />
+                    <Text style={[styles.webPickerText, { color: colors.mutedForeground }]}>Odustani</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           )}
         </ScrollView>
 
@@ -1659,6 +1693,37 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
+  },
+
+  webPickerMenu: {
+    position: "absolute",
+    top: 90,
+    left: 0,
+    zIndex: 100,
+    borderRadius: 10,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    minWidth: 140,
+    overflow: "hidden",
+  },
+  webPickerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  webPickerText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  webPickerDivider: {
+    height: 1,
+    marginHorizontal: 0,
   },
 
   aiBanner: {
