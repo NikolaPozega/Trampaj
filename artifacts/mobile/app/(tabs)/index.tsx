@@ -2,10 +2,11 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { INTRO_DONE_KEY } from "@/utils/introKey";
 import {
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -214,6 +215,30 @@ export default function BrowseScreen() {
   const [searchTrazim, setSearchTrazim] = useState("");
   const [searchNudim, setSearchNudim] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshDone, setRefreshDone] = useState(false);
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const spinLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (refreshing) {
+      spinLoop.current = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        })
+      );
+      spinLoop.current.start();
+    } else {
+      spinLoop.current?.stop();
+      spinAnim.setValue(0);
+    }
+  }, [refreshing, spinAnim]);
+
+  const spinDeg = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   useEffect(() => {
     AsyncStorage.getItem(INTRO_DONE_KEY).then((val) => {
@@ -230,6 +255,8 @@ export default function BrowseScreen() {
     setRefreshing(true);
     try {
       await refreshListings();
+      setRefreshDone(true);
+      setTimeout(() => setRefreshDone(false), 1500);
     } finally {
       setRefreshing(false);
     }
@@ -302,7 +329,9 @@ export default function BrowseScreen() {
             onPress={() => { searchBus.clearSearch?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); void onRefresh(); }}
           >
             <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <Feather name="refresh-cw" size={22} color={colors.primary} />
+              <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
+                <Feather name="refresh-cw" size={22} color={refreshDone ? colors.secondary : colors.primary} />
+              </Animated.View>
             </View>
             <Text style={[styles.logoText, { color: colors.foreground }]}>
               Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>
