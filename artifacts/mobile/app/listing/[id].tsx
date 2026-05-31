@@ -2,7 +2,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import React, { useState } from "react";
 import {
   Alert,
@@ -583,10 +582,23 @@ export default function ListingDetailScreen() {
       {!listing.isMine && listing.status === "active" && (
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>
           {Platform.OS === "web" ? (
-            <WebDownloadScreen
-              title="Kontaktiraj u aplikaciji"
-              subtitle="Preuzmi Trampa app za slanje ponuda i poruka."
-            />
+            <View style={styles.webCta}>
+              <Text style={[styles.webCtaText, { color: colors.mutedForeground }]}>Za kontakt preuzmi app →</Text>
+              <View style={styles.webCtaButtons}>
+                <Pressable
+                  style={[styles.webCtaBtn, { backgroundColor: colors.foreground }]}
+                  onPress={() => void Linking.openURL("https://apps.apple.com/hr/app/trampaj/id0000000000")}
+                >
+                  <Text style={[styles.webCtaBtnText, { color: colors.background }]}>App Store</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.webCtaBtn, { backgroundColor: colors.secondary }]}
+                  onPress={() => void Linking.openURL("https://play.google.com/store/apps/details?id=hr.trampaj.app")}
+                >
+                  <Text style={[styles.webCtaBtnText, { color: colors.background }]}>Google Play</Text>
+                </Pressable>
+              </View>
+            </View>
           ) : (
           <View style={styles.footerButtons}>
             <Pressable
@@ -988,6 +1000,11 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: "row", alignItems: "center", gap: 10 },
   metaText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   footer: { padding: 16, borderTopWidth: 1, gap: 10 },
+  webCta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" },
+  webCtaText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  webCtaButtons: { flexDirection: "row", gap: 8 },
+  webCtaBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },
+  webCtaBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   footerButtons: { flexDirection: "row", gap: 10 },
   footerBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 14 },
   footerBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
