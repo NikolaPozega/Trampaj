@@ -8,6 +8,7 @@ import fs from "node:fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
+import { landingPageHtml } from "./landingPage";
 
 const app: Express = express();
 
@@ -79,6 +80,13 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
+
+// ─── Landing page ─────────────────────────────────────────────────────────────
+app.get("/", (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(landingPageHtml());
+});
 
 // ─── Expo Web App — servira statički build iz mobile/dist/web ─────────────────
 const WEB_ROOT = path.resolve(__dirname, "../../mobile/dist/web");
