@@ -16,6 +16,7 @@ execSync(
     env: {
       ...process.env,
       EXPO_PUBLIC_DOMAIN: "",
+      EXPO_PUBLIC_OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? "",
     },
   }
 );
