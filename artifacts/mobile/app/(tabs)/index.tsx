@@ -243,6 +243,7 @@ export default function BrowseScreen() {
   });
 
   useEffect(() => {
+    if ((Platform.OS as string) === "web") return; // web users skip intro
     AsyncStorage.getItem(INTRO_DONE_KEY).then((val) => {
       if (!val) router.replace("/intro");
     });
