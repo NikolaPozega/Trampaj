@@ -17,7 +17,8 @@
       "supportsTablet": false
     },
     "android": {
-      "backgroundColor": "#08152E"
+      "backgroundColor": "#08152E",
+      "package": "hr.trampaj.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
