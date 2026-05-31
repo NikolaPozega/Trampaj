@@ -371,7 +371,7 @@ export default function BrowseScreen() {
                 <Text style={[styles.authLinkText, { color: colors.destructive }]}>Odjava</Text>
               </Pressable>
             </View>
-          ) : (
+          ) : (Platform.OS as string) !== "web" ? (
             <View style={styles.authLinks}>
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/login"); }}
@@ -387,7 +387,7 @@ export default function BrowseScreen() {
                 <Text style={[styles.authLinkText, { color: colors.secondary }]}>Registracija</Text>
               </Pressable>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Search — dva polja: Tražim i Nudim */}
