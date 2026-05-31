@@ -3,7 +3,9 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { compressImage } from "@/utils/compressImage";
+import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import { router } from "expo-router";
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -40,6 +42,8 @@ import {
   moderateText,
   moderateImage,
 } from "@/services/openai";
+
+const IS_WEB = (Platform.OS as string) === "web";
 
 interface LocationResult {
   label: string;
@@ -204,6 +208,15 @@ function SectionCard({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PostScreen() {
+  if (IS_WEB) {
+    return (
+      <WebDownloadScreen
+        title="Objavi oglas u aplikaciji"
+        subtitle={"Za objavu oglasa trebaš Trampa app.\nPreuzmi je besplatno — traje manje od minute."}
+      />
+    );
+  }
+
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addListing, listings } = useListings();
@@ -252,8 +265,8 @@ export default function PostScreen() {
   const [descriptionAIBadge, setDescriptionAIBadge] = useState(false);
   const [showWebPicker, setShowWebPicker] = useState(false);
 
-  const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
-  const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
+  const topPad = IS_WEB ? 16 : insets.top + 8;
+  const bottomPad = insets.bottom + (IS_WEB ? 34 : 16);
 
   const requiredFields = [
     title.trim().length > 0,
@@ -1252,7 +1265,7 @@ export default function PostScreen() {
 
       {/* ── Web image source picker modal ─────────────────────────────────── */}
       <Modal
-        visible={showWebPicker && Platform.OS === "web"}
+        visible={showWebPicker && IS_WEB}
         transparent
         animationType="fade"
         onRequestClose={() => setShowWebPicker(false)}

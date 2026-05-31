@@ -25,12 +25,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
+import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import { ListingCard } from "@/components/ListingCard";
+
 import { CATEGORIES, type Listing, useListings } from "@/context/ListingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { findTradeMatches, type TradeMatch } from "@/services/tradeMatches";
 import { useChat } from "@/context/ChatContext";
+
+const IS_WEB = (Platform.OS as string) === "web";
 
 interface EditState {
   id: string;
@@ -301,6 +305,15 @@ function StatPill({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  if (IS_WEB) {
+    return (
+      <WebDownloadScreen
+        title="Profil je dostupan u aplikaciji"
+        subtitle={"Upravljaj oglasima, prataj ponude\ni postavke u Trampa aplikaciji."}
+      />
+    );
+  }
+
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const {
@@ -468,7 +481,7 @@ export default function ProfileScreen() {
     [listings, savedListingIds]
   );
 
-  const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
+  const topPad = IS_WEB ? 16 : insets.top + 8;
 
   function handleSaveName() {
     if (nameInput.trim()) {
@@ -948,7 +961,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.list,
           myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 60 : 100) + 60 },
+          { paddingBottom: insets.bottom + (IS_WEB ? 60 : 100) + 60 },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

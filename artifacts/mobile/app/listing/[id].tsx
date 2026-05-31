@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
+import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import React, { useState } from "react";
 import {
   Alert,
@@ -581,6 +582,12 @@ export default function ListingDetailScreen() {
 
       {!listing.isMine && listing.status === "active" && (
         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: bottomPad + 8 }]}>
+          {Platform.OS === "web" ? (
+            <WebDownloadScreen
+              title="Kontaktiraj u aplikaciji"
+              subtitle="Preuzmi Trampa app za slanje ponuda i poruka."
+            />
+          ) : (
           <View style={styles.footerButtons}>
             <Pressable
               onPress={() => {
@@ -631,6 +638,7 @@ export default function ListingDetailScreen() {
               </Pressable>
             ) : null}
           </View>
+          )}
 
           <View style={styles.footerMeta}>
             {user && !alreadyReviewed && (
