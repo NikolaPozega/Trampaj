@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -598,61 +599,32 @@ export default function PostScreen() {
             </View>
           ))}
           {imageUris.length < MAX_IMAGES && (
-            <View>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.imageThumbAdd,
-                  {
-                    borderColor: analyzing
-                      ? colors.primary
-                      : colors.secondary,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={showImagePicker}
-              >
-                {analyzing ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="plus" size={24} color={colors.secondary} />
-                )}
-                <Text
-                  style={[
-                    styles.imageAddLabel,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
-                </Text>
-              </Pressable>
-              {showWebPicker && Platform.OS === "web" && (
-                <View style={[styles.webPickerMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Pressable
-                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
-                    onPress={() => { setShowWebPicker(false); void pickImage(true); }}
-                  >
-                    <Feather name="camera" size={16} color={colors.foreground} />
-                    <Text style={[styles.webPickerText, { color: colors.foreground }]}>Kamera</Text>
-                  </Pressable>
-                  <View style={[styles.webPickerDivider, { backgroundColor: colors.border }]} />
-                  <Pressable
-                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
-                    onPress={() => { setShowWebPicker(false); void pickImage(false); }}
-                  >
-                    <Feather name="image" size={16} color={colors.foreground} />
-                    <Text style={[styles.webPickerText, { color: colors.foreground }]}>Galerija</Text>
-                  </Pressable>
-                  <View style={[styles.webPickerDivider, { backgroundColor: colors.border }]} />
-                  <Pressable
-                    style={({ pressed }) => [styles.webPickerItem, { opacity: pressed ? 0.7 : 1 }]}
-                    onPress={() => setShowWebPicker(false)}
-                  >
-                    <Feather name="x" size={16} color={colors.mutedForeground} />
-                    <Text style={[styles.webPickerText, { color: colors.mutedForeground }]}>Odustani</Text>
-                  </Pressable>
-                </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.imageThumbAdd,
+                {
+                  borderColor: analyzing
+                    ? colors.primary
+                    : colors.secondary,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              onPress={showImagePicker}
+            >
+              {analyzing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Feather name="plus" size={24} color={colors.secondary} />
               )}
-            </View>
+              <Text
+                style={[
+                  styles.imageAddLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                {imageUris.length === 0 ? "Dodaj\nsliku" : "Još"}
+              </Text>
+            </Pressable>
           )}
         </ScrollView>
 
@@ -1271,6 +1243,46 @@ export default function PostScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* ── Web image source picker modal ─────────────────────────────────── */}
+      <Modal
+        visible={showWebPicker && Platform.OS === "web"}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWebPicker(false)}
+      >
+        <Pressable
+          style={styles.webPickerBackdrop}
+          onPress={() => setShowWebPicker(false)}
+        >
+          <View style={[styles.webPickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.webPickerTitle, { color: colors.mutedForeground }]}>Dodaj sliku</Text>
+            <Pressable
+              style={({ pressed }) => [styles.webPickerRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => { setShowWebPicker(false); void pickImage(true); }}
+            >
+              <Feather name="camera" size={20} color={colors.foreground} />
+              <Text style={[styles.webPickerRowText, { color: colors.foreground }]}>Kamera</Text>
+            </Pressable>
+            <View style={[styles.webPickerLine, { backgroundColor: colors.border }]} />
+            <Pressable
+              style={({ pressed }) => [styles.webPickerRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => { setShowWebPicker(false); void pickImage(false); }}
+            >
+              <Feather name="image" size={20} color={colors.foreground} />
+              <Text style={[styles.webPickerRowText, { color: colors.foreground }]}>Galerija</Text>
+            </Pressable>
+            <View style={[styles.webPickerLine, { backgroundColor: colors.border }]} />
+            <Pressable
+              style={({ pressed }) => [styles.webPickerRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => setShowWebPicker(false)}
+            >
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+              <Text style={[styles.webPickerRowText, { color: colors.mutedForeground }]}>Odustani</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
