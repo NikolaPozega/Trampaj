@@ -28,13 +28,14 @@ import { useChat } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 import { searchBus } from "@/utils/searchBus";
 import { queryMatchesFields } from "@/utils/stemHr";
+import { guardAdClick } from "@/utils/adClickGuard";
 import type { Listing } from "@/context/ListingsContext";
 
 // ─── Ad placeholder components ───────────────────────────────────────────────
 
 const AD_POOL = [
   { id: "a1", sponsor: "Mall.hr", tagline: "Sve na jednom mjestu", url: "https://www.mall.hr", icon: "shopping-cart" as const, color: "#E53935" },
-  { id: "a2", sponsor: "njuškalo.hr", tagline: "Oglasi koje tražiš", url: "https://www.njuskalo.hr", icon: "search" as const, color: "#1565C0" },
+  { id: "a2", sponsor: "Tehnomanija", tagline: "Tehnika po najboljim cijenama", url: "https://www.tehnomanija.hr", icon: "cpu" as const, color: "#1565C0" },
   { id: "a3", sponsor: "Konzum Online", tagline: "Dostava do vrata", url: "https://www.konzum.hr", icon: "package" as const, color: "#2E7D32" },
   { id: "a4", sponsor: "Booking.com", tagline: "Putuj povoljnije", url: "https://www.booking.com", icon: "map-pin" as const, color: "#003580" },
   { id: "a5", sponsor: "Rimac Store", tagline: "Električna budućnost", url: "https://www.rimac.com", icon: "zap" as const, color: "#C62828" },
@@ -52,7 +53,7 @@ function AdCardSlot({ seed }: { seed: string }) {
   const ad = pickAd(seed);
   return (
     <Pressable
-      onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
+      onPress={() => guardAdClick(() => Linking.openURL(ad.url).catch(() => {}))}
       style={({ pressed }) => [adStyles.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
     >
       <View style={[adStyles.sponsoredBadge, { backgroundColor: colors.muted }]}>
@@ -74,7 +75,7 @@ function AdBannerSlot({ size = "small", seed = "banner" }: { size?: "small" | "b
   const ad = pickAd(seed);
   return (
     <Pressable
-      onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
+      onPress={() => guardAdClick(() => Linking.openURL(ad.url).catch(() => {}))}
       style={({ pressed }) => [adStyles.banner, { height, backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
     >
       <View style={[adStyles.cardIconCircle, { backgroundColor: colors.muted, width: 28, height: 28 }]}>

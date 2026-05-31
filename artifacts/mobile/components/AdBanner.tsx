@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { guardAdClick } from "@/utils/adClickGuard";
 
 const AD_POOL = [
   { id: "a1", sponsor: "Mall.hr", tagline: "Sve na jednom mjestu", url: "https://www.mall.hr", icon: "shopping-cart" as const, color: "#E53935" },
-  { id: "a2", sponsor: "njuškalo.hr", tagline: "Oglasi koje tražiš", url: "https://www.njuskalo.hr", icon: "search" as const, color: "#1565C0" },
+  { id: "a2", sponsor: "Tehnomanija", tagline: "Tehnika po najboljim cijenama", url: "https://www.tehnomanija.hr", icon: "cpu" as const, color: "#1565C0" },
   { id: "a3", sponsor: "Konzum Online", tagline: "Dostava do vrata", url: "https://www.konzum.hr", icon: "package" as const, color: "#2E7D32" },
   { id: "a4", sponsor: "Booking.com", tagline: "Putuj povoljnije", url: "https://www.booking.com", icon: "map-pin" as const, color: "#003580" },
   { id: "a5", sponsor: "Rimac Store", tagline: "Električna budućnost", url: "https://www.rimac.com", icon: "zap" as const, color: "#C62828" },
@@ -27,7 +28,7 @@ export function AdBannerSlot({ size = "small", seed = "banner" }: AdBannerSlotPr
   const ad = pickAd(seed);
   return (
     <Pressable
-      onPress={() => { Linking.openURL(ad.url).catch(() => {}); }}
+      onPress={() => guardAdClick(() => Linking.openURL(ad.url).catch(() => {}))}
       style={({ pressed }) => [
         styles.banner,
         { height, backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
