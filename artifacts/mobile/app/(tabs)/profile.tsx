@@ -360,8 +360,8 @@ export default function ProfileScreen() {
     if (!bioPasswordInput || !user) return;
     setBioActivating(true);
     try {
-      const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-      const API_BASE = domain ? `https://${domain}/api` : "/api";
+      const _FALLBACK = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
+      const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? _FALLBACK}/api`;
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
