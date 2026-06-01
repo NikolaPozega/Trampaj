@@ -65,21 +65,12 @@ export default function RootLayout() {
       }
     });
 
-    // Auto-check for OTA updates on startup (native only)
+    // Auto-check for OTA updates on startup (native only) — auto-restart silently
     if (Platform.OS !== "web") {
       Updates.checkForUpdateAsync()
         .then((check) => {
           if (check.isAvailable) {
-            return Updates.fetchUpdateAsync().then(() => {
-              Alert.alert(
-                "Nova verzija",
-                "Dostupna je nova verzija aplikacije.",
-                [
-                  { text: "Kasnije" },
-                  { text: "Restartaj sada", onPress: () => Updates.reloadAsync() },
-                ]
-              );
-            });
+            return Updates.fetchUpdateAsync().then(() => Updates.reloadAsync());
           }
         })
         .catch(() => {

@@ -154,13 +154,10 @@ router.post("/auth/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const verificationToken = randomUUID();
-    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-
-    const hasEmail = !!process.env["RESEND_API_KEY"];
-    const autoVerified = !hasEmail;
-
     const id = randomUUID();
+
+    // Always auto-verify — email verification link won't work on mobile anyway.
+    // Resend is used only for password reset emails.
     await db.insert(usersTable).values({
       id,
       username: username.trim(),
@@ -170,43 +167,32 @@ router.post("/auth/register", async (req, res) => {
       address: address?.trim() || null,
       city: city?.trim() || null,
       avatarBase64: avatarBase64 || null,
-      verificationToken: autoVerified ? null : verificationToken,
-      verificationExpiry: autoVerified ? null : verificationExpiry,
-      isVerified: autoVerified,
+      verificationToken: null,
+      verificationExpiry: null,
+      isVerified: true,
     });
 
-    let actuallyVerified = autoVerified;
-    let emailSent = false;
-    let devVerifyLink: string | undefined;
-
-    if (!autoVerified) {
-      try {
-        const emailResult = await sendVerificationEmail(
-          email.toLowerCase().trim(),
-          username.trim(),
-          verificationToken,
-        );
-        emailSent = emailResult.sent;
-        devVerifyLink = emailResult.devLink;
-      } catch (emailErr) {
-        req.log.warn({ emailErr }, "email send failed — auto-verifying user as fallback");
-        // Email not working (domain not verified etc.) — auto-verify so user can still use the app
-        actuallyVerified = true;
-        await db
-          .update(usersTable)
-          .set({ isVerified: true, verificationToken: null, verificationExpiry: null })
-          .where(eq(usersTable.id, id));
+    // Send welcome email (best-effort, never blocks registration)
+    try {
+      const resend = getResend();
+      if (resend) {
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: email.toLowerCase().trim(),
+          subject: "Dobrodošao na Trampaj.hr! 🔄",
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+              <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
+                <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
+              </div>
+              <h2 style="color:#08152E;margin-top:0">Dobrodošao, ${username.trim()}!</h2>
+              <p style="color:#444">Tvoj profil je aktiviran. Možeš se odmah prijaviti i početi trampatii!</p>
+              <p style="color:#888;font-size:12px;margin-top:24px">Trampaj.hr — Trampa bez granica 🇭🇷</p>
+            </div>
+          `,
+        });
       }
-    }
-
-    if (!actuallyVerified) {
-      res.status(201).json({
-        message: "Registracija uspješna. Provjeri email za potvrdu.",
-        emailSent,
-        devVerifyLink,
-      });
-      return;
-    }
+    } catch { /* welcome email failure never blocks registration */ }
 
     const token = jwt.sign({ userId: id, username: username.trim() }, JWT_SECRET, {
       expiresIn: "30d",
