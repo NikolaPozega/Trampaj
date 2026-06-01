@@ -8,7 +8,9 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { router, Stack, SplashScreen } from "expo-router";
+import * as Updates from "expo-updates";
 import React, { useEffect, useRef } from "react";
+import { Alert, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -62,6 +64,28 @@ export default function RootLayout() {
         router.push(`/chat/${data.listingId}`);
       }
     });
+
+    // Auto-check for OTA updates on startup (native only)
+    if (Platform.OS !== "web") {
+      Updates.checkForUpdateAsync()
+        .then((check) => {
+          if (check.isAvailable) {
+            return Updates.fetchUpdateAsync().then(() => {
+              Alert.alert(
+                "Nova verzija",
+                "Dostupna je nova verzija aplikacije.",
+                [
+                  { text: "Kasnije" },
+                  { text: "Restartaj sada", onPress: () => Updates.reloadAsync() },
+                ]
+              );
+            });
+          }
+        })
+        .catch(() => {
+          // Silently ignore update errors
+        });
+    }
 
     return () => {
       responseListener.current?.remove();
