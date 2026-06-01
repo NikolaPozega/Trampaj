@@ -190,6 +190,33 @@ router.post("/conversations/:id/messages", requireAuth, async (req: AuthRequest,
     const [msg] = await db.select().from(messagesTable).where(eq(messagesTable.id, msgId)).limit(1) as MessageRow[];
     res.status(201).json({ message: formatMessage(msg!, req.userId!) });
 
+    // ── Push notification to the other user ───────────────────────────────────
+    void (async () => {
+      try {
+        const otherUserId = conv.initiatorId === req.userId ? conv.ownerId : conv.initiatorId;
+        const [otherUser] = await db.select({ pushToken: usersTable.pushToken, username: usersTable.username })
+          .from(usersTable).where(eq(usersTable.id, otherUserId)).limit(1);
+        const [sender] = await db.select({ username: usersTable.username })
+          .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+        if (otherUser?.pushToken) {
+          const body = type === "text" ? (text ?? "") : "Poslao/la je zahtjev za dogovor";
+          await fetch("https://exp.host/--/api/v2/push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              to: otherUser.pushToken,
+              channelId: "poruke",
+              title: sender?.username ?? "Trampaj",
+              body,
+              data: { listingId: conv.listingId, conversationId: id },
+              sound: "default",
+              badge: 1,
+            }),
+          });
+        }
+      } catch { /* silent — push failure must never break message flow */ }
+    })();
+
     // ── TrampaDemo bot: auto-respond to handshake_request ─────────────────────
     if (type === "handshake_request") {
       const otherUserId = conv.initiatorId === req.userId ? conv.ownerId : conv.initiatorId;

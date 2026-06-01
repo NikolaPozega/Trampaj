@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getExpoPushToken } from "@/utils/notifications";
 
 const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
   ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
@@ -67,6 +68,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await res.json() as { user: AuthUser };
             setToken(stored);
             setUser(data.user);
+            // Re-register push token on app start (token may have changed)
+            getExpoPushToken().then((pushToken) => {
+              if (pushToken) {
+                fetch(`${API_BASE}/push/token`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${stored}` },
+                  body: JSON.stringify({ token: pushToken }),
+                }).catch(() => {});
+              }
+            });
           } else if (res.status === 401) {
             // Token genuinely expired/invalid — remove it
             await AsyncStorage.removeItem(TOKEN_KEY);
@@ -94,6 +105,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(TOKEN_KEY, data.token!);
       setToken(data.token!);
       setUser(data.user!);
+      // Register push token in background
+      getExpoPushToken().then((pushToken) => {
+        if (pushToken) {
+          fetch(`${API_BASE}/push/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.token!}` },
+            body: JSON.stringify({ token: pushToken }),
+          }).catch(() => {});
+        }
+      });
       return { ok: true };
     } catch {
       return { ok: false, error: "Nema veze s poslužiteljem" };
@@ -116,6 +137,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async (keepToken?: boolean) => {
+    // Delete push token from server before clearing local token
+    const stored = await AsyncStorage.getItem(TOKEN_KEY);
+    if (stored) {
+      fetch(`${API_BASE}/push/token`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${stored}` },
+      }).catch(() => {});
+    }
     if (!keepToken) await AsyncStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
