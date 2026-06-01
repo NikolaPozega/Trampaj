@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as Updates from "expo-updates";
 import * as LocalAuthentication from "expo-local-authentication";
 import { compressImage } from "@/utils/compressImage";
 import { Image } from "expo-image";
@@ -429,6 +430,33 @@ export default function ProfileScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const snapPad = Math.max(0, (screenWidth - 32 - 296) / 2);
   const [refreshing, setRefreshing] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  async function handleCheckUpdate() {
+    if (IS_WEB) return;
+    setUpdating(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const check = await Updates.checkForUpdateAsync();
+      if (check.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        Alert.alert(
+          "Nova verzija dostupna",
+          "Nadogradnja je preuzeta. Restartaj aplikaciju.",
+          [
+            { text: "Restartaj sada", onPress: () => Updates.reloadAsync() },
+            { text: "Kasnije", style: "cancel" },
+          ]
+        );
+      } else {
+        Alert.alert("Aplikacija je aktualna", "Koristiš najnoviju verziju.");
+      }
+    } catch {
+      Alert.alert("Greška", "Provjera ažuriranja nije uspjela. Provjeri vezu.");
+    } finally {
+      setUpdating(false);
+    }
+  }
 
   async function onRefresh() {
     setRefreshing(true);
@@ -757,6 +785,29 @@ export default function ProfileScreen() {
               <Text style={[styles.gdprDeleteText, { color: colors.destructive }]}>Izbriši račun i sve podatke</Text>
             </Pressable>
           </View>
+        )}
+
+        {/* App update button — native only */}
+        {!IS_WEB && (
+          <Pressable
+            onPress={handleCheckUpdate}
+            disabled={updating}
+            style={({ pressed }) => [{
+              flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginTop: 6,
+              backgroundColor: colors.muted,
+              borderWidth: 1,
+              borderColor: colors.border,
+              opacity: pressed || updating ? 0.6 : 1,
+            }]}
+          >
+            <Feather name="download" size={13} color={colors.mutedForeground} />
+            <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+              {updating ? "Provjera ažuriranja…" : "Ažuriraj aplikaciju"}
+            </Text>
+            {!updating && <Feather name="chevron-right" size={13} color={colors.mutedForeground} />}
+            {updating && <ActivityIndicator size="small" color={colors.mutedForeground} />}
+          </Pressable>
         )}
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />

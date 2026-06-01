@@ -24,9 +24,16 @@
       "favicon": "./assets/images/icon.png",
       "backgroundColor": "#08152E"
     },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/203bae0a-78da-4e29-b5cc-9836e0ae481e"
+    },
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-updates",
       "expo-web-browser",
       [
         "expo-notifications",
