@@ -3,14 +3,12 @@ previewPath = "/mobile"
 title = "Trampa"
 version = "1.0.0"
 id = "artifacts/mobile"
-router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/status"
 name = "expo"
 paths = [ "/mobile", "/artifacts/mobile" ]
 localPort = 18115

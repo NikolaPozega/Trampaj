@@ -8,8 +8,7 @@ export default function NotFoundScreen() {
   const colors = useColors();
 
   useEffect(() => {
-    const t = setTimeout(() => router.replace("/"), 800);
-    return () => clearTimeout(t);
+    router.replace("/(tabs)");
   }, []);
 
   return (

@@ -196,9 +196,9 @@ export function landingPageHtml(): string {
   </p>
 
   <div class="cta-group">
-    <a href="#preuzmi" class="btn-primary">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 16l-4-4h8l-4 4zM12 3v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 20h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-      Preuzmi aplikaciju
+    <a href="/mobile" class="btn-primary">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="2"/><path d="M12 17h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      Testiraj aplikaciju
     </a>
     <a href="#kako" class="btn-secondary">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
