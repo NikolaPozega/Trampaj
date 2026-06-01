@@ -1,9 +1,29 @@
 import { logger } from "./logger";
 
 const META_PAGE_ID = process.env["META_PAGE_ID"];
-const META_PAGE_TOKEN = process.env["META_PAGE_TOKEN"];
+const META_USER_TOKEN = process.env["META_PAGE_TOKEN"];
 const META_IG_USER_ID = process.env["META_IG_USER_ID"];
 const APP_URL = process.env["APP_URL"] ?? "https://trampaj.hr";
+
+// Extract Page Access Token from User token (cached per process)
+let cachedPageToken: string | null = null;
+async function getPageToken(): Promise<string | null> {
+  if (cachedPageToken) return cachedPageToken;
+  if (!META_PAGE_ID || !META_USER_TOKEN) return null;
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${META_PAGE_ID}?fields=access_token&access_token=${META_USER_TOKEN}`
+    );
+    const data = await res.json() as { access_token?: string };
+    if (data.access_token) {
+      cachedPageToken = data.access_token;
+      return cachedPageToken;
+    }
+  } catch (err) {
+    logger.error({ err }, "Greška pri dohvatu Page tokena");
+  }
+  return null;
+}
 
 export interface ListingForPost {
   id: string;
@@ -29,8 +49,14 @@ function buildCaption(listing: ListingForPost): string {
 
 // ─── Facebook stranica ────────────────────────────────────────────────────────
 export async function postToFacebook(listing: ListingForPost): Promise<void> {
-  if (!META_PAGE_ID || !META_PAGE_TOKEN) {
+  if (!META_PAGE_ID || !META_USER_TOKEN) {
     logger.warn("META_PAGE_ID ili META_PAGE_TOKEN nije postavljen, preskačem FB objavu");
+    return;
+  }
+
+  const pageToken = await getPageToken();
+  if (!pageToken) {
+    logger.warn("Nije moguće dohvatiti Page token, preskačem FB objavu");
     return;
   }
 
@@ -39,33 +65,24 @@ export async function postToFacebook(listing: ListingForPost): Promise<void> {
 
   try {
     if (imageUrl) {
-      // Objava sa slikom
       const res = await fetch(
         `https://graph.facebook.com/v19.0/${META_PAGE_ID}/photos`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: imageUrl,
-            caption,
-            access_token: META_PAGE_TOKEN,
-          }),
+          body: JSON.stringify({ url: imageUrl, caption, access_token: pageToken }),
         }
       );
       const data = await res.json() as { id?: string; error?: { message: string } };
       if (data.error) throw new Error(data.error.message);
       logger.info({ postId: data.id }, "Facebook objava objavljena");
     } else {
-      // Objava samo tekst
       const res = await fetch(
         `https://graph.facebook.com/v19.0/${META_PAGE_ID}/feed`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: caption,
-            access_token: META_PAGE_TOKEN,
-          }),
+          body: JSON.stringify({ message: caption, access_token: pageToken }),
         }
       );
       const data = await res.json() as { id?: string; error?: { message: string } };
@@ -79,7 +96,7 @@ export async function postToFacebook(listing: ListingForPost): Promise<void> {
 
 // ─── Instagram (2-koračni process) ────────────────────────────────────────────
 export async function postToInstagram(listing: ListingForPost): Promise<void> {
-  if (!META_IG_USER_ID || !META_PAGE_TOKEN) {
+  if (!META_IG_USER_ID || !META_USER_TOKEN) {
     logger.warn("META_IG_USER_ID ili META_PAGE_TOKEN nije postavljen, preskačem IG objavu");
     return;
   }
@@ -87,6 +104,12 @@ export async function postToInstagram(listing: ListingForPost): Promise<void> {
   const imageUrl = listing.imageUris[0];
   if (!imageUrl) {
     logger.warn({ listingId: listing.id }, "Nema slike za Instagram objavu");
+    return;
+  }
+
+  const pageToken = await getPageToken();
+  if (!pageToken) {
+    logger.warn("Nije moguće dohvatiti Page token, preskačem IG objavu");
     return;
   }
 
@@ -102,7 +125,7 @@ export async function postToInstagram(listing: ListingForPost): Promise<void> {
         body: JSON.stringify({
           image_url: imageUrl,
           caption,
-          access_token: META_PAGE_TOKEN,
+          access_token: pageToken,
         }),
       }
     );
@@ -118,7 +141,7 @@ export async function postToInstagram(listing: ListingForPost): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           creation_id: container.id,
-          access_token: META_PAGE_TOKEN,
+          access_token: pageToken,
         }),
       }
     );
