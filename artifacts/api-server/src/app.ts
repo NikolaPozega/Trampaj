@@ -109,7 +109,7 @@ if (fs.existsSync(WEB_ROOT)) {
   });
 } else {
   app.get("/{*path}", (_req, res) => {
-    res.status(503).send("Web build nije dostupan.");
+    res.redirect(302, "/mobile");
   });
 }
 
