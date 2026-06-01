@@ -1011,7 +1011,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.list,
           myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (IS_WEB ? 60 : 100) + 60 },
+          { paddingBottom: insets.bottom + (IS_WEB ? 60 : 160) + 44 },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

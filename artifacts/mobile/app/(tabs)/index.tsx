@@ -333,7 +333,7 @@ export default function BrowseScreen() {
           >
             <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
-                <Feather name="refresh-cw" size={22} color={refreshDone ? colors.secondary : colors.primary} />
+                <Feather name="repeat" size={20} color={refreshDone ? colors.secondary : colors.primary} />
               </Animated.View>
             </View>
             <Text style={[styles.logoText, { color: colors.foreground }]}>
