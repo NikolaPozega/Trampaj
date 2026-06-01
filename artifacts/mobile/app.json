@@ -40,6 +40,12 @@
     "experiments": {
       "typedRoutes": true,
       "baseUrl": "/mobile"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "203bae0a-78da-4e29-b5cc-9836e0ae481e"
+      }
+    },
+    "owner": "nikola1987"
   }
 }
