@@ -81,11 +81,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
-// ─── Landing page ─────────────────────────────────────────────────────────────
+// ─── Root → app ───────────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(landingPageHtml());
+  res.redirect(302, "/mobile");
 });
 
 // ─── Expo Web App — servira statički build iz mobile/dist/web ─────────────────
