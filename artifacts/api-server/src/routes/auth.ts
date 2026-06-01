@@ -22,8 +22,7 @@ function getResend(): Resend | null {
   return resendClient;
 }
 
-// Once trampaj.hr is verified on resend.com/domains, change to: "Trampaj.hr <noreply@trampaj.hr>"
-const EMAIL_FROM = "Trampaj.hr <onboarding@resend.dev>";
+const EMAIL_FROM = "Trampaj.hr <noreply@trampaj.hr>";
 
 async function sendVerificationEmail(
   email: string,
