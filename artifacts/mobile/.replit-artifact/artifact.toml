@@ -1,25 +1,26 @@
 kind = "mobile"
-previewPath = "/mobile"
-title = "Trampa"
-version = "1.0.0"
-id = "artifacts/mobile"
+  previewPath = "/mobile"
+  title = "Trampa"
+  version = "1.0.0"
+  id = "artifacts/mobile"
 
-[[integratedSkills]]
-name = "expo"
-version = "1.0.0"
+  [[integratedSkills]]
+  name = "expo"
+  version = "1.0.0"
 
-[[services]]
-name = "expo"
-paths = [ "/mobile", "/artifacts/mobile" ]
-localPort = 18115
+  [[services]]
+  name = "expo"
+  paths = [ "/mobile", "/artifacts/mobile" ]
+  localPort = 18115
 
-[services.development]
-run = "pnpm --filter @workspace/mobile run dev"
+  [services.development]
+  run = "pnpm --filter @workspace/mobile run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/mobile", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/mobile", "run", "serve" ]
+  [services.production]
+  build = [ "pnpm", "--filter", "@workspace/mobile", "run", "build" ]
+  run = [ "pnpm", "--filter", "@workspace/mobile", "run", "serve" ]
 
-[services.env]
-PORT = "18115"
-BASE_PATH = "/mobile"
+  [services.env]
+  PORT = "18115"
+  BASE_PATH = "/mobile"
+  
