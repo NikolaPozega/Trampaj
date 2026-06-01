@@ -10,7 +10,7 @@ kind = "mobile"
 
   [[services]]
   name = "expo"
-  paths = [ "/mobile", "/artifacts/mobile" ]
+  paths = [ "/mobile", "/artifacts/mobile", "/assets" ]
   localPort = 18115
 
   [services.development]
@@ -23,4 +23,3 @@ kind = "mobile"
   [services.env]
   PORT = "18115"
   BASE_PATH = "/mobile"
-  
