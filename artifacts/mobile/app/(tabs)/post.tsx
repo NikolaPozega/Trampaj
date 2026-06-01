@@ -318,8 +318,8 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
-        allowsEditing: !isWeb,
-        aspect: [4, 3],
+        allowsEditing: false,
+        quality: 0.7,
       });
     } else {
       if (!isWeb) {

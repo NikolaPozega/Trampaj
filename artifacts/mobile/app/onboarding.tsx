@@ -120,8 +120,8 @@ export default function OnboardingScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
+        quality: 0.7,
       });
       if (!result.canceled && result.assets[0]) {
         const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
