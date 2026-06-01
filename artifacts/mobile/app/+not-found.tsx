@@ -1,19 +1,14 @@
-import { router, Stack } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
-import { useColors } from "@/hooks/useColors";
+import { router, useRootNavigationState } from "expo-router";
 
 export default function NotFoundScreen() {
-  const colors = useColors();
+  const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
+    if (!rootNavigationState?.key) return;
     router.replace("/(tabs)");
-  }, []);
+  }, [rootNavigationState?.key]);
 
-  return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: colors.background }} />
-    </>
-  );
+  return <View style={{ flex: 1, backgroundColor: "#08152E" }} />;
 }
