@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { db, usersTable, type PublicUser } from "@workspace/db";
@@ -13,21 +13,17 @@ const APP_URL = process.env["REPLIT_DEV_DOMAIN"]
   ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
   : "http://localhost:80";
 
-// ─── Email transport ────────────────────────────────────────────────────────
-function getTransport() {
-  if (process.env["SMTP_HOST"]) {
-    return nodemailer.createTransport({
-      host: process.env["SMTP_HOST"],
-      port: Number(process.env["SMTP_PORT"] ?? 587),
-      secure: process.env["SMTP_SECURE"] === "true",
-      auth: {
-        user: process.env["SMTP_USER"],
-        pass: process.env["SMTP_PASS"],
-      },
-    });
-  }
-  return null;
+// ─── Resend email client ─────────────────────────────────────────────────────
+const RESEND_API_KEY = process.env["RESEND_API_KEY"];
+let resendClient: Resend | null = null;
+function getResend(): Resend | null {
+  if (!RESEND_API_KEY) return null;
+  if (!resendClient) resendClient = new Resend(RESEND_API_KEY);
+  return resendClient;
 }
+
+// Once trampaj.hr is verified on resend.com/domains, change to: "Trampaj.hr <noreply@trampaj.hr>"
+const EMAIL_FROM = "Trampaj.hr <onboarding@resend.dev>";
 
 async function sendVerificationEmail(
   email: string,
@@ -35,31 +31,33 @@ async function sendVerificationEmail(
   token: string,
 ): Promise<{ sent: boolean; devLink?: string }> {
   const link = `${APP_URL}/verify-email?token=${token}`;
-  const transport = getTransport();
+  const resend = getResend();
 
-  if (!transport) {
-    // Dev mode: return the link so the app can show it
+  if (!resend) {
     return { sent: false, devLink: link };
   }
 
-  await transport.sendMail({
-    from: process.env["SMTP_FROM"] ?? `"Trampaj.hr" <noreply@trampaj.hr>`,
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
     to: email,
     subject: "Potvrdi svoju email adresu — Trampaj.hr",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#08152E">Dobrodošao na Trampaj.hr, ${username}!</h2>
-        <p>Klikni na gumb ispod kako bi potvrdio svoju email adresu i aktivirao profil.</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+        <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
+          <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
+        </div>
+        <h2 style="color:#08152E;margin-top:0">Dobrodošao, ${username}!</h2>
+        <p style="color:#444">Klikni na gumb ispod kako bi potvrdio svoju email adresu i aktivirao profil.</p>
         <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;
-          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0">
+          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0;font-size:16px">
           Potvrdi email adresu
         </a>
-        <p style="color:#666;font-size:12px">Link vrijedi 24 sata. Ako nisi tražio/la registraciju, ignoriraj ovaj email.</p>
-        <p style="color:#666;font-size:12px">Ili kopiraj: ${link}</p>
+        <p style="color:#888;font-size:12px;margin-top:24px">Link vrijedi 24 sata. Ako nisi tražio/la registraciju, ignoriraj ovaj email.</p>
       </div>
     `,
   });
 
+  if (error) throw new Error(error.message);
   return { sent: true };
 }
 
@@ -74,30 +72,33 @@ async function sendPasswordResetEmail(
   token: string,
 ): Promise<{ sent: boolean; devLink?: string }> {
   const link = `${APP_URL}/reset-password?token=${token}`;
-  const transport = getTransport();
+  const resend = getResend();
 
-  if (!transport) {
+  if (!resend) {
     return { sent: false, devLink: link };
   }
 
-  await transport.sendMail({
-    from: process.env["SMTP_FROM"] ?? `"Trampaj.hr" <noreply@trampaj.hr>`,
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
     to: email,
     subject: "Postavi novu lozinku — Trampaj.hr",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#08152E">Reset lozinke, ${username}</h2>
-        <p>Klikni na gumb ispod kako bi postavio/la novu lozinku. Link vrijedi <strong>1 sat</strong>.</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+        <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
+          <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
+        </div>
+        <h2 style="color:#08152E;margin-top:0">Reset lozinke</h2>
+        <p style="color:#444">Zdravo ${username}, klikni na gumb ispod kako bi postavio/la novu lozinku. Link vrijedi <strong>1 sat</strong>.</p>
         <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;
-          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0">
+          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0;font-size:16px">
           Postavi novu lozinku
         </a>
-        <p style="color:#666;font-size:12px">Ako nisi tražio/la reset lozinke, ignoriraj ovaj email.</p>
-        <p style="color:#666;font-size:12px">Ili kopiraj link: ${link}</p>
+        <p style="color:#888;font-size:12px;margin-top:24px">Ako nisi tražio/la reset lozinke, ignoriraj ovaj email.</p>
       </div>
     `,
   });
 
+  if (error) throw new Error(error.message);
   return { sent: true };
 }
 
@@ -157,9 +158,8 @@ router.post("/auth/register", async (req, res) => {
     const verificationToken = randomUUID();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    const hasSmtp = !!process.env["SMTP_HOST"];
-    // Bez SMTP-a (dev/beta): odmah verificiraj korisnika
-    const autoVerified = !hasSmtp;
+    const hasEmail = !!process.env["RESEND_API_KEY"];
+    const autoVerified = !hasEmail;
 
     const id = randomUUID();
     await db.insert(usersTable).values({
@@ -176,16 +176,35 @@ router.post("/auth/register", async (req, res) => {
       isVerified: autoVerified,
     });
 
+    let actuallyVerified = autoVerified;
+    let emailSent = false;
+    let devVerifyLink: string | undefined;
+
     if (!autoVerified) {
-      const emailResult = await sendVerificationEmail(
-        email.toLowerCase().trim(),
-        username.trim(),
-        verificationToken,
-      );
+      try {
+        const emailResult = await sendVerificationEmail(
+          email.toLowerCase().trim(),
+          username.trim(),
+          verificationToken,
+        );
+        emailSent = emailResult.sent;
+        devVerifyLink = emailResult.devLink;
+      } catch (emailErr) {
+        req.log.warn({ emailErr }, "email send failed — auto-verifying user as fallback");
+        // Email not working (domain not verified etc.) — auto-verify so user can still use the app
+        actuallyVerified = true;
+        await db
+          .update(usersTable)
+          .set({ isVerified: true, verificationToken: null, verificationExpiry: null })
+          .where(eq(usersTable.id, id));
+      }
+    }
+
+    if (!actuallyVerified) {
       res.status(201).json({
         message: "Registracija uspješna. Provjeri email za potvrdu.",
-        emailSent: emailResult.sent,
-        devVerifyLink: emailResult.devLink,
+        emailSent,
+        devVerifyLink,
       });
       return;
     }
