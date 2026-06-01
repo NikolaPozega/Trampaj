@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { View } from "react-native";
-import { router, useRootNavigationState } from "expo-router";
+import { router } from "expo-router";
 
 export default function NotFoundScreen() {
-  const rootNavigationState = useRootNavigationState();
-
   useEffect(() => {
-    if (!rootNavigationState?.key) return;
-    router.replace("/(tabs)");
-  }, [rootNavigationState?.key]);
+    const t = setTimeout(() => {
+      router.replace("/(tabs)");
+    }, 50);
+    return () => clearTimeout(t);
+  }, []);
 
   return <View style={{ flex: 1, backgroundColor: "#08152E" }} />;
 }
