@@ -61,9 +61,8 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | null>(null);
 
-const API_BASE = process.env["EXPO_PUBLIC_DOMAIN"]
-  ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}/api`
-  : "/api";
+const FALLBACK_DOMAIN = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
+const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
 
 const POLL_INTERVAL = 5000;
 
