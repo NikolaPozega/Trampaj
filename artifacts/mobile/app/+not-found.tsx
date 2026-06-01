@@ -1,24 +1,29 @@
-import { Link, Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { router, Stack } from "expo-router";
+import { useEffect } from "react";
+import { StyleSheet, Text, View, Pressable } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
 export default function NotFoundScreen() {
   const colors = useColors();
 
+  useEffect(() => {
+    const t = setTimeout(() => router.replace("/"), 800);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <>
-      <Stack.Screen options={{ title: "Oops!" }} />
+      <Stack.Screen options={{ title: "Ups!" }} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          This screen doesn&apos;t exist.
+          Ovaj ekran ne postoji.
         </Text>
-
-        <Link href="/" style={styles.link}>
+        <Pressable onPress={() => router.replace("/")} style={styles.link}>
           <Text style={[styles.linkText, { color: colors.primary }]}>
-            Go to home screen!
+            Idi na početni zaslon!
           </Text>
-        </Link>
+        </Pressable>
       </View>
     </>
   );

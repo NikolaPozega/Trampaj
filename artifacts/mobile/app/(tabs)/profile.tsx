@@ -305,15 +305,6 @@ function StatPill({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  if (IS_WEB) {
-    return (
-      <WebDownloadScreen
-        title="Profil je dostupan u aplikaciji"
-        subtitle={"Upravljaj oglasima, prataj ponude\ni postavke u Trampa aplikaciji."}
-      />
-    );
-  }
-
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const {

@@ -208,15 +208,6 @@ function SectionCard({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PostScreen() {
-  if (IS_WEB) {
-    return (
-      <WebDownloadScreen
-        title="Objavi oglas u aplikaciji"
-        subtitle={"Za objavu oglasa trebaš Trampa app.\nPreuzmi je besplatno — traje manje od minute."}
-      />
-    );
-  }
-
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addListing, listings } = useListings();
