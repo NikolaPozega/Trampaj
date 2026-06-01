@@ -308,13 +308,14 @@ export default function PostScreen() {
   async function pickImage(fromCamera: boolean) {
     let result;
     const isWeb = Platform.OS === "web";
-    if (fromCamera) {
-      if (!isWeb) {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          Alert.alert("Dozvola potrebna", "Potrebna je dozvola za kameru.");
-          return;
-        }
+    // On web, launchCameraAsync opens the native camera app which kills the browser
+    // tab on Android. Use launchImageLibraryAsync for both buttons on web — the OS
+    // file picker lets the user choose camera or gallery without leaving the tab.
+    if (fromCamera && !isWeb) {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Dozvola potrebna", "Potrebna je dozvola za kameru.");
+        return;
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
@@ -331,8 +332,7 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
-        allowsEditing: !isWeb,
-        aspect: [4, 3],
+        allowsEditing: false,
       });
     }
     if (!result.canceled && result.assets[0]) {
