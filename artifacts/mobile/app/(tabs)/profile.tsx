@@ -753,6 +753,36 @@ export default function ProfileScreen() {
           </Pressable>
         )}
 
+        {/* App update section — native only */}
+        {!IS_WEB && (
+          <View style={[styles.gdprSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.gdprTitleRow}>
+              <Feather name="smartphone" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.gdprTitle, { color: colors.mutedForeground }]}>Aplikacija</Text>
+            </View>
+            <Pressable
+              onPress={handleCheckUpdate}
+              disabled={updating}
+              style={({ pressed }) => [styles.gdprDeleteBtn, {
+                borderColor: `${colors.secondary}40`,
+                opacity: pressed || updating ? 0.7 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }]}
+            >
+              {updating
+                ? <ActivityIndicator size="small" color={colors.secondary} />
+                : <Feather name="download-cloud" size={14} color={colors.secondary} />
+              }
+              <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: colors.secondary }}>
+                {updating ? "Provjera ažuriranja…" : "Provjeri ažuriranja"}
+              </Text>
+              {!updating && <Feather name="chevron-right" size={13} color={colors.secondary} />}
+            </Pressable>
+          </View>
+        )}
+
         {/* GDPR / Legal section */}
         {user && (
           <View style={[styles.gdprSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -787,28 +817,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* App update button — native only */}
-        {!IS_WEB && (
-          <Pressable
-            onPress={handleCheckUpdate}
-            disabled={updating}
-            style={({ pressed }) => [{
-              flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
-              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginTop: 6,
-              backgroundColor: colors.muted,
-              borderWidth: 1,
-              borderColor: colors.border,
-              opacity: pressed || updating ? 0.6 : 1,
-            }]}
-          >
-            <Feather name="download" size={13} color={colors.mutedForeground} />
-            <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
-              {updating ? "Provjera ažuriranja…" : "Ažuriraj aplikaciju"}
-            </Text>
-            {!updating && <Feather name="chevron-right" size={13} color={colors.mutedForeground} />}
-            {updating && <ActivityIndicator size="small" color={colors.mutedForeground} />}
-          </Pressable>
-        )}
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stats}>
