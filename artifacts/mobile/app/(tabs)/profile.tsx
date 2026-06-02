@@ -1186,6 +1186,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={async () => {
                   setShowLogoutModal(false);
+                  await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
                   await logout();
                   router.replace("/(tabs)");
                 }}

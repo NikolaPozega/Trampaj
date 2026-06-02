@@ -40,7 +40,11 @@ export default function TabLayout() {
           height: Platform.OS === "web" ? 62 : 54 + insets.bottom,
           paddingBottom: Platform.OS === "web" ? 8 : insets.bottom + 6,
           paddingTop: 6,
-        } : { display: "none" },
+        } : {
+          height: 0,
+          overflow: "hidden",
+          borderTopWidth: 0,
+        },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
