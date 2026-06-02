@@ -100,7 +100,7 @@ export default function LoginScreen() {
           text: "Aktiviraj",
           onPress: async () => {
             await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
-            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: savedPass }));
+            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser.toLowerCase(), password: savedPass }));
             setBioEnabled(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
