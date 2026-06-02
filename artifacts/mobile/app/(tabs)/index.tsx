@@ -246,6 +246,18 @@ export default function BrowseScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshDone, setRefreshDone] = useState(false);
   const [bottomAdSeed] = useState(() => `guest-bottom-${Date.now()}`);
+  // Odgodi prikaz guest bottom ada da ne treperi pri odjavi (tab bar treba 300ms da nestane)
+  const [showGuestAd, setShowGuestAd] = useState(!user);
+  const guestAdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!user) {
+      guestAdTimer.current = setTimeout(() => setShowGuestAd(true), 350);
+    } else {
+      if (guestAdTimer.current) { clearTimeout(guestAdTimer.current); guestAdTimer.current = null; }
+      setShowGuestAd(false);
+    }
+    return () => { if (guestAdTimer.current) clearTimeout(guestAdTimer.current); };
+  }, [user]);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const spinLoop = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -357,7 +369,7 @@ export default function BrowseScreen() {
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   // Guest: bottom inset for the fixed ad banner (52px banner + safe area)
-  const guestBottomAd = !user ? 52 : 0;
+  const guestBottomAd = showGuestAd ? 52 : 0;
 
   const renderItem = ({ item }: { item: FlatItem }) => {
     if ("type" in item && item.type === "ad") {
@@ -534,7 +546,7 @@ export default function BrowseScreen() {
       )}
 
       {/* ── Guest fixed bottom ad ──────────────────────────────────────────── */}
-      {!user && (
+      {showGuestAd && (
         <View
           style={[
             styles.guestBottomAd,
