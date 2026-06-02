@@ -122,6 +122,14 @@ router.post("/auth/register", async (req, res) => {
     res.status(400).json({ error: "Lozinka mora imati najmanje 6 znakova" });
     return;
   }
+  if (!/[A-Z]/.test(password)) {
+    res.status(400).json({ error: "Lozinka mora sadržavati najmanje jedno veliko slovo" });
+    return;
+  }
+  if (!/[0-9]/.test(password)) {
+    res.status(400).json({ error: "Lozinka mora sadržavati najmanje jedan broj" });
+    return;
+  }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
@@ -429,6 +437,14 @@ router.post("/auth/reset-password", async (req, res) => {
   }
   if (newPassword.length < 6) {
     res.status(400).json({ error: "Lozinka mora imati najmanje 6 znakova" });
+    return;
+  }
+  if (!/[A-Z]/.test(newPassword)) {
+    res.status(400).json({ error: "Lozinka mora sadržavati najmanje jedno veliko slovo" });
+    return;
+  }
+  if (!/[0-9]/.test(newPassword)) {
+    res.status(400).json({ error: "Lozinka mora sadržavati najmanje jedan broj" });
     return;
   }
 

@@ -70,6 +70,8 @@ export default function OnboardingScreen() {
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "Nevažeći email";
     if (!email.trim()) e.email = "Email je obavezan";
     if (password.length < 6) e.password = "Najmanje 6 znakova";
+    else if (!/[A-Z]/.test(password)) e.password = "Mora sadržavati veliko slovo";
+    else if (!/[0-9]/.test(password)) e.password = "Mora sadržavati broj";
     if (password !== confirmPassword) e.confirmPassword = "Lozinke se ne podudaraju";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -330,7 +332,7 @@ export default function OnboardingScreen() {
               <Field label="Email adresa *" value={email} onChange={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: "" })); }}
                 placeholder="marko@email.com" keyboardType="email-address" error={errors.email} colors={colors} />
               <Field label="Lozinka *" value={password} onChange={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: "" })); }}
-                placeholder="Najmanje 6 znakova" secureTextEntry={!showPass} showToggle onToggleSecure={() => setShowPass((v) => !v)}
+                placeholder="Min. 6 znakova, veliko slovo i broj" secureTextEntry={!showPass} showToggle onToggleSecure={() => setShowPass((v) => !v)}
                 showingSecure={showPass} error={errors.password} colors={colors} />
               <Field label="Potvrdi lozinku *" value={confirmPassword} onChange={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: "" })); }}
                 placeholder="Ponovi lozinku" secureTextEntry={!showConfirm} showToggle onToggleSecure={() => setShowConfirm((v) => !v)}

@@ -45,6 +45,14 @@ export default function ResetPasswordScreen() {
       setError("Lozinka mora imati najmanje 6 znakova.");
       return;
     }
+    if (!/[A-Z]/.test(newPassword)) {
+      setError("Lozinka mora sadržavati najmanje jedno veliko slovo.");
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setError("Lozinka mora sadržavati najmanje jedan broj.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setError("Lozinke se ne podudaraju.");
       return;
