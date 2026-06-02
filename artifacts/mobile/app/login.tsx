@@ -379,11 +379,6 @@ export default function LoginScreen() {
             <Feather name="lock" size={18} color={colors.secondary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.bioBtnText, { color: colors.foreground }]}>Prijava otiskom / licem</Text>
-              {bioUsername ? (
-                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
-                  kao: {bioUsername}
-                </Text>
-              ) : null}
             </View>
             <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
           </Pressable>
