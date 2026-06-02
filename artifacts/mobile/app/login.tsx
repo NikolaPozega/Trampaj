@@ -115,6 +115,7 @@ export default function LoginScreen() {
     setLoading(false);
     if (r.ok) {
       await setMyName(savedUser);
+      await AsyncStorage.setItem(SAVED_USERNAME_KEY, savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
@@ -175,6 +176,7 @@ export default function LoginScreen() {
     if (r.ok) {
       setShowBioConfirm(false);
       await setMyName(savedUser);
+      await AsyncStorage.setItem(SAVED_USERNAME_KEY, savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
