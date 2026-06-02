@@ -77,7 +77,7 @@ async function sendVerificationEmail(
             <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
           </p>
         </div>
-        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Trampa bez granica 🇭🇷</p>
+        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Jedna trampa, dvije sretne strane</p>
       </div>
     `,
   });
@@ -132,7 +132,7 @@ async function sendPasswordResetEmail(
             <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
           </p>
         </div>
-        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Trampa bez granica 🇭🇷</p>
+        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Jedna trampa, dvije sretne strane</p>
       </div>
     `,
   });
