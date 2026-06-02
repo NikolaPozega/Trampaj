@@ -161,6 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json() as { user: AuthUser };
         setToken(stored);
         setUser(data.user);
+        // Drži saved username sinkroniziranim s prijavljenim korisnikom
+        await AsyncStorage.setItem("@trampaj_saved_username_v1", data.user.username);
         return { ok: true };
       }
       return { ok: false };
@@ -194,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return { ok: false, error: "Nevažeći token" };
       const data = await res.json() as { user: AuthUser };
       await AsyncStorage.setItem(TOKEN_KEY, jwt);
+      await AsyncStorage.setItem("@trampaj_saved_username_v1", data.user.username);
       setToken(jwt);
       setUser(data.user);
       return { ok: true, user: data.user };
