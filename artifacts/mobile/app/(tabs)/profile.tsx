@@ -1188,7 +1188,6 @@ export default function ProfileScreen() {
                   setShowLogoutModal(false);
                   await AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY, BIO_CREDS_KEY]);
                   await logout();
-                  router.replace("/(tabs)");
                 }}
                 style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
               >
