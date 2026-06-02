@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const { login, tryAutoLogin } = useAuth();
   const { setMyName } = useListings();
   const [bioEnabled, setBioEnabled] = useState(false);
+  const [bioUsername, setBioUsername] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -58,9 +59,16 @@ export default function LoginScreen() {
     Promise.all([
       AsyncStorage.getItem(BIO_ENABLED_KEY),
       AsyncStorage.getItem(SAVED_USERNAME_KEY),
-    ]).then(([bio, savedUser]) => {
+      AsyncStorage.getItem(BIO_CREDS_KEY),
+    ]).then(([bio, savedUser, credsRaw]) => {
       setBioEnabled(bio === "yes");
       if (savedUser) setUsername(savedUser);
+      if (credsRaw) {
+        try {
+          const { username: u } = JSON.parse(credsRaw) as { username: string };
+          if (u) setBioUsername(u);
+        } catch {}
+      }
     });
   }, []);
 
@@ -359,7 +367,14 @@ export default function LoginScreen() {
             style={({ pressed }) => [styles.bioBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             <Feather name="lock" size={18} color={colors.secondary} />
-            <Text style={[styles.bioBtnText, { color: colors.foreground }]}>Prijava otiskom / licem</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.bioBtnText, { color: colors.foreground }]}>Prijava otiskom / licem</Text>
+              {bioUsername ? (
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                  kao: {bioUsername}
+                </Text>
+              ) : null}
+            </View>
             <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
           </Pressable>
         )}

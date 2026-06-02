@@ -298,15 +298,16 @@ router.get("/auth/verify/:token", async (req, res) => {
 
   function htmlPage(ok: boolean, title: string, body: string, deepLink?: string) {
     const script = deepLink
-      ? `<script>setTimeout(function(){window.location.href="${deepLink}"},400);</script>`
+      ? `<script>window.location.replace("${deepLink}");</script>`
       : "";
     const btn = deepLink
       ? `<a href="${deepLink}" class="btn">Otvori aplikaciju →</a>`
       : `<a href="#" onclick="window.close()" class="btn">Zatvori</a>`;
+    const visibilityStyle = deepLink ? "visibility:hidden" : "";
     return `<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trampaj.hr — Verifikacija emaila</title>
-<style>*{box-sizing:border-box}body{font-family:sans-serif;background:#08152E;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}.card{background:#0f2244;border-radius:16px;padding:32px 24px;max-width:400px;width:100%;text-align:center}.logo{color:#F5C100;font-size:22px;font-weight:bold;margin-bottom:20px}.icon{font-size:60px;margin-bottom:16px}h2{margin:0 0 12px;font-size:20px}p{color:#aaa;font-size:14px;line-height:1.5;margin:0 0 20px}.btn{display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px}</style>${script}
+<style>*{box-sizing:border-box}body{font-family:sans-serif;background:#08152E;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px;${visibilityStyle}}.card{background:#0f2244;border-radius:16px;padding:32px 24px;max-width:400px;width:100%;text-align:center}.logo{color:#F5C100;font-size:22px;font-weight:bold;margin-bottom:20px}.icon{font-size:60px;margin-bottom:16px}h2{margin:0 0 12px;font-size:20px}p{color:#aaa;font-size:14px;line-height:1.5;margin:0 0 20px}.btn{display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px}</style>${script}
 </head><body><div class="card"><div class="logo">🔄 Trampaj.hr</div>
 <div class="icon">${ok ? "✅" : "❌"}</div>
 <h2>${title}</h2><p>${body}</p>${btn}</div></body></html>`;
