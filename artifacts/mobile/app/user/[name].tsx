@@ -106,7 +106,12 @@ export default function UserListingsScreen() {
             </Text>
           </View>
         </Pressable>
-        <View style={{ width: 36 }} />
+        <Pressable
+          onPress={() => router.replace("/(tabs)")}
+          style={({ pressed }) => [styles.homeBtn, { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Feather name="refresh-cw" size={16} color={colors.primary} />
+        </Pressable>
       </View>
 
       {userListings.length === 0 ? (
@@ -219,6 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  homeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   headerCenter: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingHorizontal: 8 },
   avatar: { width: 42, height: 42, borderRadius: 21, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 16, fontFamily: "Inter_700Bold" },
