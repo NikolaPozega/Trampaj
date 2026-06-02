@@ -464,30 +464,34 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }
   const flatListRef = useRef<FlatList>(null);
+  const headerHeightRef = useRef(480);
 
   const displayName = user?.username ?? myName;
 
   const activeCount = myListings.filter((l) => l.status === "active" && l.moderationStatus === "active").length;
   const tradedCount = myListings.filter((l) => l.status === "traded").length;
   const pendingCount = myListings.filter((l) => l.moderationStatus === "pending").length;
-  const [statusFilter, setStatusFilter] = useState<"active" | "traded" | null>(null);
-  const filteredMyListings = statusFilter ? myListings.filter((l) => l.status === statusFilter) : myListings;
+  const [statusFilter, setStatusFilter] = useState<"active" | "traded" | "pending" | null>(null);
+  const filteredMyListings = statusFilter === "pending"
+    ? myListings.filter((l) => l.moderationStatus === "pending")
+    : statusFilter
+    ? myListings.filter((l) => l.status === statusFilter)
+    : myListings;
 
-  // Scroll to very top (header) when statusFilter changes, or when tab gets focus
+  // Scroll to very top (header) when tab gets focus
   useFocusEffect(
     useCallback(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     }, [])
   );
 
+  // When filter changes, scroll past the header to show listings / empty state
   useEffect(() => {
-    setTimeout(() => {
-      if (statusFilter !== null && filteredMyListings.length > 0) {
-        flatListRef.current?.scrollToIndex({ index: 0, animated: true, viewOffset: 8 });
-      } else {
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }
-    }, 80);
+    if (statusFilter !== null) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: headerHeightRef.current, animated: true });
+      }, 80);
+    }
   }, [statusFilter]);
 
   const allMatches = useMemo(
@@ -638,7 +642,7 @@ export default function ProfileScreen() {
   ];
 
   const ListHeader = () => (
-    <View style={[styles.headerSection, { paddingTop: topPad }]}>
+    <View style={[styles.headerSection, { paddingTop: topPad }]} onLayout={(e) => { headerHeightRef.current = e.nativeEvent.layout.height; }}>
       {/* Profile card */}
       <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {/* Envelope button — top-right corner */}
@@ -826,19 +830,19 @@ export default function ProfileScreen() {
         <View style={styles.stats}>
           <StatPill label="Aktivni" value={activeCount} color={colors.primary} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === "active"}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(statusFilter === "active" ? null : "active"); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("active"); }}
           />
           <StatPill label="Zamijenjeni" value={tradedCount} color={colors.secondary} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === "traded"}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(statusFilter === "traded" ? null : "traded"); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("traded"); }}
           />
           {pendingCount > 0 && (
             <StatPill label="Na čekanju" value={pendingCount} color="#F5C100" textColor={colors.foreground} bg={colors.muted}
-              active={false}
-              onPress={() => {}}
+              active={statusFilter === "pending"}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("pending"); }}
             />
           )}
-          <StatPill label="Ukupno" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted}
+          <StatPill label="Svi" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === null}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(null); }}
           />
@@ -940,9 +944,6 @@ export default function ProfileScreen() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
-        onScrollToIndexFailed={(info) => {
-          flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
-        }}
         ListHeaderComponent={ListHeader}
         keyboardShouldPersistTaps="always"
         refreshControl={
