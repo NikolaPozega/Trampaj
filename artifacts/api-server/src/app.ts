@@ -78,6 +78,12 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// ─── Static assets (slike za emailove i sl.) ──────────────────────────────────
+const PUBLIC_DIR = path.resolve(__dirname, "../public");
+if (fs.existsSync(PUBLIC_DIR)) {
+  app.use("/static", express.static(PUBLIC_DIR, { maxAge: "7d" }));
+}
+
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
 

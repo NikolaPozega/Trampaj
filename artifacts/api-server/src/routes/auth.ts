@@ -42,8 +42,8 @@ async function sendVerificationEmail(
     subject: "Potvrdi svoju email adresu — Trampaj.hr",
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
-        <div style="background:#08152E;padding:24px 28px;border-radius:8px 8px 0 0">
-          <h1 style="color:#F5C100;margin:0;font-size:22px;letter-spacing:-0.5px">🔄 Trampaj.hr</h1>
+        <div style="background:#08152E;border-radius:8px 8px 0 0;overflow:hidden;text-align:center">
+          <img src="${APP_URL}/static/logo.png" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />
         </div>
         <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
           <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
@@ -100,8 +100,8 @@ async function sendPasswordResetEmail(
     subject: "Postavljanje nove lozinke — Trampaj.hr",
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
-        <div style="background:#08152E;padding:24px 28px;border-radius:8px 8px 0 0">
-          <h1 style="color:#F5C100;margin:0;font-size:22px;letter-spacing:-0.5px">🔄 Trampaj.hr</h1>
+        <div style="background:#08152E;border-radius:8px 8px 0 0;overflow:hidden;text-align:center">
+          <img src="${APP_URL}/static/logo.png" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />
         </div>
         <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
           <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
