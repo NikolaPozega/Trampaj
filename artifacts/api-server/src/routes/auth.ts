@@ -4,11 +4,23 @@ import jwt from "jsonwebtoken";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
+import fs from "node:fs";
+import path from "node:path";
 import { db, usersTable, type PublicUser } from "@workspace/db";
 
 const router: IRouter = Router();
 
 const JWT_SECRET = process.env["SESSION_SECRET"] ?? "dev-secret-change-me";
+
+// Logo embedded as data URI so email clients don't need to fetch an external URL
+function getLogoImgTag(): string {
+  try {
+    const logoPath = path.resolve(__dirname, "../public/logo_email.jpg");
+    if (!fs.existsSync(logoPath)) return "";
+    const b64 = fs.readFileSync(logoPath).toString("base64");
+    return `<img src="data:image/jpeg;base64,${b64}" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />`;
+  } catch { return ""; }
+}
 const APP_URL = process.env["REPLIT_DEV_DOMAIN"]
   ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
   : "http://localhost:80";
@@ -43,7 +55,7 @@ async function sendVerificationEmail(
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
         <div style="background:#08152E;border-radius:8px 8px 0 0;overflow:hidden;text-align:center">
-          <img src="${APP_URL}/static/logo.png" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />
+          ${getLogoImgTag()}
         </div>
         <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
           <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
@@ -56,13 +68,10 @@ async function sendVerificationEmail(
               Potvrdi email adresu
             </a>
           </div>
-          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 8px">
-            Ako gumb ne radi, kopirajte i zalijepite sljedeći link u preglednik:
-          </p>
-          <p style="font-size:12px;word-break:break-all;color:#2563eb;margin:0 0 24px">
-            <a href="${link}" style="color:#2563eb">${link}</a>
-          </p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px">
+          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 16px">
+            Hvala na povjerenju i sretno u trampanju!
+          </p>
           <p style="color:#888;font-size:12px;line-height:1.6;margin:0">
             Link za potvrdu vrijedi <strong>24 sata</strong>. Ako niste tražili registraciju na Trampaj.hr, možete zanemariti ovaj email — vaša adresa neće biti aktivirana.<br><br>
             <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
@@ -101,7 +110,7 @@ async function sendPasswordResetEmail(
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
         <div style="background:#08152E;border-radius:8px 8px 0 0;overflow:hidden;text-align:center">
-          <img src="${APP_URL}/static/logo.png" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />
+          ${getLogoImgTag()}
         </div>
         <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
           <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
@@ -114,13 +123,10 @@ async function sendPasswordResetEmail(
               Postavi novu lozinku
             </a>
           </div>
-          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 8px">
-            Ako gumb ne radi, kopirajte i zalijepite sljedeći link u preglednik:
-          </p>
-          <p style="font-size:12px;word-break:break-all;color:#2563eb;margin:0 0 24px">
-            <a href="${link}" style="color:#2563eb">${link}</a>
-          </p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px">
+          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 16px">
+            Hvala na povjerenju i sretno u trampanju!
+          </p>
           <p style="color:#888;font-size:12px;line-height:1.6;margin:0">
             Link za postavljanje lozinke vrijedi <strong>1 sat</strong>. Ako niste tražili reset lozinke, možete zanemariti ovaj email — vaša trenutna lozinka ostaje nepromijenjena.<br><br>
             <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
