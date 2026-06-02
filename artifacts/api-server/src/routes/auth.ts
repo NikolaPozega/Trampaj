@@ -41,7 +41,7 @@ async function sendVerificationEmail(
   username: string,
   token: string,
 ): Promise<{ sent: boolean; devLink?: string }> {
-  const link = `${APP_URL}/verify-email?token=${token}`;
+  const link = `${APP_URL}/api/auth/verify/${token}`;
   const resend = getResend();
 
   if (!resend) {

@@ -22,7 +22,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ ok: boolean; error?: string; notVerified?: boolean; email?: string }>;
-  loginWithToken: (jwt: string) => Promise<{ ok: boolean; error?: string }>;
+  loginWithToken: (jwt: string) => Promise<{ ok: boolean; error?: string; user?: AuthUser }>;
   register: (data: RegisterData) => Promise<{ ok: boolean; error?: string; devVerifyLink?: string; emailSent?: boolean }>;
   logout: (keepToken?: boolean) => Promise<void>;
   tryAutoLogin: () => Promise<{ ok: boolean }>;
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(TOKEN_KEY, jwt);
       setToken(jwt);
       setUser(data.user);
-      return { ok: true };
+      return { ok: true, user: data.user };
     } catch {
       return { ok: false, error: "Nema veze s poslužiteljem" };
     }
