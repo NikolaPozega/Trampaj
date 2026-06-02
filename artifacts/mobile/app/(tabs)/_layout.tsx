@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
@@ -11,6 +12,7 @@ export default function TabLayout() {
   const colors = useColors();
   const { user, isLoading } = useAuth();
   const { unreadCount } = useChat();
+  const insets = useSafeAreaInsets();
   const wasLoggedIn = useRef(false);
 
   // Track if user was ever logged in; on logout go back to browse (not login)
@@ -35,8 +37,8 @@ export default function TabLayout() {
           borderTopColor: "rgba(56,189,248,0.22)",
           elevation: 0,
           shadowOpacity: 0,
-          height: Platform.OS === "web" ? 62 : 86,
-          paddingBottom: Platform.OS === "web" ? 8 : 30,
+          height: Platform.OS === "web" ? 62 : 54 + insets.bottom,
+          paddingBottom: Platform.OS === "web" ? 8 : insets.bottom + 6,
           paddingTop: 6,
         } : { display: "none" },
         tabBarLabelStyle: {

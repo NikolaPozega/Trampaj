@@ -487,11 +487,9 @@ export default function ProfileScreen() {
 
   // When filter changes, scroll past the header to show listings / empty state
   useEffect(() => {
-    if (statusFilter !== null) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: headerHeightRef.current, animated: true });
-      }, 80);
-    }
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: headerHeightRef.current, animated: true });
+    }, 80);
   }, [statusFilter]);
 
   const allMatches = useMemo(
@@ -1019,7 +1017,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.list,
           myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (IS_WEB ? 104 : 64) },
+          { paddingBottom: insets.bottom + (IS_WEB ? 104 : 80) },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
