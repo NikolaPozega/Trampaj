@@ -359,8 +359,8 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {/* Biometric button */}
-        {bioEnabled && (
+        {/* Biometric button — shown only when username matches stored bio account */}
+        {bioEnabled && username.trim().length > 0 && username.trim().toLowerCase() === bioUsername.toLowerCase() && (
           <Pressable
             onPress={handleBioLogin}
             disabled={loading}
