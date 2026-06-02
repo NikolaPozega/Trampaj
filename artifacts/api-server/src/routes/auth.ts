@@ -164,8 +164,10 @@ router.post("/auth/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const id = randomUUID();
 
-    // Always auto-verify — email verification link won't work on mobile anyway.
-    // Resend is used only for password reset emails.
+    // Generate verification token, expires in 24h
+    const verifyToken = randomUUID();
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     await db.insert(usersTable).values({
       id,
       username: username.trim(),
@@ -175,41 +177,24 @@ router.post("/auth/register", async (req, res) => {
       address: address?.trim() || null,
       city: city?.trim() || null,
       avatarBase64: avatarBase64 || null,
-      verificationToken: null,
-      verificationExpiry: null,
-      isVerified: true,
+      verificationToken: verifyToken,
+      verificationExpiry: verifyExpiry,
+      isVerified: false,
     });
 
-    // Send welcome email (best-effort, never blocks registration)
+    // Send verification email
+    let emailSent = false;
+    let devVerifyLink: string | undefined;
     try {
-      const resend = getResend();
-      if (resend) {
-        await resend.emails.send({
-          from: EMAIL_FROM,
-          to: email.toLowerCase().trim(),
-          subject: "Dobrodošao na Trampaj.hr! 🔄",
-          html: `
-            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
-              <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
-                <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
-              </div>
-              <h2 style="color:#08152E;margin-top:0">Dobrodošao, ${username.trim()}!</h2>
-              <p style="color:#444">Tvoj profil je aktiviran. Možeš se odmah prijaviti i početi trampatii!</p>
-              <p style="color:#888;font-size:12px;margin-top:24px">Trampaj.hr — Trampa bez granica 🇭🇷</p>
-            </div>
-          `,
-        });
-      }
-    } catch { /* welcome email failure never blocks registration */ }
-
-    const token = jwt.sign({ userId: id, username: username.trim() }, JWT_SECRET, {
-      expiresIn: "30d",
-    });
+      const result = await sendVerificationEmail(email.toLowerCase().trim(), username.trim(), verifyToken);
+      emailSent = result.sent;
+      devVerifyLink = result.devLink;
+    } catch { /* email failure never blocks registration */ }
 
     res.status(201).json({
-      message: "Registracija uspješna! Možeš se odmah prijaviti.",
-      autoVerified: true,
-      token,
+      message: "Registracija uspješna! Provjeri email za aktivaciju profila.",
+      emailSent,
+      devVerifyLink,
     });
   } catch (err) {
     req.log.error({ err }, "register error");
@@ -269,6 +254,23 @@ router.post("/auth/login", async (req, res) => {
 // ─── GET /api/auth/verify/:token ──────────────────────────────────────────────
 router.get("/auth/verify/:token", async (req, res) => {
   const { token } = req.params as { token: string };
+  const wantJson = req.headers["accept"]?.includes("application/json");
+
+  function htmlPage(ok: boolean, title: string, body: string, deepLink?: string) {
+    const script = deepLink
+      ? `<script>setTimeout(function(){window.location.href="${deepLink}"},400);</script>`
+      : "";
+    const btn = deepLink
+      ? `<a href="${deepLink}" class="btn">Otvori aplikaciju →</a>`
+      : `<a href="#" onclick="window.close()" class="btn">Zatvori</a>`;
+    return `<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trampaj.hr — Verifikacija emaila</title>
+<style>*{box-sizing:border-box}body{font-family:sans-serif;background:#08152E;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}.card{background:#0f2244;border-radius:16px;padding:32px 24px;max-width:400px;width:100%;text-align:center}.logo{color:#F5C100;font-size:22px;font-weight:bold;margin-bottom:20px}.icon{font-size:60px;margin-bottom:16px}h2{margin:0 0 12px;font-size:20px}p{color:#aaa;font-size:14px;line-height:1.5;margin:0 0 20px}.btn{display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px}</style>${script}
+</head><body><div class="card"><div class="logo">🔄 Trampaj.hr</div>
+<div class="icon">${ok ? "✅" : "❌"}</div>
+<h2>${title}</h2><p>${body}</p>${btn}</div></body></html>`;
+  }
 
   try {
     const [user] = await db
@@ -278,12 +280,14 @@ router.get("/auth/verify/:token", async (req, res) => {
       .limit(1);
 
     if (!user) {
-      res.status(400).json({ error: "Nevažeći ili istekli token" });
+      if (wantJson) { res.status(400).json({ error: "Nevažeći ili istekli token" }); return; }
+      res.status(400).send(htmlPage(false, "Nevažeći link", "Ovaj link za verifikaciju nije važeći ili je već iskorišten."));
       return;
     }
 
     if (user.verificationExpiry && user.verificationExpiry < new Date()) {
-      res.status(400).json({ error: "Token je istekao. Zatraži novi." });
+      if (wantJson) { res.status(400).json({ error: "Token je istekao. Zatraži novi." }); return; }
+      res.status(400).send(htmlPage(false, "Link je istekao", "Link je važio 24 sata. Zatraži novi u aplikaciji."));
       return;
     }
 
@@ -296,14 +300,27 @@ router.get("/auth/verify/:token", async (req, res) => {
       expiresIn: "30d",
     });
 
-    res.json({
-      message: "Email potvrđen! Profil je aktivan.",
-      token: jwt_token,
-      user: toPublicUser({ ...user, isVerified: true, verificationToken: null, verificationExpiry: null }),
-    });
+    if (wantJson) {
+      res.json({
+        message: "Email potvrđen! Profil je aktivan.",
+        token: jwt_token,
+        user: toPublicUser({ ...user, isVerified: true, verificationToken: null, verificationExpiry: null }),
+      });
+      return;
+    }
+
+    // Browser flow — redirect to app via deep link carrying the JWT
+    const deepLink = `mobile://verify-email?jwt=${jwt_token}`;
+    res.send(htmlPage(
+      true,
+      "Email potvrđen!",
+      "Tvoj profil je aktivan. Aplikacija će se otvoriti automatski.",
+      deepLink,
+    ));
   } catch (err) {
     req.log.error({ err }, "verify error");
-    res.status(500).json({ error: "Greška pri verifikaciji" });
+    if (wantJson) { res.status(500).json({ error: "Greška pri verifikaciji" }); return; }
+    res.status(500).send(htmlPage(false, "Greška", "Došlo je do greške. Pokušaj ponovo."));
   }
 });
 

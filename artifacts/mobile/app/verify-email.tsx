@@ -12,38 +12,64 @@ const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN
 export default function VerifyEmailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { token } = useLocalSearchParams<{ token: string }>();
-  const { login } = useAuth();
+  // token = verification token (dev/in-app link)
+  // jwt   = signed JWT (deep link from email click via browser)
+  const { token, jwt } = useLocalSearchParams<{ token?: string; jwt?: string }>();
+  const { loginWithToken } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
-  const [jwtToken, setJwtToken] = useState<string | null>(null);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
 
   useEffect(() => {
+    if (jwt) {
+      // Deep-link flow: email was opened in browser → browser redirected to app with JWT
+      loginWithToken(jwt).then((result) => {
+        if (result.ok) {
+          setStatus("success");
+          setMessage("Email potvrđen! Prijavljen si.");
+          setTimeout(() => router.replace("/(tabs)"), 1200);
+        } else {
+          setStatus("error");
+          setMessage(result.error ?? "Greška pri prijavi.");
+        }
+      });
+      return;
+    }
+
     if (!token) {
       setStatus("error");
       setMessage("Nevažeći link za verifikaciju.");
       return;
     }
 
-    fetch(`${API_BASE}/auth/verify/${token}`)
+    // In-app / dev-link flow: call API with the verification token
+    fetch(`${API_BASE}/auth/verify/${token}`, {
+      headers: { Accept: "application/json" },
+    })
       .then((r) => r.json())
       .then((data: { message?: string; token?: string; error?: string }) => {
         if (data.error) {
           setStatus("error");
           setMessage(data.error);
         } else {
-          setStatus("success");
-          setMessage(data.message ?? "Email potvrđen!");
-          if (data.token) setJwtToken(data.token);
+          if (data.token) {
+            loginWithToken(data.token).then((r) => {
+              setStatus(r.ok ? "success" : "error");
+              setMessage(r.ok ? (data.message ?? "Email potvrđen!") : (r.error ?? "Greška pri prijavi."));
+              if (r.ok) setTimeout(() => router.replace("/(tabs)"), 1200);
+            });
+          } else {
+            setStatus("success");
+            setMessage(data.message ?? "Email potvrđen!");
+          }
         }
       })
       .catch(() => {
         setStatus("error");
         setMessage("Greška pri verifikaciji. Pokušaj ponovo.");
       });
-  }, [token]);
+  }, [token, jwt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -75,16 +101,13 @@ export default function VerifyEmailScreen() {
             </View>
             <Text style={[styles.title, { color: colors.foreground }]}>Email potvrđen!</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Tvoj profil je sada aktivan. Možeš se prijaviti.
+              {message || "Tvoj profil je aktivan. Preusmjeravamo te..."}
             </Text>
             <Pressable
-              onPress={() => router.replace("/login")}
-              style={({ pressed }) => [
-                styles.btn,
-                { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
-              ]}
+              onPress={() => router.replace("/(tabs)")}
+              style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
             >
-              <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Prijavi se</Text>
+              <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Idi na oglase →</Text>
             </Pressable>
           </>
         )}
@@ -98,10 +121,7 @@ export default function VerifyEmailScreen() {
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{message}</Text>
             <Pressable
               onPress={() => router.replace("/login")}
-              style={({ pressed }) => [
-                styles.btn,
-                { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
-              ]}
+              style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
             >
               <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Idi na prijavu</Text>
             </Pressable>

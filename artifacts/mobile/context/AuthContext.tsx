@@ -22,6 +22,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ ok: boolean; error?: string; notVerified?: boolean; email?: string }>;
+  loginWithToken: (jwt: string) => Promise<{ ok: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ ok: boolean; error?: string; devVerifyLink?: string; emailSent?: boolean }>;
   logout: (keepToken?: boolean) => Promise<void>;
   tryAutoLogin: () => Promise<{ ok: boolean }>;
@@ -185,6 +186,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token]);
 
+  const loginWithToken = useCallback(async (jwt: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) return { ok: false, error: "Nevažeći token" };
+      const data = await res.json() as { user: AuthUser };
+      await AsyncStorage.setItem(TOKEN_KEY, jwt);
+      setToken(jwt);
+      setUser(data.user);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Nema veze s poslužiteljem" };
+    }
+  }, []);
+
   const refreshUser = useCallback(async () => {
     if (!token) return;
     try {
@@ -199,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, tryAutoLogin, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, tryAutoLogin, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
