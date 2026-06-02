@@ -334,6 +334,20 @@ export default function OnboardingScreen() {
               <Field label="Lozinka *" value={password} onChange={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: "" })); }}
                 placeholder="Min. 6 znakova, veliko slovo i broj" secureTextEntry={!showPass} showToggle onToggleSecure={() => setShowPass((v) => !v)}
                 showingSecure={showPass} error={errors.password} colors={colors} />
+              {password.length > 0 && (
+                <View style={styles.pwReqs}>
+                  {[
+                    { ok: password.length >= 6,    label: "Najmanje 6 znakova" },
+                    { ok: /[A-Z]/.test(password),  label: "Jedno veliko slovo" },
+                    { ok: /[0-9]/.test(password),  label: "Jedan broj" },
+                  ].map(({ ok, label }) => (
+                    <View key={label} style={styles.pwReqRow}>
+                      <Feather name={ok ? "check-circle" : "circle"} size={13} color={ok ? "#4ADE80" : "#6B7280"} />
+                      <Text style={[styles.pwReqText, { color: ok ? "#4ADE80" : "#6B7280" }]}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <Field label="Potvrdi lozinku *" value={confirmPassword} onChange={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: "" })); }}
                 placeholder="Ponovi lozinku" secureTextEntry={!showConfirm} showToggle onToggleSecure={() => setShowConfirm((v) => !v)}
                 showingSecure={showConfirm} error={errors.confirmPassword} colors={colors} />
@@ -562,6 +576,9 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   nextBtn: { paddingVertical: 15, borderRadius: 10, alignItems: "center" },
   nextBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  pwReqs: { paddingHorizontal: 4, paddingBottom: 4, gap: 5 },
+  pwReqRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  pwReqText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   footerNote: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
   successContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
   successIcon: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center" },
