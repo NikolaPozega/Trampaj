@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
 import { db, usersTable, type PublicUser } from "@workspace/db";
@@ -257,9 +257,7 @@ router.post("/auth/login", async (req, res) => {
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(isEmail
-        ? eq(usersTable.email, identifier.toLowerCase())
-        : sql`lower(${usersTable.username}) = lower(${identifier})`)
+      .where(isEmail ? eq(usersTable.email, identifier) : eq(usersTable.username, identifier))
       .limit(1);
 
     if (!user) {

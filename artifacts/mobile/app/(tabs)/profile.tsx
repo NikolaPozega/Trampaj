@@ -385,7 +385,7 @@ export default function ProfileScreen() {
       }
       await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
       await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
-      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username.toLowerCase(), password: bioPasswordInput }));
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username, password: bioPasswordInput }));
       setBioEnabled(true);
       setShowBioPasswordModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
