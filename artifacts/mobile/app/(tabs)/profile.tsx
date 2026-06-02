@@ -349,7 +349,16 @@ export default function ProfileScreen() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(BIO_ENABLED_KEY).then((v) => setBioEnabled(v === "yes"));
+    Promise.all([
+      AsyncStorage.getItem(BIO_ENABLED_KEY),
+      AsyncStorage.getItem(BIO_CREDS_KEY),
+    ]).then(([enabled, creds]) => {
+      const valid = enabled === "yes" && !!creds;
+      setBioEnabled(valid);
+      if (enabled === "yes" && !creds) {
+        AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY]);
+      }
+    });
   }, []);
 
   function handleBioEnable() {

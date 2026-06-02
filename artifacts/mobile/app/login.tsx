@@ -61,13 +61,21 @@ export default function LoginScreen() {
       AsyncStorage.getItem(SAVED_USERNAME_KEY),
       AsyncStorage.getItem(BIO_CREDS_KEY),
     ]).then(([bio, savedUser, credsRaw]) => {
-      setBioEnabled(bio === "yes");
       if (savedUser) setUsername(savedUser);
-      if (credsRaw) {
+      if (bio === "yes" && credsRaw) {
         try {
           const { username: u } = JSON.parse(credsRaw) as { username: string };
-          if (u) setBioUsername(u);
-        } catch {}
+          if (u) {
+            setBioEnabled(true);
+            setBioUsername(u);
+          } else {
+            AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY]);
+          }
+        } catch {
+          AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY]);
+        }
+      } else if (bio === "yes" && !credsRaw) {
+        AsyncStorage.multiRemove([BIO_ENABLED_KEY, BIO_ASKED_KEY]);
       }
     });
   }, []);
