@@ -41,17 +41,34 @@ async function sendVerificationEmail(
     to: email,
     subject: "Potvrdi svoju email adresu — Trampaj.hr",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
-        <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
-          <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
+        <div style="background:#08152E;padding:24px 28px;border-radius:8px 8px 0 0">
+          <h1 style="color:#F5C100;margin:0;font-size:22px;letter-spacing:-0.5px">🔄 Trampaj.hr</h1>
         </div>
-        <h2 style="color:#08152E;margin-top:0">Dobrodošao, ${username}!</h2>
-        <p style="color:#444">Klikni na gumb ispod kako bi potvrdio svoju email adresu i aktivirao profil.</p>
-        <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;
-          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0;font-size:16px">
-          Potvrdi email adresu
-        </a>
-        <p style="color:#888;font-size:12px;margin-top:24px">Link vrijedi 24 sata. Ako nisi tražio/la registraciju, ignoriraj ovaj email.</p>
+        <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+          <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
+          <p style="color:#444;font-size:14px;line-height:1.6;margin:0 0 20px">
+            hvala na registraciji na <strong>Trampaj.hr</strong>. Kako bismo potvrdili vašu email adresu i aktivirali vaš korisnički račun, molimo kliknite na gumb u nastavku.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:700;
+              padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;letter-spacing:0.2px">
+              Potvrdi email adresu
+            </a>
+          </div>
+          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 8px">
+            Ako gumb ne radi, kopirajte i zalijepite sljedeći link u preglednik:
+          </p>
+          <p style="font-size:12px;word-break:break-all;color:#2563eb;margin:0 0 24px">
+            <a href="${link}" style="color:#2563eb">${link}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px">
+          <p style="color:#888;font-size:12px;line-height:1.6;margin:0">
+            Link za potvrdu vrijedi <strong>24 sata</strong>. Ako niste tražili registraciju na Trampaj.hr, možete zanemariti ovaj email — vaša adresa neće biti aktivirana.<br><br>
+            <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
+          </p>
+        </div>
+        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Trampa bez granica 🇭🇷</p>
       </div>
     `,
   });
@@ -80,19 +97,36 @@ async function sendPasswordResetEmail(
   const { error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: email,
-    subject: "Postavi novu lozinku — Trampaj.hr",
+    subject: "Postavljanje nove lozinke — Trampaj.hr",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
-        <div style="background:#08152E;padding:20px 24px;border-radius:8px;margin-bottom:24px">
-          <h1 style="color:#F5C100;margin:0;font-size:22px">🔄 Trampaj.hr</h1>
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:0;background:#ffffff">
+        <div style="background:#08152E;padding:24px 28px;border-radius:8px 8px 0 0">
+          <h1 style="color:#F5C100;margin:0;font-size:22px;letter-spacing:-0.5px">🔄 Trampaj.hr</h1>
         </div>
-        <h2 style="color:#08152E;margin-top:0">Reset lozinke</h2>
-        <p style="color:#444">Zdravo ${username}, klikni na gumb ispod kako bi postavio/la novu lozinku. Link vrijedi <strong>1 sat</strong>.</p>
-        <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:bold;
-          padding:14px 28px;border-radius:8px;text-decoration:none;margin:16px 0;font-size:16px">
-          Postavi novu lozinku
-        </a>
-        <p style="color:#888;font-size:12px;margin-top:24px">Ako nisi tražio/la reset lozinke, ignoriraj ovaj email.</p>
+        <div style="padding:28px 28px 20px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+          <p style="color:#111;font-size:15px;margin:0 0 6px">Poštovani/a <strong>${username}</strong>,</p>
+          <p style="color:#444;font-size:14px;line-height:1.6;margin:0 0 20px">
+            primili smo zahtjev za postavljanje nove lozinke za vaš korisnički račun na <strong>Trampaj.hr</strong>. Kliknite na gumb u nastavku kako biste postavili novu lozinku.
+          </p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${link}" style="display:inline-block;background:#F5C100;color:#08152E;font-weight:700;
+              padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;letter-spacing:0.2px">
+              Postavi novu lozinku
+            </a>
+          </div>
+          <p style="color:#555;font-size:13px;line-height:1.6;margin:0 0 8px">
+            Ako gumb ne radi, kopirajte i zalijepite sljedeći link u preglednik:
+          </p>
+          <p style="font-size:12px;word-break:break-all;color:#2563eb;margin:0 0 24px">
+            <a href="${link}" style="color:#2563eb">${link}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px">
+          <p style="color:#888;font-size:12px;line-height:1.6;margin:0">
+            Link za postavljanje lozinke vrijedi <strong>1 sat</strong>. Ako niste tražili reset lozinke, možete zanemariti ovaj email — vaša trenutna lozinka ostaje nepromijenjena.<br><br>
+            <em>Ovo je automatski generirana poruka. Molimo ne odgovarajte na ovaj email.</em>
+          </p>
+        </div>
+        <p style="text-align:center;color:#aaa;font-size:11px;padding:12px 0">Trampaj.hr — Trampa bez granica 🇭🇷</p>
       </div>
     `,
   });
