@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+  Animated,
   FlatList,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -40,6 +42,33 @@ export default function UserListingsScreen() {
   const { listings } = useListings();
   const [showInfo, setShowInfo] = useState(false);
 
+  const pan = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 6 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) pan.setValue(gs.dy);
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 80 || gs.vy > 0.5) {
+          Animated.timing(pan, { toValue: 700, duration: 200, useNativeDriver: true }).start(() => {
+            setShowInfo(false);
+            pan.setValue(0);
+          });
+        } else {
+          Animated.spring(pan, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+        }
+      },
+    })
+  ).current;
+
+  function openSheet() {
+    pan.setValue(0);
+    setShowInfo(true);
+  }
+
   const userListings = listings.filter(
     (l) => l.userName === name && l.status === "active"
   );
@@ -60,7 +89,7 @@ export default function UserListingsScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.headerCenter, { opacity: pressed ? 0.75 : 1 }]}
-          onPress={() => setShowInfo(true)}
+          onPress={openSheet}
         >
           <View style={[styles.avatar, { backgroundColor: colors.muted, borderColor: colors.secondary }]}>
             <Text style={[styles.avatarText, { color: colors.primary }]}>
@@ -109,12 +138,13 @@ export default function UserListingsScreen() {
       {/* ── User info + reviews modal ────────────────────────────────────────── */}
       <Modal visible={showInfo} transparent animationType="slide" onRequestClose={() => setShowInfo(false)}>
         <Pressable style={styles.overlay} onPress={() => setShowInfo(false)}>
-          <Pressable
-            style={[styles.sheet, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: insets.bottom + 16 }]}
-            onPress={() => {}}
+          <Animated.View
+            style={[styles.sheet, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: insets.bottom + 16, transform: [{ translateY: pan }] }]}
           >
-            {/* Handle */}
-            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            {/* Handle — drag zone */}
+            <View {...panResponder.panHandlers} style={styles.dragZone}>
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            </View>
 
             {/* Avatar + name */}
             <View style={styles.profileRow}>
@@ -171,7 +201,7 @@ export default function UserListingsScreen() {
                 </View>
               ))}
             </ScrollView>
-          </Pressable>
+          </Animated.View>
         </Pressable>
       </Modal>
     </View>
@@ -202,7 +232,8 @@ const styles = StyleSheet.create({
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, gap: 16 },
-  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  dragZone: { paddingVertical: 10, alignItems: "center" },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center" },
 
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   bigAvatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: "center", justifyContent: "center" },
