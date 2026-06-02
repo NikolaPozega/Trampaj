@@ -166,6 +166,34 @@ const adStyles = StyleSheet.create({
   },
 });
 
+// ─── Personalized ranking ─────────────────────────────────────────────────────
+/**
+ * Scoring tiers for logged-in users (guests get score 0 everywhere):
+ *  3 — isti grad + match u tagovima (bidirekcijalni ili jednosmjerni)
+ *  2 — imaju što ja tražim (njihov nudimTags ∩ moj trazimTags)
+ *  1 — traže što ja nudim (njihov trazimTags ∩ moj nudimTags)
+ *  0 — bez preklapanja (zadržava redoslijed createdAt)
+ */
+function scoreListing(
+  listing: Listing,
+  userCity: string,
+  myNudim: Set<string>,
+  myTrazim: Set<string>,
+): number {
+  if (!myNudim.size && !myTrazim.size && !userCity) return 0;
+  const theirNudim = new Set((listing.nudimTags ?? []).map((t) => t.toLowerCase().trim()));
+  const theirTrazim = new Set((listing.trazimTags ?? []).map((t) => t.toLowerCase().trim()));
+  const theyHaveWhatIWant = myTrazim.size > 0 && [...myTrazim].some((t) => theirNudim.has(t));
+  const theyWantWhatIHave = myNudim.size > 0 && [...myNudim].some((t) => theirTrazim.has(t));
+  const anyMatch = theyHaveWhatIWant || theyWantWhatIHave;
+  const nearby = !!userCity && !!listing.location &&
+    listing.location.toLowerCase().trim() === userCity;
+  if (nearby && anyMatch) return 3;
+  if (theyHaveWhatIWant) return 2;
+  if (theyWantWhatIHave) return 1;
+  return 0;
+}
+
 // ─── Ad injection into flat listing array ────────────────────────────────────
 type AdSlot = { type: "ad"; id: string };
 type FlatItem = Listing | AdSlot;
@@ -305,7 +333,27 @@ export default function BrowseScreen() {
     });
   }, [listings, blockedUserNames, searchTrazim, searchNudim]);
 
-  const flatData = useMemo(() => injectAds(filtered), [filtered]);
+  // Personalizirani ranking (samo za prijavljene korisnike)
+  const ranked = useMemo(() => {
+    if (!user) return filtered;
+    const myListings = listings.filter((l) => l.isMine);
+    const myNudim = new Set(
+      myListings.flatMap((l) => l.nudimTags ?? []).map((t) => t.toLowerCase().trim()),
+    );
+    const myTrazim = new Set(
+      myListings.flatMap((l) => l.trazimTags ?? []).map((t) => t.toLowerCase().trim()),
+    );
+    const userCity = (user.city ?? "").toLowerCase().trim();
+    if (!myNudim.size && !myTrazim.size && !userCity) return filtered;
+    return [...filtered].sort((a, b) => {
+      const diff = scoreListing(b, userCity, myNudim, myTrazim) -
+                   scoreListing(a, userCity, myNudim, myTrazim);
+      if (diff !== 0) return diff;
+      return b.createdAt - a.createdAt;
+    });
+  }, [filtered, listings, user]);
+
+  const flatData = useMemo(() => injectAds(ranked), [ranked]);
 
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   // Guest: bottom inset for the fixed ad banner (52px banner + safe area)
