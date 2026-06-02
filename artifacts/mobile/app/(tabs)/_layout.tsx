@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -14,6 +14,21 @@ export default function TabLayout() {
   const { unreadCount } = useChat();
   const insets = useSafeAreaInsets();
   const wasLoggedIn = useRef(false);
+
+  // Delayed visibility — prevents tab bar from collapsing before nav transition
+  const [tabBarVisible, setTabBarVisible] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
+      setTabBarVisible(true);
+    } else {
+      // Keep bar visible through the logout navigation transition, then hide
+      hideTimer.current = setTimeout(() => setTabBarVisible(false), 300);
+    }
+    return () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
+  }, [user]);
 
   // Track if user was ever logged in; on logout go back to browse (not login)
   useEffect(() => {
@@ -31,7 +46,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: "#F5C100",
         tabBarInactiveTintColor: "#8CA4BE",
         headerShown: false,
-        tabBarStyle: user ? {
+        tabBarStyle: tabBarVisible ? {
           backgroundColor: "#0D2045",
           borderTopWidth: 1,
           borderTopColor: "rgba(56,189,248,0.22)",
@@ -66,7 +81,7 @@ export default function TabLayout() {
         options={{
           title: "Objavi",
           tabBarLabel: () => null,
-          tabBarButton: user ? undefined : () => null,
+          tabBarButton: tabBarVisible ? undefined : () => null,
           tabBarIcon: () => (
             <View style={[styles.postIcon, { backgroundColor: colors.primary }]}>
               <Feather name="plus" size={22} color={colors.primaryForeground} />
@@ -78,7 +93,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profil",
-          tabBarButton: user ? undefined : () => null,
+          tabBarButton: tabBarVisible ? undefined : () => null,
           tabBarIcon: ({ color, size }) => (
             <View>
               <Feather name="user" size={size} color={color} />
