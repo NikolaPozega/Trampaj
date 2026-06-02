@@ -1193,9 +1193,10 @@ export default function ProfileScreen() {
                 <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>Odustani</Text>
               </Pressable>
               <Pressable
-                onPress={async () => {
+                onPress={() => {
                   setShowLogoutModal(false);
-                  await logout();
+                  router.replace("/(tabs)");
+                  void logout();
                 }}
                 style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
               >
