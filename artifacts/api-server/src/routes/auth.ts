@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Resend } from "resend";
 import { randomUUID } from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
 import { db, usersTable, type PublicUser } from "@workspace/db";
@@ -178,11 +178,11 @@ router.post("/auth/register", async (req, res) => {
   }
 
   try {
-    // Check uniqueness
+    // Check uniqueness — case-insensitive so "nikola" i "Nikola" ne mogu koegzistirati
     const [existingUser] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.username, username.trim()))
+      .where(sql`lower(${usersTable.username}) = lower(${username.trim()})`)
       .limit(1);
 
     if (existingUser) {
