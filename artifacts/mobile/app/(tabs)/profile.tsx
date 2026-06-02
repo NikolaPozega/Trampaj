@@ -482,7 +482,11 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     setTimeout(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      if (statusFilter !== null && filteredMyListings.length > 0) {
+        flatListRef.current?.scrollToIndex({ index: 0, animated: true, viewOffset: 8 });
+      } else {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }
     }, 80);
   }, [statusFilter]);
 
@@ -936,6 +940,9 @@ export default function ProfileScreen() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
+        onScrollToIndexFailed={(info) => {
+          flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+        }}
         ListHeaderComponent={ListHeader}
         keyboardShouldPersistTaps="always"
         refreshControl={
@@ -1011,7 +1018,7 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.list,
           myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (IS_WEB ? 60 : 160) + 44 },
+          { paddingBottom: insets.bottom + (IS_WEB ? 104 : 64) },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

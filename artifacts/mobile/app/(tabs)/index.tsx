@@ -470,7 +470,7 @@ export default function BrowseScreen() {
               paddingBottom:
                 insets.bottom +
                 guestBottomAd +
-                (Platform.OS === "web" ? 60 : 100),
+                (Platform.OS === "web" ? 60 : 16),
             },
           ]}
           showsVerticalScrollIndicator={false}
