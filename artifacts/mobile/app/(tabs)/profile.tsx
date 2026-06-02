@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AdBannerSlot } from "@/components/AdBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import { ListingCard } from "@/components/ListingCard";
@@ -478,6 +479,14 @@ export default function ProfileScreen() {
     ? myListings.filter((l) => l.status === statusFilter)
     : myListings;
 
+  // Separate scroll signal so repeated taps on the same filter still scroll
+  const [scrollSignal, setScrollSignal] = useState(0);
+
+  function filterAndScroll(filter: "active" | "traded" | "pending" | null) {
+    setStatusFilter(filter);
+    setScrollSignal((s) => s + 1);
+  }
+
   // Scroll to very top (header) when tab gets focus
   useFocusEffect(
     useCallback(() => {
@@ -485,12 +494,13 @@ export default function ProfileScreen() {
     }, [])
   );
 
-  // When filter changes, scroll past the header to show listings / empty state
+  // Every time scrollSignal changes (i.e. any stat button tap), scroll to listings
   useEffect(() => {
+    if (scrollSignal === 0) return;
     setTimeout(() => {
       flatListRef.current?.scrollToOffset({ offset: headerHeightRef.current, animated: true });
     }, 80);
-  }, [statusFilter]);
+  }, [scrollSignal]);
 
   const allMatches = useMemo(
     () => findTradeMatches(myListings, listings),
@@ -828,21 +838,21 @@ export default function ProfileScreen() {
         <View style={styles.stats}>
           <StatPill label="Aktivni" value={activeCount} color={colors.primary} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === "active"}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("active"); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); filterAndScroll("active"); }}
           />
           <StatPill label="Zamijenjeni" value={tradedCount} color={colors.secondary} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === "traded"}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("traded"); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); filterAndScroll("traded"); }}
           />
           {pendingCount > 0 && (
             <StatPill label="Na čekanju" value={pendingCount} color="#F5C100" textColor={colors.foreground} bg={colors.muted}
               active={statusFilter === "pending"}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter("pending"); }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); filterAndScroll("pending"); }}
             />
           )}
           <StatPill label="Svi" value={myListings.length} color={colors.mutedForeground} textColor={colors.foreground} bg={colors.muted}
             active={statusFilter === null}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStatusFilter(null); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); filterAndScroll(null); }}
           />
         </View>
       </View>
@@ -930,10 +940,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Fixed top ad banner — right below status bar ──────────────────── */}
       <View style={[styles.fixedAdTop, { paddingTop: insets.top + 4, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
-          <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
-          <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
-        </View>
+        <AdBannerSlot size="small" seed="profile-top" />
       </View>
 
       <FlatList
@@ -1124,10 +1131,7 @@ export default function ProfileScreen() {
 
       {/* ── Fixed bottom ad banner ──────────────────────────────────────────── */}
       <View style={[styles.fixedAdBottom, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: 4 }]}>
-        <View style={[styles.adBanner, { backgroundColor: `${colors.muted}CC`, borderColor: `${colors.border}88` }]}>
-          <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
-          <Text style={[styles.adBannerLabel, { color: colors.mutedForeground }]}>Google Oglas</Text>
-        </View>
+        <AdBannerSlot size="bottom" seed="profile-bottom" />
       </View>
 
       {/* Name modal (guest / no-auth) */}
