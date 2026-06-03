@@ -12,6 +12,7 @@ if (!admin.apps.length) {
   if (!raw) {
     logger.warn("FIREBASE_SERVICE_ACCOUNT nije postavljen — push notifikacije neće raditi");
   } else {
+    logger.info({ rawSecretLen: raw.length, rawStart: raw.substring(0, 10) }, "FIREBASE_SERVICE_ACCOUNT raw secret");
     try {
       const trimmed = raw.trim();
 
