@@ -13,6 +13,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -35,6 +36,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { findTradeMatches, type TradeMatch } from "@/services/tradeMatches";
 import { useChat } from "@/context/ChatContext";
+import { setupNotifications, getExpoPushToken } from "@/utils/notifications";
 
 const IS_WEB = (Platform.OS as string) === "web";
 
@@ -330,7 +332,7 @@ export default function ProfileScreen() {
     fetchSemanticMatches,
     matchesLoading,
   } = useListings();
-  const { user, logout, updateProfile, refreshUser } = useAuth();
+  const { user, token, logout, updateProfile, refreshUser } = useAuth();
   const { conversations, unreadCount } = useChat();
 
   // Local-only edit (no auth)
@@ -446,6 +448,70 @@ export default function ProfileScreen() {
   const snapPad = Math.max(0, (screenWidth - 32 - 296) / 2);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [notifGranted, setNotifGranted] = useState<boolean | null>(null);
+
+  // Provjeri status notifikacijske dozvole kad screen dođe u fokus
+  useFocusEffect(useCallback(() => {
+    if (IS_WEB) return;
+    void (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Notifications = require("expo-notifications") as any;
+        const perm = await Notifications.getPermissionsAsync();
+        setNotifGranted(perm?.granted || perm?.status === "granted");
+      } catch {
+        setNotifGranted(null); // nije dostupno (Expo Go)
+      }
+    })();
+  }, []));
+
+  async function handleFixNotifications() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Notifications = require("expo-notifications") as any;
+      const perm = await Notifications.getPermissionsAsync();
+      const alreadyDenied = perm?.status === "denied";
+      if (alreadyDenied) {
+        // Android ne prikazuje dijalog nakon odbijanja — idi u postavke
+        Alert.alert(
+          "Notifikacije onemogućene",
+          "Dozvola za notifikacije je odbijena. Otvori postavke aplikacije i ručno uključi notifikacije.",
+          [
+            { text: "Otvori postavke", onPress: () => Linking.openSettings() },
+            { text: "Odustani", style: "cancel" },
+          ]
+        );
+        return;
+      }
+      const ok = await setupNotifications();
+      if (ok) {
+        setNotifGranted(true);
+        // Pokušaj registrirati token odmah
+        const pushToken = await getExpoPushToken();
+        if (pushToken && token) {
+          const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? "trampaj.hr"}/api`;
+          await fetch(`${API_BASE}/push/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ token: pushToken }),
+          });
+          Alert.alert("Notifikacije aktivirane", "Sada ćeš primati obavijesti o novim porukama.");
+        }
+      } else {
+        Alert.alert(
+          "Nije uspjelo",
+          "Otvori postavke i uključi notifikacije ručno.",
+          [
+            { text: "Otvori postavke", onPress: () => Linking.openSettings() },
+            { text: "Odustani", style: "cancel" },
+          ]
+        );
+      }
+    } catch {
+      Linking.openSettings();
+    }
+  }
 
   async function handleBump(id: string) {
     if (bumpingIds.has(id) || bumpedIds.has(id)) return;
@@ -874,6 +940,43 @@ export default function ProfileScreen() {
               </Text>
               {!updating && <Feather name="chevron-right" size={13} color={colors.secondary} />}
             </Pressable>
+
+            {/* Notifikacijski status — pokaži samo kad znamo status */}
+            {notifGranted === false && user && (
+              <Pressable
+                onPress={handleFixNotifications}
+                style={({ pressed }) => [styles.gdprDeleteBtn, {
+                  borderColor: "#E8562540",
+                  backgroundColor: "#E8562510",
+                  opacity: pressed ? 0.7 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 8,
+                }]}
+              >
+                <Feather name="bell-off" size={14} color="#E85625" />
+                <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#E85625" }}>
+                  Notifikacije su isključene — tap za uključivanje
+                </Text>
+                <Feather name="chevron-right" size={13} color="#E85625" />
+              </Pressable>
+            )}
+            {notifGranted === true && user && (
+              <View style={[styles.gdprDeleteBtn, {
+                borderColor: "#22C55E40",
+                backgroundColor: "#22C55E10",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 8,
+              }]}>
+                <Feather name="bell" size={14} color="#22C55E" />
+                <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#22C55E" }}>
+                  Notifikacije su uključene
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
