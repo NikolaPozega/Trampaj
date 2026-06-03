@@ -84,6 +84,30 @@ if (fs.existsSync(PUBLIC_DIR)) {
   app.use("/static", express.static(PUBLIC_DIR, { maxAge: "7d" }));
 }
 
+// ─── APK download ─────────────────────────────────────────────────────────────
+app.get("/download/app", async (_req, res) => {
+  const APK_URL = "https://expo.dev/artifacts/eas/edAk41KAp4AKysLhbASGie.apk";
+  const token = process.env.EXPO_TOKEN;
+  try {
+    const upstream = await fetch(APK_URL, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      redirect: "follow",
+    });
+    if (!upstream.ok || !upstream.body) {
+      res.status(502).send("APK trenutno nedostupan");
+      return;
+    }
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    res.setHeader("Content-Disposition", 'attachment; filename="Trampa.apk"');
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    const { Readable } = await import("node:stream");
+    Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]).pipe(res);
+  } catch {
+    res.status(502).send("Greška pri preuzimanju APK-a");
+  }
+});
+
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
