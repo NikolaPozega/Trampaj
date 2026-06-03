@@ -1,1 +1,2 @@
 artifacts/api-server/public/trampa.apk filter=lfs diff=lfs merge=lfs -text
+trampaj.apk filter=lfs diff=lfs merge=lfs -text
