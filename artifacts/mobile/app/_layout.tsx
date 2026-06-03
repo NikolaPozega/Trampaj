@@ -19,6 +19,9 @@ import { ChatProvider } from "@/context/ChatContext";
 import { ListingsProvider } from "@/context/ListingsContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { setupNotifications, addNotificationResponseListener } from "@/utils/notifications";
+import { initSentry } from "@/utils/sentry";
+
+initSentry();
 
 // Use expo-router's SplashScreen — it calls internalPreventAutoHideAsync() and
 // internalMaybeHideAsync() which are the correct paired functions. Do NOT call
