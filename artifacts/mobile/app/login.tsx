@@ -121,7 +121,13 @@ export default function LoginScreen() {
     } else {
       await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
       setBioEnabled(false);
-      Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
+      if (r.error === "Nema veze s poslužiteljem") {
+        Alert.alert("Nema veze s poslužiteljem", "Provjeri internet vezu i pokušaj ponovo.");
+      } else if (r.error === "Korisnik nije pronađen") {
+        Alert.alert("Račun ne postoji", "Ovaj račun nije pronađen. Potrebna je nova registracija.");
+      } else {
+        Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
+      }
     }
   }
 
