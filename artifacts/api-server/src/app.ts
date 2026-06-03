@@ -87,9 +87,9 @@ if (fs.existsSync(PUBLIC_DIR)) {
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
-// ─── Root → app ───────────────────────────────────────────────────────────────
+// ─── Root → landing page ──────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
-  res.redirect(302, "/mobile");
+  res.redirect(302, "/web/");
 });
 
 // ─── Expo Web App — servira statički build iz mobile/dist/web ─────────────────
