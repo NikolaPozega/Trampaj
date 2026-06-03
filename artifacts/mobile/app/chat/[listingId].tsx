@@ -25,6 +25,7 @@ import type { ChatMessage, DeliveryInfo, MessageType } from "@/context/ChatConte
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { useListings } from "@/context/ListingsContext";
+import { setActiveConversationId } from "@/utils/notifications";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -1001,6 +1002,15 @@ export default function ChatScreen() {
     useCallback(() => {
       void refreshConversations();
     }, [refreshConversations])
+  );
+
+  // Priguši push notifikacije dok je ovaj razgovor aktivan
+  useFocusEffect(
+    useCallback(() => {
+      const convId = conversations.find((c) => c.listingId === listingId)?.id ?? null;
+      setActiveConversationId(convId);
+      return () => setActiveConversationId(null);
+    }, [conversations, listingId])
   );
 
   const liveConv = conversations.find((c) => c.listingId === listingId);

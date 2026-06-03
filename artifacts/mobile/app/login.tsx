@@ -228,8 +228,16 @@ export default function LoginScreen() {
           onPress={() => router.replace("/(tabs)")}
           style={({ pressed }) => [styles.logoBtn, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <View style={[styles.logoMini, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Feather name="refresh-cw" size={16} color={colors.primary} />
+          <View style={[styles.logoMini, {
+            backgroundColor: "rgba(245,193,0,0.08)",
+            borderColor: "#F5C100",
+            shadowColor: "#F5C100",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.85,
+            shadowRadius: 10,
+            elevation: 8,
+          }]}>
+            <Feather name="refresh-cw" size={16} color="#F5C100" />
           </View>
           <Text style={[styles.logoText, { color: colors.foreground }]}>
             Trampaj<Text style={{ color: colors.secondary }}>.hr</Text>

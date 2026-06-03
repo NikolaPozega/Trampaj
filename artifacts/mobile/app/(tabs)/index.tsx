@@ -392,7 +392,15 @@ export default function BrowseScreen() {
             style={styles.logoBrand}
             onPress={() => { searchBus.clearSearch?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); void onRefresh(); }}
           >
-            <View style={[styles.logoIcon, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <View style={[styles.logoIcon, {
+              backgroundColor: "rgba(245,193,0,0.08)",
+              borderColor: "#F5C100",
+              shadowColor: "#F5C100",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.85,
+              shadowRadius: 10,
+              elevation: 8,
+            }]}>
               <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
                 <Feather name="repeat" size={20} color={refreshDone ? colors.secondary : colors.primary} />
               </Animated.View>
