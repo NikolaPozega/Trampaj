@@ -196,6 +196,79 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
   }
 }
 
+// Vague phrases — client-side fallback kad nema API key-a
+const VAGUE_PATTERNS = [
+  "bilo što", "bilo sta", "bilo šta", "bilo koja", "bilo koji",
+  "sve prihvaćam", "sve prihvacam", "sve prihvatam",
+  "svejedno", "sve mi jedno", "nije važno", "nije vazno",
+  "otvoren sam za sve", "otvoreni za sve", "bilo što vrijedno",
+  "uzet ću sve", "uzet cu sve", "uzmem bilo",
+  "nešto", "nesto", "ne znam", "neznam", "nema veze",
+];
+
+export async function validateWantedFor(
+  wantedFor: string
+): Promise<{ valid: boolean; hint?: string }> {
+  const trimmed = wantedFor.trim();
+  const lower = trimmed.toLowerCase();
+
+  // Klijentska provjera — uvijek se radi
+  const isObviouslyVague =
+    VAGUE_PATTERNS.some((p) => lower.includes(p)) ||
+    (trimmed.split(/\s+/).length <= 2 && trimmed.length < 8);
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return isObviouslyVague
+      ? { valid: false, hint: "Opiši konkretno što tražiš (npr. 'laptop', 'bicikl', 'parfem ili nakit')." }
+      : { valid: true };
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 80,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `Korisnik na platformi za trampu predmeta upisuje što želi u zamjenu za svoj predmet.
+Procijeni je li opis KONKRETAN ili NEODREĐEN.
+
+NEODREĐEN je ako:
+- Kaže "bilo što", "sve prihvaćam", "svejedno", "nešto", "nije važno", "otvoren sam za sve" ili slično
+- Previše kratko i generično (npr. samo "stvari", "predmeti", "nešto vrijedno")
+- Nije jasno što točno traži
+
+KONKRETAN je ako:
+- Navodi vrstu predmeta (npr. "laptop", "bicikl", "parfem ili nakit", "dječje igračke")
+- Može biti i fleksibilno ako je jasna kategorija (npr. "nešto za djecu", "sportska oprema")
+
+Vrati SAMO JSON: {"valid":true} ili {"valid":false,"hint":"kratka uputa na hrvatskom što korisnik treba popraviti (max 12 riječi)"}`,
+          },
+          { role: "user", content: `Što tražiš u zamjenu: "${trimmed}"` },
+        ],
+      }),
+    });
+    if (!response.ok) throw new Error("http " + response.status);
+    const data = await response.json();
+    const raw: string = data.choices?.[0]?.message?.content ?? "{}";
+    const match = raw.match(/\{[\s\S]*\}/);
+    const parsed = match ? JSON.parse(match[0]) as { valid?: boolean; hint?: string } : {};
+    if (parsed.valid === false) {
+      return { valid: false, hint: parsed.hint ?? "Opiši konkretno što tražiš (npr. 'laptop', 'bicikl')." };
+    }
+    return { valid: true };
+  } catch {
+    return isObviouslyVague
+      ? { valid: false, hint: "Opiši konkretno što tražiš (npr. 'laptop', 'bicikl', 'parfem')." }
+      : { valid: true };
+  }
+}
+
 export async function moderateText(text: string): Promise<{ flagged: boolean; reason?: string }> {
   const apiKey = getApiKey();
   if (!apiKey || !text.trim()) return { flagged: false };

@@ -41,6 +41,7 @@ import {
   generateListingTags,
   moderateText,
   moderateImage,
+  validateWantedFor,
 } from "@/services/openai";
 
 const IS_WEB = (Platform.OS as string) === "web";
@@ -233,6 +234,7 @@ export default function PostScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [wantedFor, setWantedFor] = useState("");
+  const [wantedForError, setWantedForError] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [priceText, setPriceText] = useState("");
@@ -438,10 +440,18 @@ export default function PostScreen() {
         } catch {}
       }
 
-      const [textMod, imgMod] = await Promise.all([
+      const [textMod, imgMod, wantedCheck] = await Promise.all([
         moderateText(combinedText),
         imageBase64ForMod ? moderateImage(imageBase64ForMod) : Promise.resolve({ flagged: false, reason: undefined as string | undefined }),
+        validateWantedFor(wantedFor.trim()),
       ]);
+
+      if (!wantedCheck.valid) {
+        setWantedForError(wantedCheck.hint ?? "Opiši konkretno što tražiš u zamjenu.");
+        submittingRef.current = false;
+        setModerating(false);
+        return;
+      }
 
       if (textMod.flagged || imgMod.flagged) {
         const reason = textMod.flagged ? textMod.reason : imgMod.reason;
@@ -552,6 +562,7 @@ export default function PostScreen() {
       setTitle("");
       setDescription("");
       setWantedFor("");
+      setWantedForError(null);
       setCategory("");
       setLocation(defaultLoc);
       setPriceText("");
@@ -596,7 +607,7 @@ export default function PostScreen() {
     setSubmitted(true);
     setTimeout(() => {
       const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";
-      setTitle(""); setDescription(""); setWantedFor(""); setCategory("");
+      setTitle(""); setDescription(""); setWantedFor(""); setWantedForError(null); setCategory("");
       setLocation(defaultLoc); setPriceText(""); setPhone(""); setShowPhone(false);
       setImageUris([]); setCondition(null); setTopup(null); setFlexibility(null);
       setCashFallback(null); setDeadline(null); setPackageSize(null);
@@ -980,14 +991,19 @@ export default function PostScreen() {
           </View>
           <TextInput
             value={wantedFor}
-            onChangeText={setWantedFor}
+            onChangeText={(t) => { setWantedFor(t); if (wantedForError) setWantedForError(null); }}
             placeholder="npr. laptop, bicikl, kuća na moru u kolovozu…"
             placeholderTextColor={colors.mutedForeground}
-            style={inputStyle}
+            style={[inputStyle, wantedForError ? { borderColor: colors.destructive, borderWidth: 1 } : undefined]}
             maxLength={200}
             autoCorrect
             spellCheck
           />
+          {wantedForError && (
+            <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 6, lineHeight: 17 }}>
+              ⚠️ {wantedForError}
+            </Text>
+          )}
         </View>
 
         <ChipGroup<Flexibility>
