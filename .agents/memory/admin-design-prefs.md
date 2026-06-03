@@ -20,6 +20,32 @@ description: Owner's explicit visual preferences for admin panel redesign + firs
 - Platform statistics (active users, listings, trades)
 - Push notification broadcast
 - Promo / early adopter management (see below)
+- Social media hub (see below)
+
+## Social media hub (admin panel section)
+
+### Purpose
+Single place to review, edit, delete all AI-generated social media posts across all networks.
+
+### What the API allows
+- Facebook: view ✅, edit text ✅, delete ✅
+- Instagram: view ✅, edit ❌ (Meta API limitation — cannot edit after posting), delete ✅
+
+### UI layout
+- Chronological feed of all AI posts
+- Each item: thumbnail, AI-written caption, network icons (FB/IG), status badge (published/error/pending)
+- Actions: Edit (FB only), Delete, Re-publish (delete + repost with corrected text)
+
+### Approval workflow
+- TBD: auto-publish immediately OR queue for owner approval first
+- Owner has not decided yet — ask when implementing
+
+### Networks
+- Facebook Page (META_PAGE_ID, META_PAGE_TOKEN already in secrets)
+- Instagram (META_IG_USER_ID already in secrets)
+- Future: TikTok, others
+
+---
 
 ## Early adopter campaign — first 500 users
 
