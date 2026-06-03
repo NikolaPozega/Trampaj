@@ -8,76 +8,30 @@ import { logger } from "../lib/logger";
 
 // Inicijaliziraj Firebase Admin SDK jednom
 if (!admin.apps.length) {
-  const raw = process.env["FIREBASE_SERVICE_ACCOUNT"];
-  if (!raw) {
-    logger.warn("FIREBASE_SERVICE_ACCOUNT nije postavljen — push notifikacije neće raditi");
-  } else {
-    logger.info({ rawSecretLen: raw.length, rawStart: raw.substring(0, 10) }, "FIREBASE_SERVICE_ACCOUNT raw secret");
-    try {
-      const trimmed = raw.trim();
+  try {
+    const raw = (process.env["FIREBASE_SERVICE_ACCOUNT"] ?? "").trim();
+    logger.info({ len: raw.length, starts: raw[0] ?? "?" }, "Firebase secret check");
 
-      // Normalizira PEM key — rješava sve poznate varijante formatiranja
-      const normalizePEM = (pem: string): string => {
-        // 1. Ukloni JSON encoding (\\n → \n)
-        let k = pem.replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\r/g, "").trim();
-        // 2. Pronađi header i footer
-        const headerMatch = k.match(/-----BEGIN ([^-\n]+)-----/);
-        const footerMatch = k.match(/-----END ([^-\n]+)-----/);
-        if (!headerMatch || !footerMatch) return k;
-        const header = `-----BEGIN ${headerMatch[1]}-----`;
-        const footer = `-----END ${footerMatch[1]}-----`;
-        // 3. Izvuci samo base64 podatke (bez headera, footera, whitespace)
-        const body = k
-          .replace(header, "")
-          .replace(footer, "")
-          .replace(/\s+/g, "");
-        // 4. Rekonstruiraj s pravilnim 64-char redovima
-        const lines = body.match(/.{1,64}/g) ?? [];
-        return `${header}\n${lines.join("\n")}\n${footer}\n`;
+    let serviceAccount: admin.ServiceAccount;
+    if (raw.startsWith("{")) {
+      // Cijeli JSON service account objekt
+      serviceAccount = JSON.parse(raw) as admin.ServiceAccount;
+    } else if (raw.includes("BEGIN")) {
+      // Samo private_key vrijednost (s \\n escape sekvencama ili pravim newlineovima)
+      const privateKey = raw.replace(/\\n/g, "\n");
+      serviceAccount = {
+        projectId: "trampaj-8faed",
+        clientEmail: "firebase-adminsdk-fbsvc@trampaj-8faed.iam.gserviceaccount.com",
+        privateKey,
       };
-
-      let serviceAccount: admin.ServiceAccount & { private_key?: string };
-
-      if (trimmed.startsWith("{")) {
-        serviceAccount = JSON.parse(trimmed) as admin.ServiceAccount & { private_key?: string };
-        if (serviceAccount.private_key) {
-          serviceAccount.private_key = normalizePEM(serviceAccount.private_key);
-        }
-        // Drizzle fallback: ponekad Firebase očekuje camelCase
-        const sa = serviceAccount as Record<string, unknown>;
-        if (!sa["privateKey"] && sa["private_key"]) sa["privateKey"] = sa["private_key"];
-      } else {
-        // Samo PEM ključ (bez JSON omotača)
-        serviceAccount = {
-          projectId: "trampaj-8faed",
-          clientEmail: "firebase-adminsdk-fbsvc@trampaj-8faed.iam.gserviceaccount.com",
-          privateKey: normalizePEM(trimmed),
-        };
-      }
-
-      // Dijagnostika ključa (bez otkrivanja sadržaja)
-      const rawKey = (serviceAccount.private_key ?? (serviceAccount as Record<string,unknown>)["privateKey"] as string ?? "");
-      const keyLines = rawKey.split("\n").length;
-      const keyLen = rawKey.length;
-      const hasHeader = rawKey.includes("-----BEGIN PRIVATE KEY-----");
-      const hasFooter = rawKey.includes("-----END PRIVATE KEY-----");
-      const hasActualNewlines = rawKey.includes("\n");
-      logger.info({ keyLines, keyLen, hasHeader, hasFooter, hasActualNewlines }, "Firebase key diagnostics");
-
-      // Pokušaj direktnog parsiranja Node crypto-om
-      try {
-        const { createPrivateKey } = await import("crypto");
-        createPrivateKey(rawKey);
-        logger.info("Node crypto: ključ validan ✅");
-      } catch (ce) {
-        logger.error({ msg: (ce as Error).message }, "Node crypto: ključ nevalidan");
-      }
-
-      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-      logger.info("Firebase Admin SDK inicijaliziran ✅");
-    } catch (e) {
-      logger.error({ err: e }, "Firebase Admin SDK inicijalizacija neuspješna");
+    } else {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT nije validan (nije JSON niti PEM key)");
     }
+
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    logger.info("Firebase Admin SDK inicijaliziran ✅");
+  } catch (e) {
+    logger.error({ err: e }, "Firebase Admin SDK inicijalizacija neuspješna");
   }
 }
 
