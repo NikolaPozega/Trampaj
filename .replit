@@ -55,18 +55,3 @@ channel = "stable-25_05"
 
 [userenv.shared]
 META_PAGE_ID = "1085513884653008"
-FIREBASE_SERVICE_ACCOUNT = '''
-{
-  "type": "service_account",
-  "project_id": "trampaj-8faed",
-  "private_key_id": "7d84c109333addb001cfba5481e27a2b46d936df",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCuYflZ4ITDCX5W\nozLgugo8bOIMn+wq1KsceejoVAwwAiM2TEGDiZqcrnEIy6YmhHxTrYbtssxkdfxj\nVW6IT+jDKyWRgjK+qRYbnxER0dM12jHmt064NPLpgiVDZl6/EZttcRmADiZQNncR\nWN5SxTqf9OLBevmfDLJbkSzLhEPUhvw0JKQ0IcTC2dpMcAOLGRT8gASqHoZkAOwB\nHUUrOVoy3q9dZsVJ9hOjw1fw/M3SgbIw9WgjYuSFirN+b9GY/wVJmLWxesFQ+hLt\njGPrVXwt32IahwQXDKH/jtvnI95eltm4VmU7P9TssJWLlD7evN9mz/mUxq/XuDBF\niFf+mFCpAgMBAAECggEABkJJeR6cHUT6tiDa62J6ChOtZF8cEqh58MZ2Y9paaqG1\nAlan1lEKzdtb/sESeFjyfm1gxajQeb2bXrRbCIT3uYOTsF6QNDQs8TZbHjzd/BWW\nC24iYu2xl0x+ymXC+lAnOD0iOWyoluHxkZuTNTzTfxjCx8eCbKE/yJYUGcToS1ky\nytuf/qRIJ8BJf+/NRzXTztvnEkEclr3xlefvo7MtnHmHMh5Ct2+8e2K2X5jeUbWF\ns0GjGbcS9vRNDO5KQ4AnvcKPOdjZi3KJ1yuHsjdaxfxvSnTH3nZWi8r8J5979cu2\nPTdps2YNiBe18rGYUmZYlzj3AxrsIBv9r51ll91l4QKBgQDTwlsWjrhKAp+u3LFo\nATp46qbCfI0vPB0TaHm6L0ck7Jp5CilcSA5tDBp15Pe0PRJbf6TeCwPDbiLei/lc\nLEdmxrAPpZo/dSSG3q/7hP+8V1Xr4AEB7ZBrlUbSEyb0AQu9D1j0M5ZPsr1+Tft3\nMGkQZhj6ZRdwi+XgGrZAnAAyWQKBgQDS0JbFo2xG3JWPrHCiHx8CTA0EBJKU9gqb\n6VzTCxf3VRtavaC8wmgU03EUE3LWwKGaB4ABeQXJLeenifljvCxlkwKpNnMBwiQJ\nvH0/sm4g/OegMfjtRF8SZ5yUThURMB1S66/9R8qBDDa5tb4bkFNtwQPOgOhU7E8O\njqo8d+Ym0QKBgHlyE++B9qtric0tgQlW+wPx/6W27PnUDhDdcEKZbsH8eDNG4qWs\nJangsSRAJtfV1rtnH1TBGG1yssjTmjWEp4aIGN1AapBOTJ6VBHTJuCl6JSrcE3fZ\nmWQ5/p3oogR6vRK2xJt5IpGevxK7Aqc+umLPSy//3kuL0FCQwUmYrnwxAoGBAKL4\n7hXLyKDfVh/Dxy8NsAMul8FLZ6YQrxLozQG5ycVC3erAPcqu35d5/ijvABBUypkw\nwxxgWsCz5Cn41/rqNcgwZhY6KZ5qX0HHnWvonIqT+Nw2xaFnAbhQsRNVaaPn9kNs\nQJklLr+kmYnnnhfg8x4d4Lt7nCBKrrMqRyCH8DyBAoGAY92x69mTUJE3hH6pJM4w\nYMOM1NcX+J0ZGh3a1B5MuTsnKmlZBZtGaEhOgvQv5PbYwL7GdNCHPwyJxyjNu/Sb\nV9UPvUSTWhQIErJ8Pi+nD2bacASRtk9U8a53X+sOPh3gyiHjpLlDvhThvh8DJ5he\nbKWTBG5L2xSbok1eBG2LjwI=\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-fbsvc@trampaj-8faed.iam.gserviceaccount.com",
-  "client_id": "106779612853235537823",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40trampaj-8faed.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
-'''
