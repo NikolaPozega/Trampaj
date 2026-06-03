@@ -53,3 +53,9 @@ id = "BALYmPd04Y4JtgWjZXcVu"
 uri = "file://attached_assets/trampaj_cover_v2.png"
 type = "image"
 title = "Naslovna slika v2 (tekst desno, lijevo slobodno za profilnu)"
+
+[[outputs]]
+id = "C3-rYHOO0erwFGAqBMPvn"
+uri = "file://artifacts/api-server/public/trampa.apk.tar.gz"
+type = "unspecified"
+title = "Trampa.apk (arhiva)"
