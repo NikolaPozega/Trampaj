@@ -58,6 +58,31 @@ function getHsStatus(messages: ChatMessage[]): HsStatus {
   return "idle";
 }
 
+type DeliveryPickStatus = "none" | "mine_only" | "theirs_only" | "both_personal" | "both_courier" | "mismatch_sent";
+
+function getDeliveryPickStatus(messages: ChatMessage[]): DeliveryPickStatus {
+  let myChoice: "personal" | "courier" | null = null;
+  let theirChoice: "personal" | "courier" | null = null;
+
+  for (const m of messages) {
+    if (m.type === "delivery_personal" || m.type === "delivery_courier") {
+      const choice = m.type === "delivery_personal" ? "personal" : "courier";
+      if (m.fromMe) myChoice = choice;
+      else theirChoice = choice;
+    }
+    if (m.fromMe && m.text === "USUGLASIMO DOSTAVU 😀") {
+      myChoice = null;
+    }
+  }
+
+  if (!myChoice && !theirChoice) return "none";
+  if (myChoice && !theirChoice) return "mine_only";
+  if (!myChoice && theirChoice) return "theirs_only";
+  if (myChoice === "personal" && theirChoice === "personal") return "both_personal";
+  if (myChoice === "courier" && theirChoice === "courier") return "both_courier";
+  return "mismatch_sent";
+}
+
 // ─── Compact fixed Handshake Bar ─────────────────────────────────────────────
 function HandshakeBar({ onPress }: { onPress: () => void }) {
   const offsetL = useRef(new Animated.Value(0)).current;
@@ -959,9 +984,10 @@ export default function ChatScreen() {
 
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
-  const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "delivery" | "escrow" | "deposit">(null);
+  const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "escrow" | "deposit">(null);
   const flatListRef = useRef<FlatList>(null);
   const prevHsRef = useRef<HsStatus | null>(null);
+  const mismatchSentRef = useRef(false);
 
   // Create conversation in effect (not during render) to avoid ChatProvider update-during-render warning
   useEffect(() => {
@@ -1011,6 +1037,43 @@ export default function ChatScreen() {
     }
   }, [liveConv?.id, hsStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-send mismatch message when delivery choices conflict
+  useEffect(() => {
+    if (hsStatus !== "accepted" || !liveConv || !convId) return;
+    const msgs = liveConv.messages;
+    let myChoice: "personal" | "courier" | null = null;
+    let theirChoice: "personal" | "courier" | null = null;
+    let lastChoiceIdx = -1;
+    msgs.forEach((m, i) => {
+      if (m.type === "delivery_personal" || m.type === "delivery_courier") {
+        const choice = m.type === "delivery_personal" ? "personal" : "courier";
+        if (m.fromMe) myChoice = choice;
+        else theirChoice = choice;
+        if (i > lastChoiceIdx) lastChoiceIdx = i;
+      }
+      if (m.fromMe && m.text === "USUGLASIMO DOSTAVU 😀") {
+        myChoice = null;
+      }
+    });
+    if (!myChoice || !theirChoice || myChoice === theirChoice) return;
+    const alreadySent = msgs.slice(lastChoiceIdx + 1).some(
+      (m) => m.fromMe && m.text === "USUGLASIMO DOSTAVU 😀"
+    );
+    if (alreadySent || mismatchSentRef.current) return;
+    mismatchSentRef.current = true;
+    sendMessage(convId, "USUGLASIMO DOSTAVU 😀");
+    setTimeout(() => { mismatchSentRef.current = false; }, 3000);
+  }, [liveConv?.messages.length, hsStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-trigger escrow when both picked courier
+  useEffect(() => {
+    if (hsStatus !== "accepted" || !liveConv || postDealStep !== null) return;
+    const status = getDeliveryPickStatus(liveConv.messages);
+    if (status === "both_courier") {
+      setPostDealStep("escrow");
+    }
+  }, [liveConv?.messages.length, hsStatus, postDealStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const convId = liveConv?.id ?? "";
 
   const handleSend = useCallback(() => {
@@ -1045,14 +1108,29 @@ export default function ChatScreen() {
       const prev = liveConv.messages[index - 1];
       const showAvatar = !item.fromMe && (!prev || prev.fromMe || prev.type !== "text");
 
-      // Handshake request from them → reaching hand + accept/reject
-      if (item.type === "handshake_request" && !item.fromMe) {
+      // Handshake request from them → reaching hand + accept/reject (only if not yet accepted)
+      if (item.type === "handshake_request" && !item.fromMe && hsStatus !== "accepted") {
         return (
           <ReachingHand
             otherName={liveConv.otherUserName}
             onAccept={handleAccept}
             onReject={handleReject}
           />
+        );
+      }
+      if (item.type === "handshake_request" && !item.fromMe && hsStatus === "accepted") {
+        return null;
+      }
+
+      // Delivery choice messages
+      if (item.type === "delivery_personal" || item.type === "delivery_courier") {
+        const isPersonal = item.type === "delivery_personal";
+        return (
+          <View style={styles.deliveryChoiceRow}>
+            <Text style={styles.deliveryChoiceText}>
+              {item.fromMe ? "Ti" : liveConv.otherUserName}: {isPersonal ? "🤝 Osobni dogovor" : "🚐 Dostava"}
+            </Text>
+          </View>
         );
       }
 
@@ -1220,6 +1298,63 @@ export default function ChatScreen() {
           />
         )}
 
+        {/* ── Inline Delivery Choice Bar ── */}
+        {(() => {
+          if (hsStatus !== "accepted" || postDealStep !== null || showDeal) return null;
+          const dpStatus = getDeliveryPickStatus(liveConv.messages);
+          if (dpStatus === "both_personal" || dpStatus === "both_courier") return null;
+          if (dpStatus === "mine_only") {
+            return (
+              <View style={styles.deliveryBar}>
+                <Text style={styles.deliveryBarLabel}>⏳ Čekaš odabir {liveConv.otherUserName}…</Text>
+              </View>
+            );
+          }
+          return (
+            <View style={styles.deliveryBar}>
+              <Text style={styles.deliveryBarLabel}>
+                {dpStatus === "theirs_only"
+                  ? `${liveConv.otherUserName} je odabrao/la — sad ti:`
+                  : "Kako dostavljate?"}
+              </Text>
+              <View style={styles.deliveryBarBtns}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    sendSpecialMessage(convId, "delivery_personal");
+                    saveDeliveryInfo(convId, { method: "personal", escrowActive: false });
+                  }}
+                  style={({ pressed }) => [styles.deliveryBarBtn, { opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Text style={styles.deliveryBarBtnText}>🤝 Osobni dogovor</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    sendSpecialMessage(convId, "delivery_courier");
+                    saveDeliveryInfo(convId, { method: "courier", escrowActive: false });
+                  }}
+                  style={({ pressed }) => [styles.deliveryBarBtn, styles.deliveryBarBtnCourier, { opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Text style={styles.deliveryBarBtnText}>🚐 Dostava</Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* ── Both Personal confirmed bar ── */}
+        {(() => {
+          if (hsStatus !== "accepted" || postDealStep !== null) return null;
+          const dpStatus = getDeliveryPickStatus(liveConv.messages);
+          if (dpStatus !== "both_personal") return null;
+          return (
+            <View style={[styles.deliveryBar, { backgroundColor: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.3)" }]}>
+              <Text style={[styles.deliveryBarLabel, { color: "#22C55E" }]}>✓ Osobna predaja dogovorena — dogovorite se u chatu</Text>
+            </View>
+          );
+        })()}
+
         {/* ── Input Bar ── */}
         <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
           <TextInput
@@ -1257,8 +1392,6 @@ export default function ChatScreen() {
             setShowDeal(false);
             if (!liveConv.disclaimerAccepted) {
               setPostDealStep("disclaimer");
-            } else if (!liveConv.deliveryInfo) {
-              setPostDealStep("delivery");
             } else {
               markDealShown(liveConv.id);
             }
@@ -1271,26 +1404,12 @@ export default function ChatScreen() {
         <DisclaimerModal
           onAccept={() => {
             acceptDisclaimer(convId);
-            setPostDealStep("delivery");
+            setPostDealStep(null);
+            markDealShown(liveConv.id);
           }}
           onSkip={() => {
             setPostDealStep(null);
             markDealShown(liveConv.id);
-          }}
-        />
-      )}
-
-      {/* ── Delivery Modal ── */}
-      {postDealStep === "delivery" && (
-        <DeliveryModal
-          otherName={liveConv.otherUserName}
-          isLargeItem={isLargeItem}
-          onDone={(info) => {
-            saveDeliveryInfo(convId, info);
-            setPostDealStep("escrow");
-          }}
-          onSkip={() => {
-            setPostDealStep("escrow");
           }}
         />
       )}
@@ -1499,6 +1618,64 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: C.muted,
     fontStyle: "italic",
+  },
+
+  // Delivery choice row (in message list)
+  deliveryChoiceRow: {
+    alignSelf: "center",
+    backgroundColor: "rgba(56,189,248,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(56,189,248,0.2)",
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginVertical: 4,
+  },
+  deliveryChoiceText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: C.secondary,
+  },
+
+  // Inline delivery bar (above input)
+  deliveryBar: {
+    marginHorizontal: 12,
+    marginBottom: 6,
+    backgroundColor: "rgba(245,193,0,0.07)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(245,193,0,0.22)",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  deliveryBarLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: C.primary,
+    textAlign: "center",
+  },
+  deliveryBarBtns: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  deliveryBarBtn: {
+    flex: 1,
+    backgroundColor: "rgba(245,193,0,0.10)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(245,193,0,0.35)",
+    paddingVertical: 9,
+    alignItems: "center",
+  },
+  deliveryBarBtnCourier: {
+    backgroundColor: "rgba(56,189,248,0.10)",
+    borderColor: "rgba(56,189,248,0.35)",
+  },
+  deliveryBarBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
   },
 
   // Deal done in messages

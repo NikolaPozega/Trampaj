@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useAuth } from "./AuthContext";
 import { sendLocalNotification } from "@/utils/notifications";
 
-export type MessageType = "text" | "handshake_request" | "handshake_accepted" | "handshake_rejected";
+export type MessageType = "text" | "handshake_request" | "handshake_accepted" | "handshake_rejected" | "delivery_personal" | "delivery_courier";
 
 export interface ChatMessage {
   id: string;
