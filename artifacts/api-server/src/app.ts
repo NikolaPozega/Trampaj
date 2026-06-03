@@ -1,3 +1,6 @@
+import { initSentry, Sentry } from "./lib/sentry";
+initSentry(); // mora biti prvo — hvata sve greške ispod
+
 import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -124,6 +127,9 @@ app.get("/download/app", (_req, res) => {
 
 // ─── API rute ─────────────────────────────────────────────────────────────────
 app.use("/api", router);
+
+// ─── Sentry error handler — mora biti nakon svih ruta ────────────────────────
+Sentry.setupExpressErrorHandler(app);
 
 // ─── Root → landing page ──────────────────────────────────────────────────────
 app.get("/", (_req, res) => {

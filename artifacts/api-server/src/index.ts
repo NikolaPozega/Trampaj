@@ -1,5 +1,16 @@
-import app from "./app";
+import app from "./app"; // Sentry se inicijalizira u app.ts (prvi import)
 import { logger } from "./lib/logger";
+import { Sentry } from "./lib/sentry";
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "uncaughtException");
+  Sentry.captureException(err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "unhandledRejection");
+  Sentry.captureException(reason);
+});
 
 const rawPort = process.env["PORT"];
 
