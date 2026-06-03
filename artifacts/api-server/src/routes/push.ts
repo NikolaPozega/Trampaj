@@ -11,7 +11,7 @@ const router = Router();
  */
 router.post("/token", requireAuth, async (req: AuthRequest, res) => {
   const { token } = req.body as { token?: string };
-  if (!token || typeof token !== "string" || !token.startsWith("ExponentPushToken")) {
+  if (!token || typeof token !== "string" || token.trim().length < 10) {
     return res.status(400).json({ error: "Neispravan push token." });
   }
   try {
