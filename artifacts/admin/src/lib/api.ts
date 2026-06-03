@@ -24,4 +24,4 @@ export function fmtRelative(ts: number) {
   return `${Math.floor(d / 86_400_000)} d`;
 }
 
-export const NC = "bg-card border border-yellow-500/20 rounded-xl";
+export const NC = "neon-card-cyan";
