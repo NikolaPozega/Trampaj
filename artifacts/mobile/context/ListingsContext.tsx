@@ -213,7 +213,8 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify(data),
         });
         if (r.ok) {
-          await Promise.all([refreshListings(), refreshMyListings()]);
+          // Refresh in background — don't block success response
+          void Promise.all([refreshListings(), refreshMyListings()]);
           return { ok: true };
         }
         const body = await r.json().catch(() => ({})) as { error?: string };

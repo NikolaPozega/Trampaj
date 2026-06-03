@@ -45,6 +45,21 @@ import {
 
 const IS_WEB = (Platform.OS as string) === "web";
 
+const FALLBACK_DOMAIN = "trampaj.hr";
+const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
+
+async function uploadImage(base64: string, mimeType: string, token: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/uploads/image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ base64Image: base64, mimeType }),
+  });
+  if (!res.ok) throw new Error(`Upload status ${res.status}`);
+  const data = await res.json() as { url?: string };
+  if (!data.url) throw new Error("No URL returned");
+  return data.url;
+}
+
 interface LocationResult {
   label: string;
   lat: number;
@@ -247,6 +262,7 @@ export default function PostScreen() {
   const [categoryManuallySet, setCategoryManuallySet] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [moderating, setModerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [titleSuggesting, setTitleSuggesting] = useState(false);
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether AI filled title/description (so we know if user overrode it)
@@ -447,26 +463,43 @@ export default function PostScreen() {
       try {
         const compressed = await compressImage(imageUris[0], 900, 0.82);
         imageBase64 = compressed.base64 ?? undefined;
-        console.log("[SUBMIT] Slika komprimirana za AI, base64 dužina:", imageBase64?.length ?? 0);
       } catch {
-        console.log("[SUBMIT] Kompresija slike nije uspjela, nastavljam bez slike");
+        // nastavi bez slike
       }
     }
-    console.log("[SUBMIT] Generiranje AI tagova za:", { title: title.trim(), description: description.trim(), wantedFor: wantedFor.trim(), imaSliku: !!imageBase64 });
     const tags = await generateListingTags(title.trim(), description.trim(), wantedFor.trim(), imageBase64);
-    console.log("[SUBMIT] AI tagovi rezultat:", JSON.stringify(tags));
-    // Uvijek primjeni AI ispravak tipfelera — bez obzira je li korisnik uređivao ili ne
     const finalTitle = tags.correctedTitle || title.trim();
     const finalDescription = tags.correctedDescription || description.trim();
-    console.log("[SUBMIT] Finalni tekst:", { naslov: finalTitle, opis: finalDescription });
-    // Ako kategorija nije detektirana iz naslova (tipfelera), pokušaj iz AI tagova
     let resolvedCategory = category;
     if (!resolvedCategory && tags.nudimTags.length > 0) {
       resolvedCategory = detectCategoryLocally(tags.nudimTags.join(" "));
-      if (resolvedCategory) {
-        console.log("[KATEGORIJA] Oporavak iz AI tagova →", resolvedCategory);
+    }
+
+    // ── Upload slika na server ─────────────────────────────────────────────────
+    let uploadedUris = imageUris;
+    if (imageUris.length > 0 && token) {
+      setUploading(true);
+      try {
+        const uploaded = await Promise.all(
+          imageUris.map(async (uri) => {
+            try {
+              const compressed = await compressImage(uri, 1200, 0.85);
+              const mimeType = uri.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+              const url = await uploadImage(compressed.base64, mimeType, token);
+              return url;
+            } catch {
+              return uri; // zadrži lokalni URI ako upload ne uspije
+            }
+          })
+        );
+        uploadedUris = uploaded;
+      } catch {
+        // nastavi s lokalnim URI-jima
+      } finally {
+        setUploading(false);
       }
     }
+
     const listing = {
       title: finalTitle,
       description: finalDescription,
@@ -475,7 +508,7 @@ export default function PostScreen() {
       location,
       condition,
       price: priceNum && !isNaN(priceNum) ? priceNum : null,
-      imageUris,
+      imageUris: uploadedUris,
       phone: phone.trim() || null,
       topup,
       flexibility,
@@ -487,7 +520,6 @@ export default function PostScreen() {
       packageBoxSize: packageSize === "small" ? packageBoxSize : null,
       packageWeight: packageSize === "medium" ? (parseFloat(packageWeight) || null) : null,
     };
-    console.log("[SUBMIT] Novi oglas:", JSON.stringify(listing));
     const result = await addListing(listing);
     if (!result.ok) {
       Alert.alert("Oglas nije objavljen", result.error ?? "Pokušaj ponovo.");
@@ -1204,7 +1236,7 @@ export default function PostScreen() {
 
         <Pressable
           onPress={handleSubmit}
-          disabled={!isValid || submitted}
+          disabled={!isValid || submitted || uploading}
           style={({ pressed }) => [
             styles.submitBtn,
             {
@@ -1228,6 +1260,13 @@ export default function PostScreen() {
               <ActivityIndicator size="small" color={colors.primaryForeground} />
               <Text style={[styles.submitText, { color: colors.primaryForeground }]}>
                 Provjera sadržaja...
+              </Text>
+            </>
+          ) : uploading ? (
+            <>
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+              <Text style={[styles.submitText, { color: colors.primaryForeground }]}>
+                Upload slike...
               </Text>
             </>
           ) : (

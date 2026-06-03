@@ -5,3 +5,4 @@
 - [Web guest tab bar](web-guest-tabbar.md) — tab bar intentionally hidden for guests (display:none); AdBannerSlot size="bottom" serves as guest footer; no tab bar offset needed for the ad.
 - [Expo splash screen fix](expo-splash-fix.md) — must import SplashScreen from "expo-router" not "expo-splash-screen"; never call preventAutoHideAsync() manually.
 - [Expo Go connection on Replit](expo-go-replit.md) — full solution for making Expo Go connect in Replit's proxy environment.
+- [Image upload architecture](image-upload.md) — images uploaded server-side via POST /api/uploads/image (base64→GCS); objectStorage.ts+objectAcl.ts in api-server/src/lib; public: true makes files world-readable.

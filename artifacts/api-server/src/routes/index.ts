@@ -13,6 +13,7 @@ import pushRouter from "./push";
 import monitorRouter from "./monitor";
 import socialRouter from "./social";
 import aiRouter from "./ai";
+import uploadsRouter from "./uploads";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(conversationsRouter);
 router.use(reviewsRouter);
 router.use(blockedRouter);
 router.use(aiRouter);
+router.use(uploadsRouter);
 
 export default router;
