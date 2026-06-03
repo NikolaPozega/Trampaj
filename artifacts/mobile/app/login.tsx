@@ -80,7 +80,7 @@ export default function LoginScreen() {
     });
   }, []);
 
-  async function checkBiometricAfterLogin(savedUser: string, savedPass: string) {
+  async function checkBiometricAfterLogin(savedUser: string) {
     const asked = await AsyncStorage.getItem(BIO_ASKED_KEY);
     if (asked) return;
     let hasHw = false;
@@ -100,7 +100,7 @@ export default function LoginScreen() {
           text: "Aktiviraj",
           onPress: async () => {
             await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
-            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: savedPass }));
+            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser }));
             setBioEnabled(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
@@ -109,25 +109,18 @@ export default function LoginScreen() {
     );
   }
 
-  async function doLoginWithStoredCreds(savedUser: string, savedPass: string) {
+  async function doLoginWithBiometric(savedUser: string) {
     setLoading(true);
-    const r = await login(savedUser, savedPass);
+    const r = await tryAutoLogin();
     setLoading(false);
     if (r.ok) {
       await setMyName(savedUser);
-      await AsyncStorage.setItem(SAVED_USERNAME_KEY, savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
       await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
       setBioEnabled(false);
-      if (r.error === "Nema veze s poslužiteljem") {
-        Alert.alert("Nema veze s poslužiteljem", "Provjeri internet vezu i pokušaj ponovo.");
-      } else if (r.error === "Korisnik nije pronađen") {
-        Alert.alert("Račun ne postoji", "Ovaj račun nije pronađen. Potrebna je nova registracija.");
-      } else {
-        Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se ručno i aktiviraj biometriju ponovno.");
-      }
+      Alert.alert("Biometrija deaktivirana", "Sesija je istekla. Prijavi se lozinkom i aktiviraj biometriju ponovno.");
     }
   }
 
@@ -143,15 +136,12 @@ export default function LoginScreen() {
       return;
     }
 
-    // Check if native biometrics are available
     let hasNativeBio = false;
     try {
       const hasHw = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       hasNativeBio = hasHw && enrolled;
-    } catch {
-      // Web — biometrics not supported
-    }
+    } catch { /* web */ }
 
     if (hasNativeBio) {
       const result = await LocalAuthentication.authenticateAsync({
@@ -160,10 +150,9 @@ export default function LoginScreen() {
         disableDeviceFallback: false,
       });
       if (!result.success) return;
-      const { username: savedUser, password: savedPass } = JSON.parse(savedCredsRaw) as { username: string; password: string };
-      await doLoginWithStoredCreds(savedUser, savedPass);
+      const { username: savedUser } = JSON.parse(savedCredsRaw) as { username: string };
+      await doLoginWithBiometric(savedUser);
     } else {
-      // No hardware biometrics (web) — ask for password confirmation
       setBioConfirmPassword("");
       setBioConfirmError("");
       setShowBioConfirm(true);
@@ -174,7 +163,7 @@ export default function LoginScreen() {
     if (!bioConfirmPassword) return;
     const savedCredsRaw = await AsyncStorage.getItem(BIO_CREDS_KEY);
     if (!savedCredsRaw) { setShowBioConfirm(false); return; }
-    const { username: savedUser } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+    const { username: savedUser } = JSON.parse(savedCredsRaw) as { username: string };
     setBioConfirmLoading(true);
     setBioConfirmError("");
     const r = await login(savedUser, bioConfirmPassword);
@@ -210,7 +199,7 @@ export default function LoginScreen() {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
-      setTimeout(() => checkBiometricAfterLogin(username.trim(), password), 800);
+      setTimeout(() => checkBiometricAfterLogin(username.trim()), 800);
     } else if (result.notVerified) {
       setNotVerified(true);
       setNotVerifiedEmail(result.email ?? "");
@@ -279,8 +268,7 @@ export default function LoginScreen() {
               </Text>
               <Pressable
                 onPress={async () => {
-                  const _FALLBACK = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
-                  const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? _FALLBACK}/api`;
+                  const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? "trampaj.hr"}/api`;
                   await fetch(`${API_BASE}/auth/resend-verification`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -504,8 +492,7 @@ export default function LoginScreen() {
                       if (!forgotEmail.trim()) { setForgotError("Upiši email adresu"); return; }
                       setForgotLoading(true);
                       try {
-                        const _FALLBACK = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
-                        const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? _FALLBACK}/api`;
+                        const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? "trampaj.hr"}/api`;
                         const res = await fetch(`${API_BASE}/auth/forgot-password`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },

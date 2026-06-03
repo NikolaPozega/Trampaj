@@ -273,8 +273,9 @@ router.delete("/clear-demo", async (req, res) => {
     return;
   }
   try {
+    const TRAMPA_DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
     const result = await db.delete(listingsTable)
-      .where(eq(listingsTable.userName, "TrampaDemo"))
+      .where(eq(listingsTable.userId, TRAMPA_DEMO_USER_ID))
       .returning({ id: listingsTable.id });
     req.log.info({ deleted: result.length }, "clear-demo completed");
     return res.json({ ok: true, deleted: result.length });

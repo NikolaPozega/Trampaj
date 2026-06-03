@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
-const FALLBACK_DOMAIN = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
+const FALLBACK_DOMAIN = "trampaj.hr";
 const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
 
 const BIO_ASKED_KEY    = "@trampaj_bio_asked_v1";
@@ -81,7 +81,7 @@ export default function VerifyEmailScreen() {
     setBioLoading(false);
     if (r.ok) {
       await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
-      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: bioUsername, password: bioPassword }));
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: bioUsername }));
       setBioModalVisible(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Aktivirano!", "Sljedeći put prijavi se otiskom prsta ili licem.");

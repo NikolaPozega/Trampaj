@@ -307,7 +307,7 @@ function DeliveryModal({
 }
 
 // ─── Escrow / delivery-payment modal ─────────────────────────────────────────
-const FALLBACK_DOMAIN = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
+const FALLBACK_DOMAIN = "trampaj.hr";
 const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
 
 interface ShippingMethod {

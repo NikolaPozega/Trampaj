@@ -370,8 +370,7 @@ export default function ProfileScreen() {
     if (!bioPasswordInput || !user) return;
     setBioActivating(true);
     try {
-      const _FALLBACK = "88ef2a6c-7a33-487b-979b-872bea2e7663-00-2xiyym1yox3cc.riker.replit.dev";
-      const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? _FALLBACK}/api`;
+      const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? "trampaj.hr"}/api`;
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -385,7 +384,7 @@ export default function ProfileScreen() {
       }
       await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
       await AsyncStorage.setItem(BIO_ASKED_KEY, "asked");
-      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username, password: bioPasswordInput }));
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: user.username }));
       setBioEnabled(true);
       setShowBioPasswordModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
