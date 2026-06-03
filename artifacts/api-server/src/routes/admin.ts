@@ -265,24 +265,4 @@ router.post("/seed-demo", requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
-// ─── DELETE /api/admin/clear-demo ────────────────────────────────────────────
-router.delete("/clear-demo", async (req, res) => {
-  const secret = req.headers["x-admin-secret"];
-  if (secret !== "trampa-clear-2025") {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  try {
-    const TRAMPA_DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
-    const result = await db.delete(listingsTable)
-      .where(eq(listingsTable.userId, TRAMPA_DEMO_USER_ID))
-      .returning({ id: listingsTable.id });
-    req.log.info({ deleted: result.length }, "clear-demo completed");
-    return res.json({ ok: true, deleted: result.length });
-  } catch (err) {
-    req.log.error({ err }, "clear-demo error");
-    return res.status(500).json({ error: "Greška pri brisanju" });
-  }
-});
-
 export default router;
