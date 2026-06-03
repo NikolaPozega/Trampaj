@@ -370,6 +370,7 @@ export default function BrowseScreen() {
   const topPad = Platform.OS === "web" ? 16 : insets.top + 8;
   // Guest: bottom inset for the fixed ad banner (52px banner + safe area)
   const guestBottomAd = showGuestAd ? 52 : 0;
+  const TAB_BAR_PAD = user && Platform.OS !== "web" ? 54 : 0;
 
   const renderItem = ({ item }: { item: FlatItem }) => {
     if ("type" in item && item.type === "ad") {
@@ -530,6 +531,7 @@ export default function BrowseScreen() {
               paddingBottom:
                 insets.bottom +
                 guestBottomAd +
+                TAB_BAR_PAD +
                 (Platform.OS === "web" ? 60 : 16),
             },
           ]}

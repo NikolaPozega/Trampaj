@@ -12,6 +12,7 @@ import adminRouter from "./admin";
 import pushRouter from "./push";
 import monitorRouter from "./monitor";
 import socialRouter from "./social";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(listingsRouter);
 router.use(conversationsRouter);
 router.use(reviewsRouter);
 router.use(blockedRouter);
+router.use(aiRouter);
 
 export default router;

@@ -28,48 +28,21 @@ export function detectCategoryLocally(text: string): string {
   return "";
 }
 
-export async function analyzeImageForCategory(base64Image: string): Promise<{
+const FALLBACK_DOMAIN = "trampaj.hr";
+const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
+
+export async function analyzeImageForCategory(base64Image: string, token?: string): Promise<{
   category: string;
   title: string;
   description: string;
 }> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch(`${API_BASE}/ai/analyze-image`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      max_tokens: 300,
-      messages: [
-        {
-          role: "system",
-          content: `Ti si asistent koji prepoznaje predmete sa slika za oglase trampe.
-Dostupne kategorije:
-${CATEGORY_EXAMPLES}
-
-KRITIČNO PRAVILO JEZIKA: Svi tekstovi u odgovoru moraju biti ISKLJUČIVO na standardnom hrvatskom jeziku. Ni jedan znak na engleskom, srpskom, bosanskom ni drugom jeziku. Ako je predmet stranog porijekla (npr. iPhone, Nike), naziv brendа ostavi, ali opis napiši na hrvatskom. Primjer: "iPhone 13 Pro" je ok naziv, ali opis mora biti "Pametni telefon u odličnom stanju, bez ogrebotina."
-
-VAŽNO: Odgovaraj SAMO validnim JSON-om, bez ikakvog teksta oko JSON-a.`,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: "auto" },
-            },
-            {
-              type: "text",
-              text: `Što je na slici? Napiši oglasnički naziv i opis ISKLJUČIVO na hrvatskom jeziku. Strani brend u nazivu je u redu (npr. "Nike tenisice"), ali sav ostali tekst mora biti hrvatski.
-Odgovori SAMO ovim JSON-om (bez teksta oko njega):
-{"category":"<kategorija iz popisa>","title":"<konkretan naziv predmeta na hrvatskom, max 6 riječi>","description":"<1-2 rečenice na hrvatskom: materijal, boja, stanje, dimenzije ako su vidljive>"}`,
-            },
-          ],
-        },
-      ],
-    }),
+    body: JSON.stringify({ base64Image }),
   });
 
   if (!response.ok) {
@@ -77,23 +50,10 @@ Odgovori SAMO ovim JSON-om (bez teksta oko njega):
     throw new Error(`AI analiza nije uspjela: HTTP ${response.status} — ${errBody.slice(0, 200)}`);
   }
 
-  const data = await response.json();
-  const text: string = data.choices[0]?.message?.content ?? "{}";
-  const match = text.match(/\{[\s\S]*?\}/);
-  const parsed = match ? JSON.parse(match[0]) : {};
-
-  const validCategories = ["Elektronika", "Odjeća", "Knjige", "Sport", "Nakit", "Namještaj", "Igračke", "Ostalo"];
-  const aiCategory = parsed.category ?? "";
-
-  // Normalize: check if AI returned a valid category (case-insensitive)
-  const matchedCategory =
-    validCategories.find((c) => c.toLowerCase() === aiCategory.toLowerCase()) ??
-    validCategories.find((c) => aiCategory.toLowerCase().includes(c.toLowerCase())) ??
-    detectCategoryLocally(aiCategory) ??
-    "Ostalo";
+  const parsed = await response.json() as { category?: string; title?: string; description?: string };
 
   return {
-    category: matchedCategory,
+    category: parsed.category ?? "",
     title: parsed.title ?? "",
     description: parsed.description ?? "",
   };

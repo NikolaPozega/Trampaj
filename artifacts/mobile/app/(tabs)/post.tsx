@@ -211,7 +211,7 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addListing, listings } = useListings();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const MAX_IMAGES = 5;
   const [imageUris, setImageUris] = useState<string[]>([]);
@@ -352,7 +352,7 @@ export default function PostScreen() {
       if (isFirst && finalBase64) {
         setAnalyzing(true);
         try {
-          const ai = await analyzeImageForCategory(finalBase64);
+          const ai = await analyzeImageForCategory(finalBase64, token ?? undefined);
           console.log("[AI] analyzeImageForCategory rezultat:", JSON.stringify(ai));
           if (ai.category && !categoryManuallySet) setCategory(ai.category);
           if (ai.title && !title.trim()) {
