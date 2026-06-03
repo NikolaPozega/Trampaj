@@ -15,19 +15,10 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const wasLoggedIn = useRef(false);
 
-  // Delayed visibility — prevents tab bar from collapsing before nav transition
   const [tabBarVisible, setTabBarVisible] = useState(false);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (user) {
-      if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
-      setTabBarVisible(true);
-    } else {
-      // Keep bar visible through the logout navigation transition, then hide
-      hideTimer.current = setTimeout(() => setTabBarVisible(false), 300);
-    }
-    return () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
+    setTabBarVisible(!!user);
   }, [user]);
 
   // Track if user was ever logged in; on logout go back to browse (not login)

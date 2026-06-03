@@ -595,21 +595,48 @@ export default function ProfileScreen() {
   }
 
   async function handlePickProfilePhoto() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Dozvola odbijena", "Omogući pristup galeriji u postavkama.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-    if (!result.canceled && result.assets[0]) {
-      const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
-      setProfileAvatarUri(compressed.uri);
-      setProfileAvatarBase64(`data:image/jpeg;base64,${compressed.base64}`);
-    }
+    const pickFrom = async (source: "camera" | "library") => {
+      if (source === "camera") {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert("Dozvola odbijena", "Omogući pristup kameri u postavkama.");
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+        if (!result.canceled && result.assets[0]) {
+          const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
+          setProfileAvatarUri(compressed.uri);
+          setProfileAvatarBase64(`data:image/jpeg;base64,${compressed.base64}`);
+        }
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert("Dozvola odbijena", "Omogući pristup galeriji u postavkama.");
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+        });
+        if (!result.canceled && result.assets[0]) {
+          const compressed = await compressImage(result.assets[0].uri, 400, 0.65);
+          setProfileAvatarUri(compressed.uri);
+          setProfileAvatarBase64(`data:image/jpeg;base64,${compressed.base64}`);
+        }
+      }
+    };
+
+    Alert.alert("Slika profila", "Odaberi izvor:", [
+      { text: "Kamera", onPress: () => { void pickFrom("camera"); } },
+      { text: "Galerija", onPress: () => { void pickFrom("library"); } },
+      { text: "Odustani", style: "cancel" },
+    ]);
   }
 
   async function handleSaveProfile() {

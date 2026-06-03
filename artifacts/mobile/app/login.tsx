@@ -26,7 +26,6 @@ const BIO_ASKED_KEY = "@trampaj_bio_asked_v1";
 const BIO_ENABLED_KEY = "@trampaj_bio_enabled_v1";
 const BIO_CREDS_KEY = "@trampaj_bio_creds_v1";
 const SAVED_USERNAME_KEY = "@trampaj_saved_username_v1";
-const TOKEN_KEY = "@trampaj_token_v1";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -81,7 +80,7 @@ export default function LoginScreen() {
     });
   }, []);
 
-  async function checkBiometricAfterLogin(savedUser: string) {
+  async function checkBiometricAfterLogin(savedUser: string, savedPassword: string) {
     const asked = await AsyncStorage.getItem(BIO_ASKED_KEY);
     if (asked) return;
     let hasHw = false;
@@ -101,7 +100,7 @@ export default function LoginScreen() {
           text: "Aktiviraj",
           onPress: async () => {
             await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
-            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser }));
+            await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: savedPassword }));
             setBioEnabled(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
@@ -110,30 +109,20 @@ export default function LoginScreen() {
     );
   }
 
-  async function doLoginWithBiometric(savedUser: string) {
+  // Koristi pohranjene credentiale (ne token) — radi i nakon odjave
+  async function doLoginWithBiometric(savedUser: string, savedPassword: string) {
     setLoading(true);
-    // Provjeri postoji li token — ako nema, korisnik se svjesno odjavio
-    const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
-    if (!storedToken) {
-      setLoading(false);
-      // Ne brišemo bio credentials — svježi token dobivamo nakon ručne prijave
-      Alert.alert(
-        "Prijava lozinkom",
-        "Odjavio si se — prijavi se lozinkom i biometrija će odmah biti dostupna."
-      );
-      return;
-    }
-    const r = await tryAutoLogin();
+    const r = await login(savedUser, savedPassword);
     setLoading(false);
     if (r.ok) {
       await setMyName(savedUser);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
-      // Token postoji ali sesija istekla na serveru
+      // Pogrešni credentiali (promjena lozinke) — deaktiviraj bio
       await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
       setBioEnabled(false);
-      Alert.alert("Biometrija deaktivirana", "Sesija je istekla. Prijavi se lozinkom i aktiviraj biometriju ponovno.");
+      Alert.alert("Biometrija deaktivirana", "Lozinka se promijenila. Prijavi se lozinkom i aktiviraj biometriju ponovno.");
     }
   }
 
@@ -163,8 +152,8 @@ export default function LoginScreen() {
         disableDeviceFallback: false,
       });
       if (!result.success) return;
-      const { username: savedUser } = JSON.parse(savedCredsRaw) as { username: string };
-      await doLoginWithBiometric(savedUser);
+      const { username: savedUser, password: savedPassword } = JSON.parse(savedCredsRaw) as { username: string; password: string };
+      await doLoginWithBiometric(savedUser, savedPassword ?? "");
     } else {
       setBioConfirmPassword("");
       setBioConfirmError("");
@@ -185,6 +174,8 @@ export default function LoginScreen() {
       setShowBioConfirm(false);
       await setMyName(savedUser);
       await AsyncStorage.setItem(SAVED_USERNAME_KEY, savedUser);
+      // Osvježi pohranjenu lozinku (fallback bio putanja)
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: savedUser, password: bioConfirmPassword }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
@@ -212,7 +203,7 @@ export default function LoginScreen() {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
-      setTimeout(() => checkBiometricAfterLogin(username.trim()), 800);
+      setTimeout(() => checkBiometricAfterLogin(username.trim(), password), 800);
     } else if (result.notVerified) {
       setNotVerified(true);
       setNotVerifiedEmail(result.email ?? "");
