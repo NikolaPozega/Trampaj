@@ -37,13 +37,18 @@ Single place to review, edit, delete all AI-generated social media posts across 
 - Actions: Edit (FB only), Delete, Re-publish (delete + repost with corrected text)
 
 ### Approval workflow
-- TBD: auto-publish immediately OR queue for owner approval first
-- Owner has not decided yet — ask when implementing
+- **Auto-publish immediately** + push notification to owner after each post
+- Owner reviews in admin hub; if wrong → delete (and repost manually or trigger AI retry)
+- No pre-approval queue needed
 
 ### Networks
 - Facebook Page (META_PAGE_ID, META_PAGE_TOKEN already in secrets)
 - Instagram (META_IG_USER_ID already in secrets)
-- Future: TikTok, others
+- TikTok (secrets TBD)
+
+### Image vs text corrections
+- Wrong image → delete post, done (can't edit images on any platform anyway)
+- Wrong text → FB: edit in place; IG/TikTok: delete + repost
 
 ---
 
