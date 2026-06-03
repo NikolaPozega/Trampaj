@@ -4,14 +4,21 @@ import { eq, and, or, asc } from "drizzle-orm";
 import { db, conversationsTable, messagesTable, listingsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import admin from "firebase-admin";
+import { logger } from "../lib/logger";
 
 // Inicijaliziraj Firebase Admin SDK jednom
 if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env["FIREBASE_SERVICE_ACCOUNT"] ?? "{}") as admin.ServiceAccount;
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  } catch (e) {
-    // Nema service account — push neće raditi, ali server neće crashati
+  const raw = process.env["FIREBASE_SERVICE_ACCOUNT"];
+  if (!raw) {
+    logger.warn("FIREBASE_SERVICE_ACCOUNT nije postavljen — push notifikacije neće raditi");
+  } else {
+    try {
+      const serviceAccount = JSON.parse(raw) as admin.ServiceAccount;
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+      logger.info("Firebase Admin SDK inicijaliziran");
+    } catch (e) {
+      logger.error({ err: e }, "Firebase Admin SDK inicijalizacija neuspješna");
+    }
   }
 }
 
