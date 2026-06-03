@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -944,7 +944,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { user, token } = useAuth();
   const { listings } = useListings();
-  const { conversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation, loadEscrowStatus, confirmReceipt } =
+  const { conversations, refreshConversations, getOrCreateConversation, sendMessage, sendSpecialMessage, markAsRead, markDealShown, acceptDisclaimer, saveDeliveryInfo, deleteConversation, loadEscrowStatus, confirmReceipt } =
     useChat();
 
   // Auth guard — redirect to login if not logged in
@@ -969,6 +969,13 @@ export default function ChatScreen() {
       getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
     }
   }, [listingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Odmah refreshaj poruke kad se chat screen otvori/fokusira — eliminira "nema poruka" flash
+  useFocusEffect(
+    useCallback(() => {
+      void refreshConversations();
+    }, [refreshConversations])
+  );
 
   const liveConv = conversations.find((c) => c.listingId === listingId);
   const hsStatus = liveConv ? getHsStatus(liveConv.messages) : "idle";

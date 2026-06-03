@@ -46,6 +46,7 @@ export interface Conversation {
 
 interface ChatContextType {
   conversations: Conversation[];
+  refreshConversations: () => Promise<void>;
   getOrCreateConversation: (listingId: string, listingTitle: string, otherUserName: string) => Promise<Conversation | null>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   sendSpecialMessage: (conversationId: string, type: Exclude<MessageType, "text">) => Promise<void>;
@@ -381,6 +382,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   return (
     <ChatContext.Provider value={{
       conversations,
+      refreshConversations: fetchConversations,
       getOrCreateConversation,
       sendMessage,
       sendSpecialMessage,
