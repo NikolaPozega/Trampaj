@@ -3,6 +3,17 @@ import { randomUUID } from "crypto";
 import { eq, and, or, asc } from "drizzle-orm";
 import { db, conversationsTable, messagesTable, listingsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import admin from "firebase-admin";
+
+// Inicijaliziraj Firebase Admin SDK jednom
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env["FIREBASE_SERVICE_ACCOUNT"] ?? "{}") as admin.ServiceAccount;
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  } catch (e) {
+    // Nema service account — push neće raditi, ali server neće crashati
+  }
+}
 
 const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -200,23 +211,23 @@ router.post("/conversations/:id/messages", requireAuth, async (req: AuthRequest,
           .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
         if (otherUser?.pushToken) {
           const body = type === "text" ? (text ?? "") : "Poslao/la je zahtjev za dogovor";
-          const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({
-              to: otherUser.pushToken,
-              channelId: "poruke",
-              title: sender?.username ?? "Trampaj",
-              body,
-              data: { listingId: conv.listingId, conversationId: id },
-              sound: "default",
-              badge: 1,
-            }),
-          });
-          const pushData = await pushRes.json() as { data?: { status: string; message?: string; details?: unknown } };
-          if (pushData?.data?.status === "error") {
-            req.log.warn({ pushError: pushData.data }, "push notification failed");
-          }
+          const message: admin.messaging.Message = {
+            token: otherUser.pushToken,
+            notification: { title: sender?.username ?? "Trampaj", body },
+            android: {
+              notification: {
+                channelId: "poruke",
+                sound: "default",
+                defaultVibrateTimings: false,
+                vibrateTimingsMillis: [0, 200, 100, 200],
+                color: "#F5C100",
+              },
+              priority: "high",
+            },
+            data: { listingId: conv.listingId, conversationId: id },
+          };
+          const msgId = await admin.messaging().send(message);
+          req.log.info({ msgId }, "push sent via FCM");
         } else {
           req.log.info({ otherUserId: conv.initiatorId === req.userId ? conv.ownerId : conv.initiatorId }, "push skip: no token");
         }

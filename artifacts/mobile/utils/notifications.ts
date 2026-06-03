@@ -80,8 +80,6 @@ export function addNotificationResponseListener(
   return Notifications.addNotificationResponseReceivedListener(callback);
 }
 
-const EAS_PROJECT_ID = "203bae0a-78da-4e29-b5cc-9836e0ae481e";
-
 export async function getExpoPushToken(): Promise<string | null> {
   if (!Notifications || !Device) return null;
   try {
@@ -89,7 +87,8 @@ export async function getExpoPushToken(): Promise<string | null> {
     const perm = await Notifications.getPermissionsAsync();
     const granted = perm?.granted || perm?.status === "granted";
     if (!granted) return null;
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: EAS_PROJECT_ID });
+    // Koristi raw FCM token — server šalje direktno na Firebase Admin SDK
+    const tokenData = await Notifications.getDevicePushTokenAsync();
     return tokenData?.data ?? null;
   } catch {
     return null;

@@ -1,19 +1,31 @@
 ---
 name: Firebase FCM setup for Android push
-description: Why google-services.json is required and how it's configured
+description: How push notifications are sent — Firebase Admin SDK directly (not Expo relay)
 ---
 
-## Problem
+## Architecture (current)
 
-`getExpoPushTokenAsync` silently returns null on Android if `google-services.json` is not included in the APK. The APK must be rebuilt — OTA update alone is not enough for native module changes.
+Server sends push **directly via Firebase Admin SDK** (`firebase-admin` npm package), bypassing Expo's push relay service.
+Mobile registers a **raw FCM device token** via `Notifications.getDevicePushTokenAsync()` (not Expo token).
 
-## Setup
+**Why switched:** Expo's push relay (`exp.host/--/api/v2/push/send`) requires FCM credentials uploaded to EAS. That failed with `InvalidCredentials`. Direct Firebase Admin SDK needs only a service account JSON env var — simpler and more reliable.
 
-- Firebase project: `trampaj-8faed` (console.firebase.google.com)
-- Android package: `hr.trampaj.app` (all lowercase — Firebase was registered with `Hr.trampaj.app`, corrected in the JSON file)
-- File: `artifacts/mobile/google-services.json`
-- app.json: `android.googleServicesFile: "./google-services.json"`
+## Firebase project
 
-**Why:** FCM (Firebase Cloud Messaging) is required for Android push notifications. Expo's `getExpoPushTokenAsync` contacts Expo's push service which uses FCM internally. Without `google-services.json`, FCM registration fails and no ExponentPushToken is issued.
+- Project: `trampaj-8faed` (console.firebase.google.com)
+- Android package: `hr.trampaj.app`
+- Service account: `firebase-adminsdk-fbsvc@trampaj-8faed.iam.gserviceaccount.com`
+- Env var: `FIREBASE_SERVICE_ACCOUNT` (shared) — full service account JSON
 
-**How to apply:** Any future APK rebuild automatically picks up `google-services.json` via `app.json`. If Firebase project changes, replace the file and rebuild APK.
+## Mobile side
+
+- `artifacts/mobile/utils/notifications.ts` → `getDevicePushTokenAsync()` returns raw FCM token string
+- `artifacts/mobile/google-services.json` — required in APK for FCM to work (native, not OTA)
+- `app.json`: `android.googleServicesFile: "./google-services.json"`
+
+## Server side
+
+- `artifacts/api-server/src/routes/conversations.ts` — initializes `firebase-admin` once, sends via `admin.messaging().send()`
+- Channel: `poruke`, priority: high, color: #F5C100
+
+**How to apply:** If Firebase project changes, update `google-services.json` (rebuild APK needed) AND generate new service account JSON → update `FIREBASE_SERVICE_ACCOUNT` env var → redeploy server.
