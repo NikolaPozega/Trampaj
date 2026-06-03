@@ -10,7 +10,6 @@ import { logger } from "../lib/logger";
 if (!admin.apps.length) {
   try {
     const raw = (process.env["FIREBASE_SERVICE_ACCOUNT"] ?? "").trim();
-    logger.info({ len: raw.length, starts: raw[0] ?? "?" }, "Firebase secret check");
 
     let serviceAccount: admin.ServiceAccount;
     if (raw.startsWith("{")) {

@@ -8,4 +8,5 @@
 - [Image upload architecture](image-upload.md) — images uploaded server-side via POST /api/uploads/image (base64→GCS); objectStorage.ts+objectAcl.ts in api-server/src/lib; public: true makes files world-readable.
 - [Push token race condition](push-token-race.md) — logout DELETE /push/token fire-and-forget races new login POST; fixed by removing DELETE from logout + AppState refresh.
 - [Firebase FCM setup](firebase-fcm.md) — google-services.json required for Android push; project trampaj-8faed, package hr.trampaj.app; must rebuild APK (OTA not enough).
+- [Firebase Admin SDK init](firebase-init.md) — store as shared env var (not secret) via setEnvVars; Replit secret UI truncates multi-line JSON; recover by re-reading attached JSON → setEnvVars.
 - [Admin panel design preferences](admin-design-prefs.md) — futuristic neon borders, small font, dense data, dark theme; wait until full redesign, do all at once.
