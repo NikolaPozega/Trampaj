@@ -1267,8 +1267,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={() => {
                   setShowLogoutModal(false);
-                  router.replace("/(tabs)");
-                  void logout();
+                  void logout(); // _layout.tsx automatski navigira na browse
                 }}
                 style={[styles.modalBtn, { backgroundColor: `${colors.destructive}18`, borderWidth: 1, borderColor: `${colors.destructive}40`, flex: 1 }]}
               >

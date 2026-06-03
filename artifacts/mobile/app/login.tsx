@@ -26,6 +26,7 @@ const BIO_ASKED_KEY = "@trampaj_bio_asked_v1";
 const BIO_ENABLED_KEY = "@trampaj_bio_enabled_v1";
 const BIO_CREDS_KEY = "@trampaj_bio_creds_v1";
 const SAVED_USERNAME_KEY = "@trampaj_saved_username_v1";
+const TOKEN_KEY = "@trampaj_token_v1";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -111,6 +112,17 @@ export default function LoginScreen() {
 
   async function doLoginWithBiometric(savedUser: string) {
     setLoading(true);
+    // Provjeri postoji li token — ako nema, korisnik se svjesno odjavio
+    const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+    if (!storedToken) {
+      setLoading(false);
+      // Ne brišemo bio credentials — svježi token dobivamo nakon ručne prijave
+      Alert.alert(
+        "Prijava lozinkom",
+        "Odjavio si se — prijavi se lozinkom i biometrija će odmah biti dostupna."
+      );
+      return;
+    }
     const r = await tryAutoLogin();
     setLoading(false);
     if (r.ok) {
@@ -118,6 +130,7 @@ export default function LoginScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } else {
+      // Token postoji ali sesija istekla na serveru
       await AsyncStorage.multiRemove([BIO_CREDS_KEY, BIO_ENABLED_KEY, BIO_ASKED_KEY]);
       setBioEnabled(false);
       Alert.alert("Biometrija deaktivirana", "Sesija je istekla. Prijavi se lozinkom i aktiviraj biometriju ponovno.");

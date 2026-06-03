@@ -343,7 +343,7 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: "images",
-        allowsEditing: false,
+        allowsEditing: true,
         quality: 0.7,
       });
     } else {
@@ -356,7 +356,7 @@ export default function PostScreen() {
       }
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
-        allowsEditing: false,
+        allowsEditing: true,
       });
     }
     if (!result.canceled && result.assets[0]) {
