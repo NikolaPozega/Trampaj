@@ -13,7 +13,43 @@ if (!admin.apps.length) {
     logger.warn("FIREBASE_SERVICE_ACCOUNT nije postavljen — push notifikacije neće raditi");
   } else {
     try {
-      const serviceAccount = JSON.parse(raw) as admin.ServiceAccount;
+      // Prihvati ili puni JSON objekt ili samo PEM private key string
+      let serviceAccount: admin.ServiceAccount;
+      const trimmed = raw.trim();
+
+      const normalizePEM = (pem: string): string => {
+        // Zamijeni JSON-escaped newlineove
+        let k = pem.replace(/\\n/g, "\n").replace(/\r\n/g, "\n").trim();
+        // Ako nema pravih newlineova (zalijepljeno u jednoj liniji), rekonstruiraj
+        if (k.split("\n").length < 3 && k.includes("-----BEGIN")) {
+          const hm = k.match(/-----BEGIN ([^-]+)-----/);
+          const fm = k.match(/-----END ([^-]+)-----/);
+          if (hm && fm) {
+            const header = `-----BEGIN ${hm[1]}-----`;
+            const footer = `-----END ${fm[1]}-----`;
+            const data = k.replace(header, "").replace(footer, "").replace(/\s+/g, "");
+            const chunks = data.match(/.{1,64}/g) ?? [];
+            k = `${header}\n${chunks.join("\n")}\n${footer}\n`;
+          }
+        }
+        return k;
+      };
+
+      if (trimmed.startsWith("{")) {
+        const parsed = JSON.parse(trimmed) as admin.ServiceAccount & { private_key?: string };
+        // Normaliziraj private_key unutar JSON-a
+        if (parsed.private_key) {
+          parsed.private_key = normalizePEM(parsed.private_key);
+        }
+        serviceAccount = parsed;
+      } else {
+        // Samo private key PEM — ostala polja su poznata
+        serviceAccount = {
+          projectId: "trampaj-8faed",
+          clientEmail: "firebase-adminsdk-fbsvc@trampaj-8faed.iam.gserviceaccount.com",
+          privateKey: normalizePEM(trimmed),
+        };
+      }
       admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
       logger.info("Firebase Admin SDK inicijaliziran");
     } catch (e) {
