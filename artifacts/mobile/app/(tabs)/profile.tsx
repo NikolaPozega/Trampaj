@@ -1031,8 +1031,7 @@ export default function ProfileScreen() {
         )}
         contentContainerStyle={[
           styles.list,
-          myListings.length === 0 && styles.listEmpty,
-          { paddingBottom: insets.bottom + (IS_WEB ? 104 : 80) },
+          { paddingBottom: insets.bottom + (IS_WEB ? 104 : 160) },
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -1819,7 +1818,7 @@ const styles = StyleSheet.create({
   },
   convBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#08152E" },
   list: { paddingHorizontal: 12, paddingTop: 4 },
-  listEmpty: { flex: 1 },
+  listEmpty: {},
   columnWrapper: { gap: 10, paddingHorizontal: 4, marginBottom: 0 },
   cardWrapper: { flex: 1 },
   pendingOverlay: {
