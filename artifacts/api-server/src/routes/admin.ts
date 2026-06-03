@@ -368,6 +368,31 @@ router.post("/push-broadcast", requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── POST /api/admin/social-posts/manual — ručno logiranje (TikTok) ──────────
+router.post("/social-posts/manual", requireAdmin, async (req: AuthRequest, res) => {
+  const { platform, postId, caption, listingId, listingTitle, imageUrl } = req.body as {
+    platform?: string; postId?: string; caption?: string;
+    listingId?: string; listingTitle?: string; imageUrl?: string;
+  };
+  if (!platform || !postId) return res.status(400).json({ error: "platform i postId su obavezni." });
+  try {
+    await db.insert(socialPostsTable).values({
+      id: randomUUID(),
+      platform: platform.toLowerCase(),
+      postId: postId.trim(),
+      listingId: listingId ?? null,
+      listingTitle: listingTitle?.trim() ?? "",
+      caption: caption?.trim() ?? "",
+      imageUrl: imageUrl ?? null,
+      status: "published",
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "manual social post error");
+    return res.status(500).json({ error: "Greška pri snimanju." });
+  }
+});
+
 // ─── GET /api/admin/social-posts ─────────────────────────────────────────────
 router.get("/social-posts", requireAdmin, async (req: AuthRequest, res) => {
   try {
