@@ -231,6 +231,9 @@ export default function PostScreen() {
 
   const MAX_IMAGES = 5;
   const [imageUris, setImageUris] = useState<string[]>([]);
+  // base64 za svaku sliku (indeks paralelan s imageUris) — sprema se pri odabiru,
+  // koristi se pri uploadu da izbjegnemo re-kompresiju privremenog file:// URI-ja
+  const [imageBase64s, setImageBase64s] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [wantedFor, setWantedFor] = useState("");
@@ -370,8 +373,19 @@ export default function PostScreen() {
       } catch {
         // expo-image-manipulator fails on web blob URLs — use original URI directly
       }
+      // Komprimiraj na upload kvalitetu odmah pri odabiru i spremi base64
+      let uploadBase64 = "";
+      try {
+        const uploadCompressed = await compressImage(finalUri, 1200, 0.85);
+        uploadBase64 = uploadCompressed.base64;
+      } catch {
+        uploadBase64 = finalBase64; // fallback na display base64
+      }
       setImageUris((prev) =>
         prev.length < MAX_IMAGES ? [...prev, finalUri] : prev
+      );
+      setImageBase64s((prev) =>
+        prev.length < MAX_IMAGES ? [...prev, uploadBase64] : prev
       );
       if (isFirst && finalBase64) {
         setAnalyzing(true);
@@ -408,6 +422,7 @@ export default function PostScreen() {
   function removeImage(index: number) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setImageUris((prev) => prev.filter((_, i) => i !== index));
+    setImageBase64s((prev) => prev.filter((_, i) => i !== index));
   }
 
   function showImagePicker() {
@@ -497,11 +512,15 @@ export default function PostScreen() {
       setUploading(true);
       try {
         const uploaded = await Promise.all(
-          imageUris.map(async (uri) => {
+          imageUris.map(async (uri, idx) => {
             try {
-              const compressed = await compressImage(uri, 1200, 0.85);
+              // Koristi base64 spremljenu pri odabiru — izbjegava re-kompresiju
+              // privremenog file:// URI-ja koji možda više nije čitljiv
+              const storedBase64 = imageBase64s[idx] ?? "";
+              const base64ToUpload = storedBase64 || (await compressImage(uri, 1200, 0.85)).base64;
+              if (!base64ToUpload) return uri;
               const mimeType = uri.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-              const url = await uploadImage(compressed.base64, mimeType, token);
+              const url = await uploadImage(base64ToUpload, mimeType, token);
               return url;
             } catch {
               return uri;
@@ -509,6 +528,14 @@ export default function PostScreen() {
           })
         );
         uploadedUris = uploaded;
+        // Upozori korisnika ako su neke slike ostale lokalne (upload nije uspio)
+        const failedCount = uploadedUris.filter(u => u.startsWith("file://")).length;
+        if (failedCount > 0) {
+          Alert.alert(
+            "Slike nisu uploadane",
+            `${failedCount} slika nije moglo biti prenijeto na server. Oglas je objavljen, ali slike neće biti vidljive drugima.`
+          );
+        }
       } catch {
         // nastavi s lokalnim URI-jima
       } finally {
@@ -568,7 +595,7 @@ export default function PostScreen() {
       setPriceText("");
       setPhone("");
       setShowPhone(false);
-      setImageUris([]);
+      setImageUris([]); setImageBase64s([]);
       setCondition(null);
       setTopup(null);
       setFlexibility(null);
@@ -609,7 +636,7 @@ export default function PostScreen() {
       const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";
       setTitle(""); setDescription(""); setWantedFor(""); setWantedForError(null); setCategory("");
       setLocation(defaultLoc); setPriceText(""); setPhone(""); setShowPhone(false);
-      setImageUris([]); setCondition(null); setTopup(null); setFlexibility(null);
+      setImageUris([]); setImageBase64s([]); setCondition(null); setTopup(null); setFlexibility(null);
       setCashFallback(null); setDeadline(null); setPackageSize(null);
       setPackageBoxSize(null); setPackageWeight(""); setLocationSuggestions([]);
       setCategoryManuallySet(false); titleFromAI.current = false;
