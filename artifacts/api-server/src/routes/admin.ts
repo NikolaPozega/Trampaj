@@ -468,4 +468,13 @@ router.patch("/social-posts/:id", requireAdmin, async (req: AuthRequest, res) =>
 });
 
 
+// ─── TEMP: one-time admin fix (remove after use) ─────────────────────────────
+router.post("/temp-fix-admin", async (req: Request, res: Response) => {
+  const { token } = req.body as { token?: string };
+  if (token !== "TRAMPAJ_FIX_2026") { res.status(403).json({ error: "Nope" }); return; }
+  await db.update(usersTable).set({ isAdmin: true, isVerified: true })
+    .where(eq(usersTable.email, "nikola@vila-stanisic.hr"));
+  res.json({ ok: true });
+});
+
 export default router;
