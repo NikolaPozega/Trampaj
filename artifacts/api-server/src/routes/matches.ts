@@ -14,7 +14,13 @@ interface SlimListing {
   description: string;
   wantedFor: string;
   category: string;
+  location: string;
+  createdAt: number; // ms timestamp
   imageUrl: string | null;
+  flexibility: string | null;   // "tocno" | "otvoren"
+  cashFallback: boolean | null; // prihvaća gotovinu
+  topup: string | null;         // "primam" | "dajem" | "oboje" | "ne"
+  deadline: string | null;      // "hitno" | "ovaj-mjesec" | "bez-roka"
 }
 
 function parseSlim(row: Record<string, unknown>): SlimListing {
@@ -26,12 +32,28 @@ function parseSlim(row: Record<string, unknown>): SlimListing {
     description: ((row["description"] as string) ?? "").slice(0, 150),
     wantedFor: row["wantedFor"] as string,
     category: row["category"] as string,
+    location: (row["location"] as string) ?? "",
+    createdAt: row["createdAt"] instanceof Date ? row["createdAt"].getTime() : Date.now(),
     imageUrl: gcsUrl,
+    flexibility: (row["flexibility"] as string | null) ?? null,
+    cashFallback: (row["cashFallback"] as boolean | null) ?? null,
+    topup: (row["topup"] as string | null) ?? null,
+    deadline: (row["deadline"] as string | null) ?? null,
   };
 }
 
+// Izvuci grad iz adrese (npr. "Ilica 14, Zagreb" → "zagreb")
+function extractCity(location: string): string {
+  const parts = location.split(",").map((s) => s.trim());
+  return (parts[parts.length - 1] ?? "").toLowerCase();
+}
+
+// Je li listing fleksibilan (prihvaća i nepotpune trampe)?
+function isFlexible(l: SlimListing): boolean {
+  return l.flexibility === "otvoren" || l.cashFallback === true || l.topup === "primam" || l.topup === "oboje";
+}
+
 // POST /api/listings/semantic-matches
-// Returns AI-ranked trade match suggestions for the authenticated user.
 router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, res) => {
   if (!process.env["OPENAI_API_KEY"]) {
     res.json({ matches: [] });
@@ -39,12 +61,14 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
   }
 
   const userId = req.userId!;
+  const { dismissedIds = [] } = req.body as { dismissedIds?: string[] };
+  const dismissedSet = new Set<string>(dismissedIds);
 
   try {
     const cols = getTableColumns(listingsTable);
     const fields = { ...cols, userName: usersTable.username };
 
-    // 1. User's active listings
+    // 1. Korisnikovi aktivni oglasi
     const myRows = await db
       .select(fields)
       .from(listingsTable)
@@ -58,7 +82,7 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
 
     if (!myRows.length) { res.json({ matches: [] }); return; }
 
-    // 2. Other users' active listings (newest 60)
+    // 2. Tuđi aktivni oglasi (najnoviji 60, bez odbijenih)
     const theirRows = await db
       .select(fields)
       .from(listingsTable)
@@ -69,14 +93,19 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
         eq(listingsTable.moderationStatus, "active"),
       ))
       .orderBy(desc(listingsTable.createdAt))
-      .limit(60);
+      .limit(80);
 
     if (!theirRows.length) { res.json({ matches: [] }); return; }
 
     const myListings = myRows.map((r) => parseSlim(r as unknown as Record<string, unknown>));
-    const theirListings = theirRows.map((r) => parseSlim(r as unknown as Record<string, unknown>));
+    // Točka 2: filtriraj već odbijene oglase
+    const theirListings = theirRows
+      .map((r) => parseSlim(r as unknown as Record<string, unknown>))
+      .filter((l) => !dismissedSet.has(l.id));
 
-    // 3. Build pairs (cap at 120 total)
+    if (!theirListings.length) { res.json({ matches: [] }); return; }
+
+    // 3. Gradi parove (max 120)
     interface Pair { pair: number; myId: string; theirId: string; my: SlimListing; their: SlimListing }
     const pairs: Pair[] = [];
     outer: for (const mine of myListings) {
@@ -88,11 +117,30 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
 
     const openai = new OpenAI({ apiKey: process.env["OPENAI_API_KEY"] });
 
-    // ── Phase 1: text-based semantic scoring ─────────────────────────────────
+    // ── Faza 1: semantičko ocjenjivanje (tekst) ──────────────────────────────
+    // Uključujemo fleksibilnost i gotovinu u podatke za AI
     const textPairs = pairs.map((p) => ({
       pair: p.pair,
-      a: { naslov: p.my.title, opis: p.my.description, trazi: p.my.wantedFor, kat: p.my.category },
-      b: { naslov: p.their.title, opis: p.their.description, trazi: p.their.wantedFor, kat: p.their.category },
+      a: {
+        naslov: p.my.title,
+        opis: p.my.description,
+        trazi: p.my.wantedFor,
+        kat: p.my.category,
+        flex: p.my.flexibility ?? "tocno",
+        gotovina: p.my.cashFallback ?? false,
+        doplatak: p.my.topup ?? "ne",
+        hitno: p.my.deadline === "hitno",
+      },
+      b: {
+        naslov: p.their.title,
+        opis: p.their.description,
+        trazi: p.their.wantedFor,
+        kat: p.their.category,
+        flex: p.their.flexibility ?? "tocno",
+        gotovina: p.their.cashFallback ?? false,
+        doplatak: p.their.topup ?? "ne",
+        hitno: p.their.deadline === "hitno",
+      },
     }));
 
     const textCompletion = await openai.chat.completions.create({
@@ -102,27 +150,36 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
       messages: [
         {
           role: "system",
-          content: `Ti si asistent za trampu predmeta na Trampaj.hr (hrvatska platforma za trampu bez novca).
+          content: `Ti si asistent za trampu predmeta na Trampaj.hr (hrvatska platforma za trampu).
 
-KRITIČNA PRAVILA razumijevanja fraza:
-- "torbica za Samsung" = torbica/futrola namijenjena Samsung telefonu (NE sam Samsung telefon!)
-- "punjač za laptop" = punjač za laptop (NE laptop!)
-- "maska za iPhone" = zaštitna maska za iPhone (NE iPhone!)
-- Prijedlog "za" označava kompatibilnost ili namjenu — predmet iza "za" je uređaj/marka, ne željeni predmet
-- Uvijek analiziraj cijelu frazu da shvatiš što osoba traži
+KRITIČNA PRAVILA za razumijevanje fraza:
+- "torbica za Samsung" = torbica/futrola ZA Samsung telefon (NE sam Samsung telefon!)
+- "punjač za laptop" = punjač ZA laptop (NE laptop!)
+- Prijedlog "za" uvijek označava kompatibilnost — predmet iza "za" je uređaj, ne željeni predmet
+- Uvijek čitaj cijelu frazu u kontekstu
 
-PROCJENA:
-Za svaki par oglasa ocijeni:
-- aWantsB: želi li osoba A (polje "trazi") ono što B nudi (polje "naslov"+"opis")? (true/false)
-- bWantsA: želi li osoba B ono što A nudi? (true/false)  
-- score: 0–10 (10=savršeno obostrano, 5=jedno poklapanje, 0=nema smisla)
+FLEKSIBILNOST (VAŽNO):
+- Ako listing ima flex="otvoren" → vlasnik je otvoren za različite ponude, ne samo točno ono što piše u "trazi"
+- Ako listing ima gotovina=true → vlasnik prihvaća gotovinu kao dio trampe (parcijalna trampa je ok)
+- Ako listing ima doplatak="primam" ili "oboje" → vlasnik prima gotovinu uz predmet
+- Za fleksibilne listinge score može biti viši čak i kod djelomičnog poklapanja
+- Ako A nudi nešto vrijedno a B je fleksibilan (flex=otvoren ili gotovina=true) → bWantsA može biti true čak i bez idealnog poklapanja
+
+HITNOST:
+- Ako listing ima hitno=true → vlasnik želi trampu što prije, spremniji je na kompromis
+
+Za svaki par procijeni:
+- aWantsB: želi li A ono što B nudi? (uzmi u obzir A-ovu fleksibilnost)
+- bWantsA: želi li B ono što A nudi? (uzmi u obzir B-ovu fleksibilnost)
+- score: 0–10 (10=savršeno obostrano, 6=jedno poklapanje ili fleksibilna trampa, 0=nema smisla)
 
 Primjeri:
-- A trazi "torbicu za Samsung", B nudi "Samsung Galaxy S23+" → aWantsB=false (A trazi torbicu, ne telefon!), score=0
-- A trazi "torbicu za Samsung", B nudi "Silikonska torbica za Samsung S23" → aWantsB=true, score=8
-- A trazi "parfem", B nudi "Boss parfem 100ml" → aWantsB=true
+- A trazi "torbicu za Samsung", B nudi "Samsung Galaxy S23+" → aWantsB=false, score=0
+- A trazi "torbicu za Samsung", B nudi "Silikonska futrola za Samsung S23" → aWantsB=true, score=8
+- A nudi "Boss parfem", B nudi "torbicu" i ima flex=otvoren → bWantsA može biti true (fleksibilan je), score=5
+- A nudi vrijednu "gitaru", B trazi "nešto za vikend" i ima gotovina=true → bWantsA=true, score=6
 
-Vrati SAMO JSON array (bez ikakvog teksta oko njega):
+Vrati SAMO JSON array (bez ikakvog teksta):
 [{"pair":0,"aWantsB":true,"bWantsA":false,"score":5},...]`,
         },
         {
@@ -137,7 +194,7 @@ Vrati SAMO JSON array (bez ikakvog teksta oko njega):
     type AiResult = { pair: number; aWantsB: boolean; bWantsA: boolean; score: number };
     const textResults: AiResult[] = j1 ? JSON.parse(j1[0]) as AiResult[] : [];
 
-    // ── Phase 2: vision re-scoring for top candidates with images ─────────────
+    // ── Faza 2: vizualna provjera slika za top kandidate ─────────────────────
     const topCandidates = textResults
       .filter((r) => r.score >= 5 && (r.aWantsB || r.bWantsA))
       .slice(0, 8);
@@ -152,16 +209,13 @@ Vrati SAMO JSON array (bez ikakvog teksta oko njega):
       const visionContent: ChatCompletionContentPart[] = [
         {
           type: "text",
-          text: `Analiziraj slike sljedećih parova trampe i poboljšaj procjenu. Za svaki par vidiš dvije slike:
-1. slika onoga što osoba A NUDI
-2. slika onoga što osoba B NUDI
-
-Procijeni vizualno poklapaju li se s onim što svaka osoba TRAŽI:
+          text: `Analiziraj slike sljedećih parova trampe i poboljšaj procjenu.
+Za svaki par vidiš: sliku A (što osoba A NUDI) i sliku B (što osoba B NUDI).
+Procijeni vizualno je li trampa smislena uzimajući u obzir što svaka osoba TRAŽI:
 ${imagePairs.map((r) => {
   const p = pairs[r.pair];
   return `Par ${r.pair}: A="${p?.my.title}" trazi="${p?.my.wantedFor}" | B="${p?.their.title}" trazi="${p?.their.wantedFor}"`;
 }).join("\n")}
-
 Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},...]`,
         },
       ];
@@ -169,9 +223,9 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
       for (const r of imagePairs) {
         const p = pairs[r.pair];
         if (!p) continue;
-        visionContent.push({ type: "text", text: `-- Par ${r.pair}: slika A (${p.my.title}):` });
+        visionContent.push({ type: "text", text: `Par ${r.pair} — slika A (${p.my.title}):` });
         visionContent.push({ type: "image_url", image_url: { url: p.my.imageUrl!, detail: "low" } });
-        visionContent.push({ type: "text", text: `-- Par ${r.pair}: slika B (${p.their.title}):` });
+        visionContent.push({ type: "text", text: `Par ${r.pair} — slika B (${p.their.title}):` });
         visionContent.push({ type: "image_url", image_url: { url: p.their.imageUrl!, detail: "low" } });
       }
 
@@ -181,7 +235,7 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
           max_tokens: 400,
           temperature: 0,
           messages: [
-            { role: "system", content: "Ti si asistent za trampu predmeta. Analiziraj slike i procijeni poklapanje ponude i potražnje. Vrati SAMO JSON array." },
+            { role: "system", content: "Ti si asistent za trampu predmeta. Analiziraj slike i procijeni poklapanje. Vrati SAMO JSON array." },
             { role: "user", content: visionContent },
           ],
         });
@@ -189,19 +243,53 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
         const j2 = raw2.match(/\[[\s\S]*\]/);
         if (j2) visionResults = JSON.parse(j2[0]) as AiResult[];
       } catch {
-        // Vision call failed — fall back to text-only results
+        // Vision call failed — nastavi s text-only rezultatima
       }
     }
 
-    // ── Merge results: vision scores override text scores for image pairs ──────
+    // ── Spoji rezultate (vision overrides text za image parove) ───────────────
     const scoreMap = new Map<number, AiResult>();
     for (const r of textResults) scoreMap.set(r.pair, r);
-    for (const r of visionResults) scoreMap.set(r.pair, r); // override with vision
+    for (const r of visionResults) scoreMap.set(r.pair, r);
 
     const finalResults = Array.from(scoreMap.values());
 
-    const matches = finalResults
-      .filter((r) => r.score >= 4 && (r.aWantsB || r.bWantsA))
+    // ── Post-processing: lokacija + svježina boostovi ─────────────────────────
+    const boosted = finalResults.map((r) => {
+      const p = pairs[r.pair];
+      if (!p) return r;
+
+      let { score } = r;
+
+      // Točka 1: lokacija — isti grad → +1.5 boda
+      const myCity = extractCity(p.my.location);
+      const theirCity = extractCity(p.their.location);
+      if (myCity && theirCity && myCity === theirCity) {
+        score = Math.min(10, score + 1.5);
+      }
+
+      // Točka 3: svježina — noviji oglasi dobivaju bonus
+      const daysSince = (Date.now() - p.their.createdAt) / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) score = Math.min(10, score + 1.0);
+      else if (daysSince < 30) score = Math.min(10, score + 0.5);
+
+      // Hitnost: hitno oglasi imaju blagi bonus
+      if (p.their.deadline === "hitno") score = Math.min(10, score + 0.5);
+
+      return { ...r, score };
+    });
+
+    // ── Filtriraj i sortiraj ───────────────────────────────────────────────────
+    // Točka 4 (fleksibilnost): fleksibilni listinge prolaze s nižim pragom (3 umjesto 4)
+    const matches = boosted
+      .filter((r) => {
+        if (!r.aWantsB && !r.bWantsA) return false;
+        const p = pairs[r.pair];
+        if (!p) return false;
+        const flexible = isFlexible(p.their) || isFlexible(p.my);
+        const threshold = flexible ? 3 : 4;
+        return r.score >= threshold;
+      })
       .map((r) => {
         const p = pairs[r.pair];
         if (!p) return null;
@@ -209,7 +297,7 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
           myListingId: p.myId,
           theirListingId: p.theirId,
           matchType: (r.aWantsB && r.bWantsA ? "both" : r.aWantsB ? "i_want" : "they_want") as "both" | "i_want" | "they_want",
-          score: r.score,
+          score: Math.round(r.score * 10) / 10,
         };
       })
       .filter((m): m is NonNullable<typeof m> => m !== null)

@@ -96,7 +96,7 @@ interface ListingsContextType {
   refreshListings: () => Promise<void>;
   refreshMyListings: () => Promise<void>;
   serverMatchResults: Array<{ myListingId: string; theirListingId: string; matchType: "both" | "i_want" | "they_want"; score: number }>;
-  fetchSemanticMatches: () => Promise<void>;
+  fetchSemanticMatches: (dismissedIds?: string[]) => Promise<void>;
   matchesLoading: boolean;
 }
 
@@ -318,7 +318,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [authHeaders]);
 
-  const fetchSemanticMatches = useCallback(async () => {
+  const fetchSemanticMatches = useCallback(async (dismissedIds: string[] = []) => {
     if (!tokenRef.current) return;
     setMatchesLoading(true);
     try {
@@ -327,6 +327,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`${API_BASE}/listings/semantic-matches`, {
         method: "POST",
         headers: authHeaders(),
+        body: JSON.stringify({ dismissedIds }),
         signal: controller.signal,
       });
       clearTimeout(tid);

@@ -503,8 +503,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
       void refreshMyListings();
-      void fetchSemanticMatches();
-    }, [refreshMyListings, fetchSemanticMatches])
+      void fetchSemanticMatches(Array.from(dismissedIds));
+    }, [refreshMyListings, fetchSemanticMatches, dismissedIds])
   );
 
   // Polling dok postoje oglasi "Na čekanju" — provjeri svake 5s je li moderacija završila
