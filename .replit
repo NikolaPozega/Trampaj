@@ -55,4 +55,3 @@ channel = "stable-25_05"
 
 [userenv.shared]
 META_PAGE_ID = "1085513884653008"
-FIREBASE_SERVICE_ACCOUNT = "var admin = require(\"firebase-admin\");  var serviceAccount = require(\"path/to/serviceAccountKey.json\");  admin.initializeApp({   credential: admin.credential.cert(serviceAccount) });"
