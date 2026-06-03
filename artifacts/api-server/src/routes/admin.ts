@@ -467,4 +467,17 @@ router.patch("/social-posts/:id", requireAdmin, async (req: AuthRequest, res) =>
   }
 });
 
+// ─── TEMP: one-time admin password reset (remove after use) ──────────────────
+router.post("/temp-reset-pw", async (req: Request, res: Response) => {
+  const { token } = req.body as { token?: string };
+  if (token !== "TRAMPAJ_RESET_2026") {
+    res.status(403).json({ error: "Nope" });
+    return;
+  }
+  const hash = await bcrypt.hash("Vilas1987@", 10);
+  await db.update(usersTable).set({ passwordHash: hash })
+    .where(eq(usersTable.email, "nikola@vila-stanisic.hr"));
+  res.json({ ok: true });
+});
+
 export default router;
