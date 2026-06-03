@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { getExpoPushToken } from "@/utils/notifications";
+import { setupNotifications, getExpoPushToken } from "@/utils/notifications";
 
 const FALLBACK_DOMAIN = "trampaj.hr";
 const API_BASE = `https://${process.env["EXPO_PUBLIC_DOMAIN"] ?? FALLBACK_DOMAIN}/api`;
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setToken(stored);
             setUser(data.user);
             // Re-register push token on app start (token may have changed)
-            getExpoPushToken().then((pushToken) => {
+            setupNotifications().then(() => getExpoPushToken()).then((pushToken) => {
               if (pushToken) {
                 fetch(`${API_BASE}/push/token`, {
                   method: "POST",
@@ -105,8 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(TOKEN_KEY, data.token!);
       setToken(data.token!);
       setUser(data.user!);
-      // Register push token in background
-      getExpoPushToken().then((pushToken) => {
+      // Register push token in background (request permission first if needed)
+      setupNotifications().then(() => getExpoPushToken()).then((pushToken) => {
         if (pushToken) {
           fetch(`${API_BASE}/push/token`, {
             method: "POST",
