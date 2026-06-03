@@ -22,6 +22,32 @@ description: Owner's explicit visual preferences for admin panel redesign + firs
 - Promo / early adopter management (see below)
 - Social media hub (see below)
 
+## Analytics & statistika (admin panel)
+
+### Traffic (posjeti) — Plausible.io
+- Karta HR (regije) + ostale države kao broj+naziv
+- Po satu, danu, tjednu, mjesecu, godini
+- Web i app odvojeno
+- GDPR compliant, nema cookie bannera
+- ~9€/mj, dashboard embedan u admin panel
+
+### Poslovne metrike — custom (podaci iz naše baze)
+- Kategorije koje se najviše trampaju
+- M/Ž omjer (**dodati spol pri registraciji — opcionalno polje**)
+- Trampa vs plaćanje (dostava) omjer
+- Prosjek dana od objave do rješavanja oglasa
+- Osobna razmjena vs paketi (dostava)
+
+### Dodatne metrike za planiranje poslovanja
+- **Funnel**: registracija → prvi oglas → završena trampa (% konverzije na svakom koraku)
+- **Retencija**: povratak korisnika nakon 7 i 30 dana
+- **Gap kategorija**: ponuda vs potražnja po kategoriji → što promovirati na social mediaju
+- **Top traders**: top 10 korisnika po završenim trampama → brand ambasadori
+- **Peak hours**: kad korisnici najviše koriste app → optimalni termin AI social media objava
+- **Geografska koncentracija**: % korisnika po gradu/regiji → gdje fokusirati marketing
+
+---
+
 ## Admin notifications strategy
 
 - **Telegram bot** — za sve hitne notifikacije (novi korisnik, flagged oglas, AI objava, greška sustava)
