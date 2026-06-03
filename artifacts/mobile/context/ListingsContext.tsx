@@ -187,19 +187,16 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(tid);
       if (res.ok) {
         const data = await res.json() as { listings: Listing[] };
-        if (data.listings.length > 0) {
-          setListings(data.listings.map((l) => ({
-            ...l,
-            imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
-            nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
-            trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
-          })));
-          return;
-        }
+        setListings(data.listings.map((l) => ({
+          ...l,
+          imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
+          nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
+          trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
+        })));
+        return;
       }
     } catch { /* offline or timeout */ }
-    // Fallback to sample listings when DB is empty or offline
-    setListings(SAMPLE_LISTINGS);
+    // Keep existing listings on error (don't replace with samples)
   }, [authHeaders]);
 
   // ─── Load saved IDs from API ───────────────────────────────────────────────
@@ -350,7 +347,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       "@trampaj_onboarded_v1",
       "@trampaj_chats_v5",
     ]);
-    setListings(SAMPLE_LISTINGS);
+    setListings([]);
     setSavedListingIds([]);
     setReviews([]);
     setBlockedUserNames([]);
