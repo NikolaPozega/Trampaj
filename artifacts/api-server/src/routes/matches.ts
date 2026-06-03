@@ -21,6 +21,10 @@ interface SlimListing {
   cashFallback: boolean | null; // prihvaća gotovinu
   topup: string | null;         // "primam" | "dajem" | "oboje" | "ne"
   deadline: string | null;      // "hitno" | "ovaj-mjesec" | "bez-roka"
+  condition: string | null;     // "Novo" | "Kao novo" | "Jako dobro" | "Dobro" | "Prihvatljivo"
+  price: number | null;         // procijenjena vrijednost u eurima
+  nudimTags: string[];          // AI-generirani tagovi za ono što nude (kompaktni ključni pojmovi)
+  trazimTags: string[];         // AI-generirani tagovi za ono što traže
 }
 
 function parseSlim(row: Record<string, unknown>): SlimListing {
@@ -29,7 +33,7 @@ function parseSlim(row: Record<string, unknown>): SlimListing {
   return {
     id: row["id"] as string,
     title: row["title"] as string,
-    description: ((row["description"] as string) ?? "").slice(0, 150),
+    description: ((row["description"] as string) ?? "").slice(0, 120),
     wantedFor: row["wantedFor"] as string,
     category: row["category"] as string,
     location: (row["location"] as string) ?? "",
@@ -39,6 +43,10 @@ function parseSlim(row: Record<string, unknown>): SlimListing {
     cashFallback: (row["cashFallback"] as boolean | null) ?? null,
     topup: (row["topup"] as string | null) ?? null,
     deadline: (row["deadline"] as string | null) ?? null,
+    condition: (row["condition"] as string | null) ?? null,
+    price: typeof row["price"] === "number" ? row["price"] : null,
+    nudimTags: (() => { try { return JSON.parse(row["nudimTags"] as string) as string[]; } catch { return []; } })(),
+    trazimTags: (() => { try { return JSON.parse(row["trazimTags"] as string) as string[]; } catch { return []; } })(),
   };
 }
 
@@ -118,14 +126,16 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
     const openai = new OpenAI({ apiKey: process.env["OPENAI_API_KEY"] });
 
     // ── Faza 1: semantičko ocjenjivanje (tekst) ──────────────────────────────
-    // Uključujemo fleksibilnost i gotovinu u podatke za AI
     const textPairs = pairs.map((p) => ({
       pair: p.pair,
       a: {
         naslov: p.my.title,
-        opis: p.my.description,
+        tagovi_nudim: p.my.nudimTags,    // AI-komprimirani ključni pojmovi za predmet
+        tagovi_trazim: p.my.trazimTags,  // AI-komprimirani ključni pojmovi za željeno
         trazi: p.my.wantedFor,
         kat: p.my.category,
+        stanje: p.my.condition ?? null,
+        cijena_eur: p.my.price ?? null,
         flex: p.my.flexibility ?? "tocno",
         gotovina: p.my.cashFallback ?? false,
         doplatak: p.my.topup ?? "ne",
@@ -133,9 +143,12 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
       },
       b: {
         naslov: p.their.title,
-        opis: p.their.description,
+        tagovi_nudim: p.their.nudimTags,
+        tagovi_trazim: p.their.trazimTags,
         trazi: p.their.wantedFor,
         kat: p.their.category,
+        stanje: p.their.condition ?? null,
+        cijena_eur: p.their.price ?? null,
         flex: p.their.flexibility ?? "tocno",
         gotovina: p.their.cashFallback ?? false,
         doplatak: p.their.topup ?? "ne",
@@ -152,32 +165,47 @@ router.post("/listings/semantic-matches", requireAuth, async (req: AuthRequest, 
           role: "system",
           content: `Ti si asistent za trampu predmeta na Trampaj.hr (hrvatska platforma za trampu).
 
+PODACI KOJE DOBIVAŠ:
+- naslov: naziv predmeta
+- tagovi_nudim: AI-generirani ključni pojmovi za predmet koji se nudi (najvažniji signal!)
+- tagovi_trazim: AI-generirani ključni pojmovi za ono što vlasnik želi dobiti (najvažniji signal!)
+- trazi: slobodan opis što vlasnik želi u zamjenu
+- stanje: fizičko stanje predmeta ("Novo", "Kao novo", "Jako dobro", "Dobro", "Prihvatljivo")
+- cijena_eur: procijenjena vrijednost predmeta u eurima (null = nepoznato)
+
 KRITIČNA PRAVILA za razumijevanje fraza:
 - "torbica za Samsung" = torbica/futrola ZA Samsung telefon (NE sam Samsung telefon!)
 - "punjač za laptop" = punjač ZA laptop (NE laptop!)
 - Prijedlog "za" uvijek označava kompatibilnost — predmet iza "za" je uređaj, ne željeni predmet
-- Uvijek čitaj cijelu frazu u kontekstu
+- tagovi_trazim su precizniji od polja "trazi" — koristi ih kao primarni signal
+
+VRIJEDNOST (VAŽNO):
+- Ako su cijena_eur poznate obje strane: veliki nesrazmjer (>8x) bez doplatka = loš match, smanji score
+- Primjer: A nudi €400 telefon, B nudi €20 parfem, doplatak="ne" na obje strane → score max 3
+- Ako je doplatak="primam"/"oboje" ili gotovina=true → nesrazmjer vrijednosti je ok
+
+STANJE PREDMETA:
+- Ako B-ovi tagovi_trazim sugeriraju "novo" ili "neoštećeno" a A-ov predmet je "Prihvatljivo" → smanji score
+- "Kao novo" i "Jako dobro" su generalno prihvatljivi za većinu korisnika
 
 FLEKSIBILNOST (VAŽNO):
-- Ako listing ima flex="otvoren" → vlasnik je otvoren za različite ponude, ne samo točno ono što piše u "trazi"
-- Ako listing ima gotovina=true → vlasnik prihvaća gotovinu kao dio trampe (parcijalna trampa je ok)
-- Ako listing ima doplatak="primam" ili "oboje" → vlasnik prima gotovinu uz predmet
-- Za fleksibilne listinge score može biti viši čak i kod djelomičnog poklapanja
-- Ako A nudi nešto vrijedno a B je fleksibilan (flex=otvoren ili gotovina=true) → bWantsA može biti true čak i bez idealnog poklapanja
+- flex="otvoren" → vlasnik prihvaća različite ponude (nije samo ono u "trazi")
+- gotovina=true → prihvaća gotovinu kao dio trampe
+- doplatak="primam"/"oboje" → prima novac uz predmet
+- Za fleksibilne listinge score može biti viši i kod djelomičnog poklapanja
 
 HITNOST:
-- Ako listing ima hitno=true → vlasnik želi trampu što prije, spremniji je na kompromis
+- hitno=true → vlasnik želi trampu što prije, spremniji je na kompromis
 
 Za svaki par procijeni:
-- aWantsB: želi li A ono što B nudi? (uzmi u obzir A-ovu fleksibilnost)
-- bWantsA: želi li B ono što A nudi? (uzmi u obzir B-ovu fleksibilnost)
+- aWantsB: želi li A (prema tagovi_trazim i trazi) ono što B nudi (tagovi_nudim)?
+- bWantsA: želi li B (prema tagovi_trazim i trazi) ono što A nudi (tagovi_nudim)?
 - score: 0–10 (10=savršeno obostrano, 6=jedno poklapanje ili fleksibilna trampa, 0=nema smisla)
 
 Primjeri:
-- A trazi "torbicu za Samsung", B nudi "Samsung Galaxy S23+" → aWantsB=false, score=0
-- A trazi "torbicu za Samsung", B nudi "Silikonska futrola za Samsung S23" → aWantsB=true, score=8
-- A nudi "Boss parfem", B nudi "torbicu" i ima flex=otvoren → bWantsA može biti true (fleksibilan je), score=5
-- A nudi vrijednu "gitaru", B trazi "nešto za vikend" i ima gotovina=true → bWantsA=true, score=6
+- A.tagovi_nudim=["samsungs23"] A.tagovi_trazim=["torbica","futrola"], B.tagovi_nudim=["futrola","samsung"] → aWantsB=true
+- A.tagovi_nudim=["boss","parfem"] cijena=20, B.tagovi_nudim=["samsung","s23"] cijena=400, doplatak="ne" obje → score=1
+- A.tagovi_nudim=["gitara"] cijena=150, B.tagovi_trazim=["gitara","instrument"] → bWantsA=true, score=8
 
 Vrati SAMO JSON array (bez ikakvog teksta):
 [{"pair":0,"aWantsB":true,"bWantsA":false,"score":5},...]`,
@@ -275,6 +303,22 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
 
       // Hitnost: hitno oglasi imaju blagi bonus
       if (p.their.deadline === "hitno") score = Math.min(10, score + 0.5);
+
+      // Vrijednost: usklađene cijene dobivaju bonus, velik nesrazmjer penalizira
+      const pa = p.my.price;
+      const pb = p.their.price;
+      if (pa && pb) {
+        const ratio = Math.max(pa, pb) / Math.min(pa, pb);
+        const aFlex = isFlexible(p.my);
+        const bFlex = isFlexible(p.their);
+        if (ratio <= 2) {
+          // Slične vrijednosti → blagi bonus
+          score = Math.min(10, score + 0.5);
+        } else if (ratio > 8 && !aFlex && !bFlex) {
+          // Dramatičan nesrazmjer bez fleksibilnosti → penalizacija
+          score = Math.max(0, score - 2.5);
+        }
+      }
 
       return { ...r, score };
     });
