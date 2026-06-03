@@ -81,7 +81,7 @@ export default function VerifyEmailScreen() {
     setBioLoading(false);
     if (r.ok) {
       await AsyncStorage.setItem(BIO_ENABLED_KEY, "yes");
-      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: bioUsername }));
+      await AsyncStorage.setItem(BIO_CREDS_KEY, JSON.stringify({ username: bioUsername, password: bioPassword }));
       setBioModalVisible(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Aktivirano!", "Sljedeći put prijavi se otiskom prsta ili licem.");
