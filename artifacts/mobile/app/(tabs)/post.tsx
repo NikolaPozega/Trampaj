@@ -488,7 +488,12 @@ export default function PostScreen() {
       packageWeight: packageSize === "medium" ? (parseFloat(packageWeight) || null) : null,
     };
     console.log("[SUBMIT] Novi oglas:", JSON.stringify(listing));
-    addListing(listing);
+    const result = await addListing(listing);
+    if (!result.ok) {
+      Alert.alert("Oglas nije objavljen", result.error ?? "Pokušaj ponovo.");
+      submittingRef.current = false;
+      return;
+    }
     setSubmitted(true);
     setTimeout(() => {
       const defaultLoc = user

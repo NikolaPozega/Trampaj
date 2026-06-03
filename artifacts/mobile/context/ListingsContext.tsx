@@ -78,7 +78,7 @@ interface ListingsContextType {
   myListings: Listing[];
   myName: string;
   setMyName: (name: string) => void;
-  addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => void;
+  addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => Promise<{ ok: boolean; error?: string }>;
   updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition">>) => void;
   markAsTraded: (id: string) => void;
   markAsActive: (id: string) => void;
@@ -204,15 +204,23 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
 
   // ─── CRUD operations ───────────────────────────────────────────────────────
   const addListing = useCallback(
-    (data: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => {
-      if (!tokenRef.current) return;
-      fetch(`${API_BASE}/listings`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(data),
-      })
-        .then((r) => r.ok ? Promise.all([refreshListings(), refreshMyListings()]) : null)
-        .catch(() => {});
+    async (data: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">): Promise<{ ok: boolean; error?: string }> => {
+      if (!tokenRef.current) return { ok: false, error: "Nisi prijavljen" };
+      try {
+        const r = await fetch(`${API_BASE}/listings`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify(data),
+        });
+        if (r.ok) {
+          await Promise.all([refreshListings(), refreshMyListings()]);
+          return { ok: true };
+        }
+        const body = await r.json().catch(() => ({})) as { error?: string };
+        return { ok: false, error: body.error ?? `Greška (${r.status})` };
+      } catch {
+        return { ok: false, error: "Provjeri vezu i pokušaj ponovo" };
+      }
     },
     [authHeaders, refreshListings, refreshMyListings]
   );
