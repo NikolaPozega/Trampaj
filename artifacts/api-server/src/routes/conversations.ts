@@ -200,7 +200,7 @@ router.post("/conversations/:id/messages", requireAuth, async (req: AuthRequest,
           .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
         if (otherUser?.pushToken) {
           const body = type === "text" ? (text ?? "") : "Poslao/la je zahtjev za dogovor";
-          await fetch("https://exp.host/--/api/v2/push/send", {
+          const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
             body: JSON.stringify({
@@ -213,8 +213,14 @@ router.post("/conversations/:id/messages", requireAuth, async (req: AuthRequest,
               badge: 1,
             }),
           });
+          const pushData = await pushRes.json() as { data?: { status: string; message?: string; details?: unknown } };
+          if (pushData?.data?.status === "error") {
+            req.log.warn({ pushError: pushData.data }, "push notification failed");
+          }
+        } else {
+          req.log.info({ otherUserId: conv.initiatorId === req.userId ? conv.ownerId : conv.initiatorId }, "push skip: no token");
         }
-      } catch { /* silent — push failure must never break message flow */ }
+      } catch (pushErr) { req.log.warn({ pushErr }, "push send exception"); }
     })();
 
     // ── TrampaDemo bot: auto-respond to handshake_request ─────────────────────
@@ -275,6 +281,24 @@ router.patch("/conversations/:id", requireAuth, async (req: AuthRequest, res) =>
   } catch (err) {
     req.log.error({ err }, "conversation patch error");
     res.status(500).json({ error: "Greška" });
+  }
+});
+
+// DELETE /api/conversations/:id
+router.delete("/conversations/:id", requireAuth, async (req: AuthRequest, res) => {
+  const { id } = req.params as { id: string };
+  try {
+    const [conv] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, id)).limit(1) as ConvRow[];
+    if (!conv) { res.status(404).json({ error: "Razgovor nije pronađen" }); return; }
+    if (conv.initiatorId !== req.userId && conv.ownerId !== req.userId) {
+      res.status(403).json({ error: "Nemaš pristup" }); return;
+    }
+    // CASCADE briše messages + escrow_deposits automatski
+    await db.delete(conversationsTable).where(eq(conversationsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "conversation delete error");
+    res.status(500).json({ error: "Greška pri brisanju razgovora" });
   }
 });
 

@@ -366,10 +366,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authHeaders]);
 
-  // ─── Delete conversation (local only) ─────────────────────────────────────
+  // ─── Delete conversation ───────────────────────────────────────────────────
   const deleteConversation = useCallback((conversationId: string) => {
+    // Optimistično ukloni odmah — polling ne smije vratiti obrisano
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-  }, []);
+    // Obriši i na serveru (CASCADE briše poruke + escrow)
+    fetch(`${API_BASE}/conversations/${conversationId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).catch(() => {/* offline — lokalno brisanje je dovoljno */});
+  }, [authHeaders]);
 
   // ─── Unread count ──────────────────────────────────────────────────────────
   const unreadCount = conversations.reduce((total, c) => {
