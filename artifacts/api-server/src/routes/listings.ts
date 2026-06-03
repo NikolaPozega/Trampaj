@@ -288,6 +288,24 @@ router.patch("/listings/:id/status", requireAuth, async (req: AuthRequest, res) 
   }
 });
 
+// POST /api/listings/:id/bump — osvježi oglas (reset updatedAt na NOW)
+router.post("/listings/:id/bump", requireAuth, async (req: AuthRequest, res) => {
+  const { id } = req.params as { id: string };
+  try {
+    const [listing] = await db.select().from(listingsTable).where(eq(listingsTable.id, id)).limit(1);
+    if (!listing) { res.status(404).json({ error: "Oglas nije pronađen" }); return; }
+    if (listing.userId !== req.userId) { res.status(403).json({ error: "Nemaš pravo" }); return; }
+    if (listing.status !== "active" || listing.moderationStatus !== "active") {
+      res.status(400).json({ error: "Oglas nije aktivan" }); return;
+    }
+    await db.update(listingsTable).set({ updatedAt: new Date() }).where(eq(listingsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "listing bump error");
+    res.status(500).json({ error: "Greška" });
+  }
+});
+
 // DELETE /api/listings/:id
 router.delete("/listings/:id", requireAuth, async (req: AuthRequest, res) => {
   const { id } = req.params as { id: string };

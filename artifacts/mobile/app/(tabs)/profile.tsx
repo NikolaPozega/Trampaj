@@ -325,6 +325,7 @@ export default function ProfileScreen() {
     blockedUserNames,
     unblockUser,
     refreshMyListings,
+    bumpListing,
     serverMatchResults,
     fetchSemanticMatches,
     matchesLoading,
@@ -439,10 +440,25 @@ export default function ProfileScreen() {
 
   const [editState, setEditState] = useState<EditState | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [bumpingIds, setBumpingIds] = useState<Set<string>>(new Set());
+  const [bumpedIds, setBumpedIds] = useState<Set<string>>(new Set());
   const { width: screenWidth } = useWindowDimensions();
   const snapPad = Math.max(0, (screenWidth - 32 - 296) / 2);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  async function handleBump(id: string) {
+    if (bumpingIds.has(id) || bumpedIds.has(id)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBumpingIds((prev) => new Set(prev).add(id));
+    const ok = await bumpListing(id);
+    setBumpingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    if (ok) {
+      setBumpedIds((prev) => new Set(prev).add(id));
+      setTimeout(() => setBumpedIds((prev) => { const s = new Set(prev); s.delete(id); return s; }), 3000);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }
 
   async function handleCheckUpdate() {
     if (IS_WEB) return;
@@ -1015,6 +1031,29 @@ export default function ProfileScreen() {
                 <Text style={styles.pendingOverlayText}>❌ Odbijeno</Text>
               </View>
             )}
+            {item.isMine && item.status === "active" && item.moderationStatus === "active" && (() => {
+              const daysSince = (Date.now() - item.createdAt) / (1000 * 60 * 60 * 24);
+              const showBump = daysSince >= 14;
+              const isBumping = bumpingIds.has(item.id);
+              const isBumped = bumpedIds.has(item.id);
+              if (!showBump) return null;
+              return (
+                <Pressable
+                  onPress={() => handleBump(item.id)}
+                  style={({ pressed }) => [
+                    styles.bumpBtn,
+                    { backgroundColor: isBumped ? "#22C55E" : colors.primary, opacity: pressed || isBumping ? 0.75 : 1 },
+                  ]}
+                >
+                  {isBumping
+                    ? <ActivityIndicator size={12} color="#fff" />
+                    : <Feather name={isBumped ? "check" : "refresh-cw"} size={12} color="#fff" />}
+                  <Text style={styles.bumpBtnText}>
+                    {isBumped ? "Osvježeno!" : "Osvježi oglas"}
+                  </Text>
+                </Pressable>
+              );
+            })()}
             {item.isMine && (
               <View style={styles.actions}>
                 <Pressable
@@ -1866,7 +1905,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10,
     paddingVertical: 5, borderRadius: 8, overflow: "hidden",
   },
-  actions: { flexDirection: "row", gap: 5, marginTop: -8, marginBottom: 12, paddingHorizontal: 2 },
+  bumpBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, marginTop: -8, marginBottom: 4, marginHorizontal: 2,
+    paddingVertical: 6, borderRadius: 8,
+  },
+  bumpBtnText: { color: "#fff", fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  actions: { flexDirection: "row", gap: 5, marginTop: 0, marginBottom: 12, paddingHorizontal: 2 },
   actionBtn: { alignItems: "center", justifyContent: "center", paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8 },
   actionBtnFlex: { flex: 1, flexDirection: "row", gap: 4 },
   actionBtnText: { color: "#fff", fontSize: 11, fontFamily: "Inter_500Medium" },

@@ -95,6 +95,7 @@ interface ListingsContextType {
   unblockUser: (userName: string) => void;
   refreshListings: () => Promise<void>;
   refreshMyListings: () => Promise<void>;
+  bumpListing: (id: string) => Promise<boolean>;
   serverMatchResults: Array<{ myListingId: string; theirListingId: string; matchType: "both" | "i_want" | "they_want"; score: number }>;
   fetchSemanticMatches: (dismissedIds?: string[]) => Promise<void>;
   matchesLoading: boolean;
@@ -318,6 +319,22 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [authHeaders]);
 
+  const bumpListing = useCallback(async (id: string): Promise<boolean> => {
+    if (!tokenRef.current) return false;
+    try {
+      const res = await fetch(`${API_BASE}/listings/${id}/bump`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        // Lokalno osvježi updatedAt na NOW
+        setMyListings((prev) => prev.map((l) => l.id === id ? { ...l, createdAt: Date.now() } : l));
+        return true;
+      }
+    } catch { /* offline */ }
+    return false;
+  }, [authHeaders]);
+
   const fetchSemanticMatches = useCallback(async (dismissedIds: string[] = []) => {
     if (!tokenRef.current) return;
     setMatchesLoading(true);
@@ -383,6 +400,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         unblockUser,
         refreshListings,
         refreshMyListings,
+        bumpListing,
         serverMatchResults,
         fetchSemanticMatches,
         matchesLoading,

@@ -15,7 +15,7 @@ interface SlimListing {
   wantedFor: string;
   category: string;
   location: string;
-  createdAt: number; // ms timestamp
+  updatedAt: number; // ms timestamp — koristi se za svježinu (bump resetira ovo)
   imageUrl: string | null;
   flexibility: string | null;   // "tocno" | "otvoren"
   cashFallback: boolean | null; // prihvaća gotovinu
@@ -33,7 +33,7 @@ function parseSlim(row: Record<string, unknown>): SlimListing {
     wantedFor: row["wantedFor"] as string,
     category: row["category"] as string,
     location: (row["location"] as string) ?? "",
-    createdAt: row["createdAt"] instanceof Date ? row["createdAt"].getTime() : Date.now(),
+    updatedAt: row["updatedAt"] instanceof Date ? row["updatedAt"].getTime() : Date.now(),
     imageUrl: gcsUrl,
     flexibility: (row["flexibility"] as string | null) ?? null,
     cashFallback: (row["cashFallback"] as boolean | null) ?? null,
@@ -268,8 +268,8 @@ Vrati JSON: [{"pair":N,"aWantsB":true/false,"bWantsA":true/false,"score":0-10},.
         score = Math.min(10, score + 1.5);
       }
 
-      // Točka 3: svježina — noviji oglasi dobivaju bonus
-      const daysSince = (Date.now() - p.their.createdAt) / (1000 * 60 * 60 * 24);
+      // Točka 3: svježina — koristi updatedAt (bump resetira timer)
+      const daysSince = (Date.now() - p.their.updatedAt) / (1000 * 60 * 60 * 24);
       if (daysSince < 7) score = Math.min(10, score + 1.0);
       else if (daysSince < 30) score = Math.min(10, score + 0.5);
 
