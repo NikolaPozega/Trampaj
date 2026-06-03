@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "57161275245",
+    "project_id": "trampaj-8faed",
+    "storage_bucket": "trampaj-8faed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57161275245:android:18fed60f084edf9a6f2c64",
+        "android_client_info": {
+          "package_name": "hr.trampaj.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9kd502YnSG20oX1yanwgURG2WbeEGdMM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
