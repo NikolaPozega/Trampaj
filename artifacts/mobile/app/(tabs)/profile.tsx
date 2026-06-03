@@ -495,12 +495,23 @@ export default function ProfileScreen() {
     setScrollSignal((s) => s + 1);
   }
 
-  // Scroll to very top (header) when tab gets focus
+  // Scroll to very top + refresh listings kad tab dobije fokus
   useFocusEffect(
     useCallback(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-    }, [])
+      void refreshMyListings();
+    }, [refreshMyListings])
   );
+
+  // Polling dok postoje oglasi "Na čekanju" — provjeri svake 5s je li moderacija završila
+  useEffect(() => {
+    const hasPending = myListings.some((l) => l.moderationStatus === "pending");
+    if (!hasPending) return;
+    const timer = setInterval(() => {
+      void refreshMyListings();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [myListings, refreshMyListings]);
 
   // Every time scrollSignal changes (i.e. any stat button tap), scroll to listings
   useEffect(() => {

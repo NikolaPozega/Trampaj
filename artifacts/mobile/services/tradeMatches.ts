@@ -14,12 +14,22 @@ function textMatchesFields(text: string, fields: string[]): boolean {
   return queryMatchesFields(text, fields);
 }
 
-// Preklapa li se jedan set tagova s drugim (stem usporedba)
+// Preklapa li se jedan set tagova s drugim (stem usporedba).
+// Zahtijeva barem 2 značajna tokena (≥4 znaka) koji se poklapaju —
+// sprječava lažne matcheve na temelju samo jednog brenda/modela (npr. "samsung").
 function tagsOverlap(a: string[], b: string[]): boolean {
   if (!a.length || !b.length) return false;
-  const aStems = a.flatMap(stemTokens);
-  const bStems = b.flatMap(stemTokens);
-  return aStems.some((at) => bStems.some((bt) => at.startsWith(bt) || bt.startsWith(at)));
+  const aStems = a.flatMap(stemTokens).filter((t) => t.length >= 4);
+  const bStems = b.flatMap(stemTokens).filter((t) => t.length >= 4);
+  if (!aStems.length || !bStems.length) return false;
+  let matchCount = 0;
+  for (const at of aStems) {
+    if (bStems.some((bt) => at.startsWith(bt) || bt.startsWith(at))) {
+      matchCount++;
+      if (matchCount >= 2) return true;
+    }
+  }
+  return false;
 }
 
 export function findTradeMatches(
