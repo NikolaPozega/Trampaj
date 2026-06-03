@@ -272,6 +272,12 @@ export default function PostScreen() {
   const [descriptionAIBadge, setDescriptionAIBadge] = useState(false);
   const [showWebPicker, setShowWebPicker] = useState(false);
 
+  // Correction review modal
+  type PendingListing = Parameters<typeof addListing>[0] & { _uploadedUris: string[] };
+  const [pendingListing, setPendingListing] = useState<PendingListing | null>(null);
+  const [correctionOrigTitle, setCorrectionOrigTitle] = useState("");
+  const [correctionOrigDesc, setCorrectionOrigDesc] = useState("");
+
   const topPad = IS_WEB ? 16 : insets.top + 8;
   const bottomPad = insets.bottom + (IS_WEB ? 34 : 16);
 
@@ -488,7 +494,7 @@ export default function PostScreen() {
               const url = await uploadImage(compressed.base64, mimeType, token);
               return url;
             } catch {
-              return uri; // zadrži lokalni URI ako upload ne uspije
+              return uri;
             }
           })
         );
@@ -520,6 +526,18 @@ export default function PostScreen() {
       packageBoxSize: packageSize === "small" ? packageBoxSize : null,
       packageWeight: packageSize === "medium" ? (parseFloat(packageWeight) || null) : null,
     };
+
+    // ── Ako AI nešto ispravio → prikaži korisniku prije objave ────────────────
+    const titleChanged = finalTitle !== title.trim();
+    const descChanged = finalDescription !== description.trim();
+    if (titleChanged || descChanged) {
+      setCorrectionOrigTitle(title.trim());
+      setCorrectionOrigDesc(description.trim());
+      setPendingListing({ ...listing, _uploadedUris: uploadedUris });
+      submittingRef.current = false;
+      return;
+    }
+
     const result = await addListing(listing);
     if (!result.ok) {
       Alert.alert("Oglas nije objavljen", result.error ?? "Pokušaj ponovo.");
@@ -556,6 +574,36 @@ export default function PostScreen() {
       setDescriptionAIBadge(false);
       setSubmitted(false);
       submittingRef.current = false;
+      router.push("/(tabs)" as never);
+    }, 1500);
+  }
+
+  // ── Potvrda ispravki — korisnik prihvaća AI korekcije i objavljuje ──────────
+  async function confirmAndSave(useCorrections: boolean) {
+    if (!pendingListing) return;
+    submittingRef.current = true;
+    const { _uploadedUris, ...listing } = pendingListing;
+    const finalListing = useCorrections
+      ? listing
+      : { ...listing, title: correctionOrigTitle, description: correctionOrigDesc };
+    setPendingListing(null);
+    const result = await addListing(finalListing);
+    if (!result.ok) {
+      Alert.alert("Oglas nije objavljen", result.error ?? "Pokušaj ponovo.");
+      submittingRef.current = false;
+      return;
+    }
+    setSubmitted(true);
+    setTimeout(() => {
+      const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";
+      setTitle(""); setDescription(""); setWantedFor(""); setCategory("");
+      setLocation(defaultLoc); setPriceText(""); setPhone(""); setShowPhone(false);
+      setImageUris([]); setCondition(null); setTopup(null); setFlexibility(null);
+      setCashFallback(null); setDeadline(null); setPackageSize(null);
+      setPackageBoxSize(null); setPackageWeight(""); setLocationSuggestions([]);
+      setCategoryManuallySet(false); titleFromAI.current = false;
+      descriptionFromAI.current = false; setTitleAIBadge(false); setDescriptionAIBadge(false);
+      setSubmitted(false); submittingRef.current = false;
       router.push("/(tabs)" as never);
     }, 1500);
   }
@@ -1298,6 +1346,72 @@ export default function PostScreen() {
         </Pressable>
       </View>
 
+      {/* ── AI ispravke — pregled prije objave ──────────────────────────────── */}
+      <Modal
+        visible={pendingListing !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setPendingListing(null); submittingRef.current = false; }}
+      >
+        <View style={styles.corrModalBackdrop}>
+          <View style={[styles.corrModalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.corrModalHeader}>
+              <View style={[styles.corrModalIconWrap, { backgroundColor: colors.primary + "22" }]}>
+                <Feather name="edit-3" size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.corrModalTitle, { color: colors.foreground }]}>AI je ispravio oglas</Text>
+            </View>
+            <Text style={[styles.corrModalSub, { color: colors.mutedForeground }]}>
+              Pronađeni su tipfeleri. Možeš prihvatiti ispravak ili objaviti originalni tekst.
+            </Text>
+
+            {correctionOrigTitle !== pendingListing?.title && (
+              <View style={[styles.corrBlock, { borderColor: colors.border }]}>
+                <Text style={[styles.corrLabel, { color: colors.mutedForeground }]}>Naslov</Text>
+                <View style={styles.corrRow}>
+                  <View style={[styles.corrOld, { backgroundColor: "#EF444420" }]}>
+                    <Text style={[styles.corrOldText, { color: "#EF4444" }]}>{correctionOrigTitle}</Text>
+                  </View>
+                  <Feather name="arrow-right" size={14} color={colors.mutedForeground} style={{ marginHorizontal: 6 }} />
+                  <View style={[styles.corrNew, { backgroundColor: "#22C55E20" }]}>
+                    <Text style={[styles.corrNewText, { color: "#22C55E" }]}>{pendingListing?.title}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {correctionOrigDesc !== pendingListing?.description && (
+              <View style={[styles.corrBlock, { borderColor: colors.border }]}>
+                <Text style={[styles.corrLabel, { color: colors.mutedForeground }]}>Opis</Text>
+                <View style={[styles.corrOld, { backgroundColor: "#EF444420" }]}>
+                  <Text style={[styles.corrOldText, { color: "#EF4444" }]}>{correctionOrigDesc}</Text>
+                </View>
+                <View style={{ height: 4 }} />
+                <View style={[styles.corrNew, { backgroundColor: "#22C55E20" }]}>
+                  <Text style={[styles.corrNewText, { color: "#22C55E" }]}>{pendingListing?.description}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.corrButtons}>
+              <Pressable
+                style={[styles.corrBtnSecondary, { borderColor: colors.border }]}
+                onPress={() => confirmAndSave(false)}
+              >
+                <Text style={[styles.corrBtnSecondaryText, { color: colors.mutedForeground }]}>Zadrži original</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.corrBtnPrimary, { backgroundColor: colors.primary }]}
+                onPress={() => confirmAndSave(true)}
+              >
+                <Feather name="check" size={15} color={colors.primaryForeground} />
+                <Text style={[styles.corrBtnPrimaryText, { color: colors.primaryForeground }]}>Prihvati ispravak</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Web image source picker modal ─────────────────────────────────── */}
       <Modal
         visible={showWebPicker && IS_WEB}
@@ -1761,6 +1875,108 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  corrModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  corrModalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    paddingBottom: 36,
+    gap: 14,
+  },
+  corrModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  corrModalIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  corrModalTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  corrModalSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  corrBlock: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  corrLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  corrRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  corrOld: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexShrink: 1,
+  },
+  corrOldText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textDecorationLine: "line-through",
+  },
+  corrNew: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexShrink: 1,
+  },
+  corrNewText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  corrButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  corrBtnSecondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  corrBtnSecondaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  corrBtnPrimary: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  corrBtnPrimaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
   webPickerBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.55)",
