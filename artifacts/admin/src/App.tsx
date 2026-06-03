@@ -75,6 +75,114 @@ const NAV = [
 
 type NavItem = { path: string; label: string; icon: string };
 
+// ─── Notification bell ────────────────────────────────────────────────────────
+type ActivityEvent = { type: string; label: string; sub: string; ts: number; link?: string };
+
+function fmtRelative(ts: number) {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return "upravo sada";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h`;
+  return `${Math.floor(diff / 86_400_000)} d`;
+}
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [pending, setPending] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [lastSeen, setLastSeen] = useState<number>(() => parseInt(localStorage.getItem("notif_seen") ?? "0", 10));
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    apiFetch("/activity").then(r => r.json()).then((d: { events: ActivityEvent[]; pendingCount: number }) => {
+      setEvents(d.events ?? []);
+      setPending(d.pendingCount ?? 0);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(refresh, 30_000);
+    return () => clearInterval(id);
+  }, [open, refresh]);
+
+  const unseen = events.filter(e => e.ts > lastSeen).length;
+
+  const handleOpen = () => {
+    setOpen(v => !v);
+    if (!open) {
+      refresh();
+      const now = Date.now();
+      setLastSeen(now);
+      localStorage.setItem("notif_seen", String(now));
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button onClick={handleOpen}
+        className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+        title="Notifikacije">
+        <span className="text-lg">🔔</span>
+        {(unseen > 0 || pending > 0) && (
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+            {unseen > 0 ? (unseen > 9 ? "9+" : unseen) : pending > 9 ? "9+" : pending}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-50 w-80 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-sm font-bold text-foreground">Notifikacije</span>
+              <div className="flex items-center gap-2">
+                {pending > 0 && (
+                  <Link href="/listings?status=pending" onClick={() => setOpen(false)}>
+                    <span className="text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full font-semibold cursor-pointer hover:bg-yellow-500/30">
+                      {pending} na čekanju
+                    </span>
+                  </Link>
+                )}
+                <button onClick={refresh} className="text-xs text-muted-foreground hover:text-foreground transition-colors">↻</button>
+              </div>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y divide-border/50">
+              {loading && events.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">Učitavanje…</div>
+              ) : events.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">Nema aktivnosti</div>
+              ) : events.map((e, i) => {
+                const isNew = e.ts > lastSeen - 100;
+                return (
+                  <div key={i} className={`flex items-start gap-3 px-4 py-3 transition-colors ${isNew ? "bg-primary/5" : ""} ${e.link ? "cursor-pointer hover:bg-accent" : ""}`}
+                    onClick={() => { if (e.link) { setOpen(false); } }}>
+                    <span className="text-base mt-0.5 shrink-0">{e.type === "user" ? "👤" : "📋"}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-foreground truncate">{e.label}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{e.sub}</div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{fmtRelative(e.ts)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {events.length > 0 && (
+              <div className="px-4 py-2 border-t border-border text-center">
+                <span className="text-[11px] text-muted-foreground">Posljednjih {events.length} događaja</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function TopBar({ onLogout, menuOpen, setMenuOpen, navItems }: { onLogout: () => void; menuOpen: boolean; setMenuOpen: (v: boolean) => void; navItems: NavItem[] }) {
   const [loc] = useLocation();
   const current = navItems.find(n => n.path === "/" ? loc === "/" : loc.startsWith(n.path));
@@ -99,9 +207,12 @@ function TopBar({ onLogout, menuOpen, setMenuOpen, navItems }: { onLogout: () =>
       <div className="flex-1 flex items-center md:hidden">
         <span className="text-sm font-semibold text-foreground">{current?.label ?? "Admin"}</span>
       </div>
-      <button onClick={onLogout} className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 px-3 rounded-lg hover:bg-accent">
-        Odjava
-      </button>
+      <div className="ml-auto flex items-center gap-1">
+        <NotificationBell />
+        <button onClick={onLogout} className="text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 px-3 rounded-lg hover:bg-accent">
+          Odjava
+        </button>
+      </div>
     </header>
   );
 }

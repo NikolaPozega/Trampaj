@@ -198,6 +198,37 @@ router.delete("/listings/:id", requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── GET /api/admin/activity ─────────────────────────────────────────────────
+router.get("/activity", requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const limit = 20;
+    const [recentUsers, recentListings, pendingRows] = await Promise.all([
+      db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, createdAt: usersTable.createdAt })
+        .from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limit),
+      db.select({ id: listingsTable.id, title: listingsTable.title, moderationStatus: listingsTable.moderationStatus, status: listingsTable.status, createdAt: listingsTable.createdAt })
+        .from(listingsTable).orderBy(desc(listingsTable.createdAt)).limit(limit),
+      db.select({ c: count() }).from(listingsTable).where(eq(listingsTable.moderationStatus, "pending")),
+    ]);
+
+    const events: { type: string; label: string; sub: string; ts: number; link?: string }[] = [];
+
+    for (const u of recentUsers) {
+      events.push({ type: "user", label: `Novi korisnik: ${u.username}`, sub: u.email, ts: u.createdAt.getTime() });
+    }
+    for (const l of recentListings) {
+      const badge = l.moderationStatus === "pending" ? "⏳ čeka moderaciju" : l.moderationStatus === "rejected" ? "❌ odbijen" : "✅ aktivan";
+      events.push({ type: "listing", label: l.title, sub: badge, ts: l.createdAt.getTime(), link: `/listings` });
+    }
+
+    events.sort((a, b) => b.ts - a.ts);
+
+    res.json({ events: events.slice(0, 30), pendingCount: pendingRows[0]?.c ?? 0 });
+  } catch (err) {
+    req.log.error({ err }, "admin activity error");
+    res.status(500).json({ error: "Greška" });
+  }
+});
+
 // ─── POST /api/admin/seed-demo ───────────────────────────────────────────────
 // Idempotent — safe to call multiple times; uses ON CONFLICT DO NOTHING
 router.post("/seed-demo", requireAdmin, async (req: AuthRequest, res) => {
