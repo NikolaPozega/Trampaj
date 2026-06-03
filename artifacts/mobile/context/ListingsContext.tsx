@@ -95,6 +95,9 @@ interface ListingsContextType {
   unblockUser: (userName: string) => void;
   refreshListings: () => Promise<void>;
   refreshMyListings: () => Promise<void>;
+  serverMatchResults: Array<{ myListingId: string; theirListingId: string; matchType: "both" | "i_want" | "they_want"; score: number }>;
+  fetchSemanticMatches: () => Promise<void>;
+  matchesLoading: boolean;
 }
 
 const ListingsContext = createContext<ListingsContextType | null>(null);
@@ -114,6 +117,8 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [blockedUserNames, setBlockedUserNames] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [serverMatchResults, setServerMatchResults] = useState<Array<{ myListingId: string; theirListingId: string; matchType: "both" | "i_want" | "they_want"; score: number }>>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
   const tokenRef = useRef(token);
   tokenRef.current = token;
 
@@ -313,6 +318,26 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [authHeaders]);
 
+  const fetchSemanticMatches = useCallback(async () => {
+    if (!tokenRef.current) return;
+    setMatchesLoading(true);
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch(`${API_BASE}/listings/semantic-matches`, {
+        method: "POST",
+        headers: authHeaders(),
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (res.ok) {
+        const data = await res.json() as { matches: Array<{ myListingId: string; theirListingId: string; matchType: "both" | "i_want" | "they_want"; score: number }> };
+        setServerMatchResults(data.matches ?? []);
+      }
+    } catch { /* offline or timeout */ }
+    finally { setMatchesLoading(false); }
+  }, [authHeaders]);
+
   const setMyName = useCallback((_name: string) => {
     // Username is managed via auth profile — this is a no-op kept for interface compat
   }, []);
@@ -357,6 +382,9 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
         unblockUser,
         refreshListings,
         refreshMyListings,
+        serverMatchResults,
+        fetchSemanticMatches,
+        matchesLoading,
       }}
     >
       {children}

@@ -325,6 +325,9 @@ export default function ProfileScreen() {
     blockedUserNames,
     unblockUser,
     refreshMyListings,
+    serverMatchResults,
+    fetchSemanticMatches,
+    matchesLoading,
   } = useListings();
   const { user, logout, updateProfile, refreshUser } = useAuth();
   const { conversations, unreadCount } = useChat();
@@ -495,12 +498,13 @@ export default function ProfileScreen() {
     setScrollSignal((s) => s + 1);
   }
 
-  // Scroll to very top + refresh listings kad tab dobije fokus
+  // Scroll to very top + refresh listings + dohvati AI matcheve kad tab dobije fokus
   useFocusEffect(
     useCallback(() => {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
       void refreshMyListings();
-    }, [refreshMyListings])
+      void fetchSemanticMatches();
+    }, [refreshMyListings, fetchSemanticMatches])
   );
 
   // Polling dok postoje oglasi "Na čekanju" — provjeri svake 5s je li moderacija završila
@@ -521,10 +525,22 @@ export default function ProfileScreen() {
     }, 80);
   }, [scrollSignal]);
 
-  const allMatches = useMemo(
-    () => findTradeMatches(myListings, listings),
-    [myListings, listings]
-  );
+  const allMatches = useMemo<TradeMatch[]>(() => {
+    // Use server-side AI matches if available, otherwise fall back to local matching
+    if (serverMatchResults.length > 0) {
+      const resolved = serverMatchResults
+        .map((r) => {
+          const mine = myListings.find((l) => l.id === r.myListingId);
+          const theirs = listings.find((l) => l.id === r.theirListingId);
+          if (!mine || !theirs) return null;
+          return { myListing: mine, theirListing: theirs, matchType: r.matchType, score: r.score } as TradeMatch;
+        })
+        .filter((m): m is TradeMatch => m !== null);
+      if (resolved.length > 0) return resolved;
+    }
+    return findTradeMatches(myListings, listings);
+  }, [serverMatchResults, myListings, listings]);
+
   const visibleMatches = useMemo(
     () => allMatches.filter((m) => !dismissedIds.has(m.theirListing.id)),
     [allMatches, dismissedIds]
@@ -888,7 +904,15 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {visibleMatches.length === 0 ? (
+        {matchesLoading ? (
+          <View style={[styles.suggestEmpty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.suggestEmptyTitle, { color: colors.foreground }]}>AI analizira oglase…</Text>
+            <Text style={[styles.suggestEmptySub, { color: colors.mutedForeground }]}>
+              Pronalazimo najbolja podudaranja za tvoje oglase
+            </Text>
+          </View>
+        ) : visibleMatches.length === 0 ? (
           <View style={[styles.suggestEmpty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="search" size={28} color={colors.mutedForeground} />
             <Text style={[styles.suggestEmptyTitle, { color: colors.foreground }]}>Nema prijedloga</Text>

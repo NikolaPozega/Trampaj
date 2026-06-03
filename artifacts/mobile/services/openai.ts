@@ -124,7 +124,7 @@ export async function generateListingTags(
 
 2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI.${base64Image ? " OBAVEZNO analiziraj sliku i dodaj vizualne opise: boju (npr. 'smeđa', 'bijela'), materijal ('drvo', 'metal', 'plastika', 'tkanina'), stil ('moderna', 'skandinavska', 'industrijska'), stanje i sve vidljive detalje." : ""} Max 20 riječi na hrvatskom.
 
-3. GENERIRAJ trazimTags — samo VRSTA/TIP predmeta što osoba TRAŽI (npr. "maska", "bicikl", "laptop", "punjač"). NE stavljaj nazive brendova, modela ni kompatibilnosti (NE "samsung", NE "iphone", NE "s23"). Max 8 ključnih riječi.
+3. GENERIRAJ trazimTags — ključne riječi što osoba TRAŽI. Uključi i brendove/modele KAO SLOŽENE FRAZE s tipom predmeta (npr. "torbica za samsung", "punjač za macbook", "maska za iphone"). Max 8 kratkih fraza.
 
 Naslov: "${title}"
 Opis: "${description}"

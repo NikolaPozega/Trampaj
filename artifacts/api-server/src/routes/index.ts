@@ -14,6 +14,7 @@ import monitorRouter from "./monitor";
 import socialRouter from "./social";
 import aiRouter from "./ai";
 import uploadsRouter from "./uploads";
+import matchesRouter from "./matches";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(reviewsRouter);
 router.use(blockedRouter);
 router.use(aiRouter);
 router.use(uploadsRouter);
+router.use(matchesRouter);
 
 export default router;
