@@ -22,6 +22,16 @@ description: Owner's explicit visual preferences for admin panel redesign + firs
 - Promo / early adopter management (see below)
 - Social media hub (see below)
 
+## Admin notifications strategy
+
+- **Telegram bot** — za sve hitne notifikacije (novi korisnik, flagged oglas, AI objava, greška sustava)
+- **Email (Resend)** — samo za kritične sistemske greške kao fallback
+- Browser push — nije prioritet, Telegram pokriva sve
+- Owner nema Telegram profil još (3. lipnja 2026.) — treba instalirati, napraviti profil, pa dati username/chat ID za konfiguraciju bota
+- Bot kreira owner kroz @BotFather u Telegramu (2 minute), API key ide u server secrets
+
+---
+
 ## Social media hub (admin panel section)
 
 ### Purpose
