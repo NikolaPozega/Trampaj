@@ -5,8 +5,9 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
-const UPDATED = "26. svibnja 2025.";
-const CONTACT = "info@trampaj.hr";
+const UPDATED = "3. lipnja 2026.";
+const CONTACT = "pravna@trampaj.hr";
+const COMPANY = "Diplomat d.o.o., Dr. F. Tuđmana 10, 34000 Požega | OIB: 77718954672";
 
 function Section({ title, children, colors }: {
   title: string; children: React.ReactNode;
@@ -59,9 +60,9 @@ export default function TermsScreen() {
           </Text>
         </View>
 
-        <Section title="1. Opis usluge" colors={colors}>
+        <Section title="1. Operator i opis usluge" colors={colors}>
           <Body colors={colors}>
-            {"Trampaj.hr je platforma koja omogućuje razmjenu (trampu) predmeta između fizičkih osoba. Platforma isključivo posreduje u spajanju korisnika — ne sudjeluje u transakcijama, ne preuzima odgovornost za predmete niti jamči uspješnu zamjenu.\n\nKorištenjem platforme potvrđujete da ste punoljetna osoba (18+) s pravnom sposobnošću za sklapanje ugovora."}
+            {"Operator platforme:\n" + COMPANY + "\n\nTrampaj.hr je platforma koja omogućuje razmjenu (trampu) predmeta između fizičkih osoba. Platforma isključivo posreduje u spajanju korisnika — ne sudjeluje u transakcijama, ne preuzima odgovornost za predmete niti jamči uspješnu zamjenu.\n\nKorištenjem platforme potvrđujete da ste punoljetna osoba (18+) s pravnom sposobnošću za sklapanje ugovora."}
           </Body>
         </Section>
 

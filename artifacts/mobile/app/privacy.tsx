@@ -5,8 +5,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
-const UPDATED = "26. svibnja 2025.";
-const CONTACT = "privacy@trampaj.hr";
+const UPDATED = "3. lipnja 2026.";
+const CONTACT = "gdpr@trampaj.hr";
 
 function Section({ title, children, colors }: {
   title: string; children: React.ReactNode;
@@ -61,7 +61,7 @@ export default function PrivacyScreen() {
 
         <Section title="1. Voditelj obrade podataka" colors={colors}>
           <Body colors={colors}>
-            {"Voditelj obrade osobnih podataka je Trampaj.hr, Hrvatska (dalje: \"Platforma\").\n\nKontakt za zaštitu podataka: " + CONTACT + "\n\nNadzorno tijelo: Agencija za zaštitu osobnih podataka (AZOP), Martićeva 14, Zagreb — www.azop.hr"}
+            {"Voditelj obrade osobnih podataka:\n\nDiplomat d.o.o.\nDr. F. Tuđmana 10, 34000 Požega\nOIB: 77718954672\n\nKontakt za zaštitu podataka: " + CONTACT + "\n\nNadzorno tijelo: Agencija za zaštitu osobnih podataka (AZOP), Martićeva 14, Zagreb — www.azop.hr"}
           </Body>
         </Section>
 
