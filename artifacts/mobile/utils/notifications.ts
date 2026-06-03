@@ -13,7 +13,7 @@ try {
   // Running in Expo Go — notifications not supported, silently skip
 }
 
-// ID aktivnog razgovora — notifikacija se ne prikazuje dok si u tom razgovoru
+// ID aktivnog razgovora — zadržano za kompatibilnost, više se ne koristi za suppress logiku
 let _activeConversationId: string | null = null;
 
 export function setActiveConversationId(id: string | null) {
@@ -21,18 +21,15 @@ export function setActiveConversationId(id: string | null) {
 }
 
 if (Notifications) {
+  // Dok je app otvoren, nikad ne prikazuj banner — korisnik već vidi bedževe na ikonama
   Notifications.setNotificationHandler({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    handleNotification: async (notification: any) => {
-      const convId = notification?.request?.content?.data?.conversationId as string | undefined;
-      // Priguši notifikaciju ako je korisnik već u tom razgovoru
-      const suppress = !!convId && convId === _activeConversationId;
+    handleNotification: async () => {
       return {
-        shouldShowAlert: !suppress,
-        shouldPlaySound: !suppress,
-        shouldSetBadge: !suppress,
-        shouldShowBanner: !suppress,
-        shouldShowList: !suppress,
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
       };
     },
   });
