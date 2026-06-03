@@ -127,10 +127,24 @@ export default function App() {
         .cta-banner p { color: var(--muted); font-size: 1rem; margin-bottom: 32px; max-width: 420px; margin-left: auto; margin-right: auto; }
         footer {
           border-top: 1px solid rgba(255,255,255,.07);
-          padding: 28px 24px; text-align: center;
+          padding: 32px 24px; text-align: center;
           font-size: .8rem; color: var(--muted);
         }
         footer a { color: var(--muted); text-decoration: underline; margin: 0 8px; }
+        .odr-notice {
+          margin-bottom: 16px;
+          padding: 12px 20px;
+          background: rgba(245,193,0,.07);
+          border: 1px solid rgba(245,193,0,.18);
+          border-radius: 10px;
+          max-width: 560px;
+          margin-left: auto;
+          margin-right: auto;
+          font-size: .78rem;
+          line-height: 1.6;
+          color: #9aadcc;
+        }
+        .odr-notice a { color: var(--yellow); margin: 0 2px; }
         @media (max-width: 480px) {
           .nav-cta { display: none; }
           .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
@@ -252,7 +266,15 @@ export default function App() {
       </div>
 
       <footer>
-        <p>&copy; 2025 Trampaj.hr &nbsp;·&nbsp;
+        <div className="odr-notice">
+          <strong style={{color:"#c8a800"}}>Rješavanje potrošačkih sporova</strong><br />
+          Sukladno čl. 10. Zakona o zaštiti potrošača (NN 19/22) i Uredbi EU 524/2013, obavještavamo vas da sporove možete rješavati putem EU platforme za mrežno rješavanje sporova (ODR):<br />
+          <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a><br />
+          Za pritužbe i prigovore: <a href="mailto:pravna@trampaj.hr">pravna@trampaj.hr</a>
+        </div>
+        <p>
+          &copy; 2026 Diplomat d.o.o. · Trampaj.hr &nbsp;·&nbsp;
+          <a href="mailto:pravna@trampaj.hr">Kontakt</a>
           <a href="/privacy">Privatnost</a>
           <a href="/terms">Uvjeti</a>
         </p>
