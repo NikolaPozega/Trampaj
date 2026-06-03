@@ -21,9 +21,13 @@ function getLogoImgTag(): string {
     return `<img src="data:image/jpeg;base64,${b64}" alt="Trampaj.hr" width="520" style="display:block;width:100%;max-width:520px;height:auto" />`;
   } catch { return ""; }
 }
-const APP_URL = process.env["REPLIT_DEV_DOMAIN"]
-  ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
-  : "http://localhost:80";
+const APP_URL = (() => {
+  const prod = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+  if (prod) return `https://${prod}`;
+  const dev = process.env["REPLIT_DEV_DOMAIN"];
+  if (dev) return `https://${dev}`;
+  return "http://localhost:80";
+})();
 
 // ─── Resend email client ─────────────────────────────────────────────────────
 const RESEND_API_KEY = process.env["RESEND_API_KEY"];
