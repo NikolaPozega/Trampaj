@@ -80,7 +80,7 @@ export default function TermsScreen() {
 
         <Section title="4. Zabranjena ponašanja" colors={colors}>
           <Body colors={colors}>
-            {"Zabranjeno je:\n\n• Kontaktirati korisnike s ciljem prijevare ili izvlačenja novca\n• Manipulirati ocjenama (lažne recenzije, samookjenjivanje)\n• Koristiti automatizirane alate za masovno objavljivanje oglasa (spam)\n• Prikupljati osobne podatke ostalih korisnika bez njihovog pristanka\n• Koristiti platformu za oglašavanje komercijalnih usluga ili reklama\n• Zaobilaziti mjere sigurnosti platforme"}
+            {"Zabranjeno je:\n\n• Kontaktirati korisnike s ciljem prijevare ili izvlačenja novca\n• Manipulirati ocjenama (lažne recenzije, samooklenjivanje)\n• Koristiti automatizirane alate za masovno objavljivanje oglasa (spam)\n• Prikupljati osobne podatke ostalih korisnika bez njihovog pristanka\n• Koristiti platformu za oglašavanje komercijalnih usluga ili reklama\n• Zaobilaziti mjere sigurnosti platforme"}
           </Body>
         </Section>
 
@@ -98,29 +98,35 @@ export default function TermsScreen() {
 
         <Section title="7. DSA — Digitalni tržišni akti (Uredba EU 2022/2065)" colors={colors}>
           <Body colors={colors}>
-            {"Trampaj.hr posluje sukladno Uredbi o digitalnim uslugama (DSA):\n\n• Korisnici mogu prijaviti ilegalne ili sumnjive oglase putem gumba \"Prijavi oglas\"\n• Prijave se obrađuju unutar 72 sata\n• Platforma poduzima mjere uklanjanja nezakonitog sadržaja\n• Kontakt za tijela javne vlasti: " + CONTACT}
+            {"Trampaj.hr posluje sukladno Zakonu o provedbi Uredbe EU o digitalnim uslugama (NN, 28.3.2025.):\n\n• Korisnici mogu prijaviti ilegalne ili sumnjive oglase putem gumba \"Prijavi oglas\"\n• Prijave se obrađuju unutar 72 sata\n• Platforma poduzima mjere uklanjanja nezakonitog sadržaja\n• Kontakt za tijela javne vlasti: " + CONTACT}
           </Body>
         </Section>
 
-        <Section title="8. Intelektualno vlasništvo" colors={colors}>
+        <Section title="8. Status korisnika — privatne osobe" colors={colors}>
+          <Body colors={colors}>
+            {"Sukladno čl. 68. Zakona o zaštiti potrošača (NN 19/22, 59/23), Trampaj.hr je internetsko tržište koje isključivo spaja privatne osobe.\n\nSvi korisnici platforme su privatne osobe — nisu trgovci u smislu potrošačkog zakonodavstva EU-a. Stoga:\n\n• Zakonska jamstva i prava potrošača propisana EU direktivama ne primjenjuju se na zamjene ostvarene putem ove platforme\n• Korisnici su međusobno ugovorni partneri kao privatne osobe\n• Svaki oglas na platformi automatski je označen kao ponuda privatne osobe\n\nAko korisnik u stvarnosti posluje kao trgovac, dužan je to naznačiti i preuzima punu zakonsku odgovornost prema potrošačima."}
+          </Body>
+        </Section>
+
+        <Section title="9. Intelektualno vlasništvo" colors={colors}>
           <Body colors={colors}>
             {"Korisnik zadržava autorska prava na fotografije i opise koje objavljuje. Objavljivanjem sadržaja dajete Trampaj.hr neekskluzivnu, besplatnu licencu za prikaz tog sadržaja unutar platforme.\n\nLogo, dizajn i naziv \"Trampaj.hr\" vlasništvo su operatora platforme i ne smiju se koristiti bez pismenog odobrenja."}
           </Body>
         </Section>
 
-        <Section title="9. Ograničenje odgovornosti" colors={colors}>
+        <Section title="10. Ograničenje odgovornosti" colors={colors}>
           <Body colors={colors}>
             {"Platforma se pruža \"kakva jest\" bez jamstava dostupnosti ili prikladnosti. Operator ne odgovara za:\n\n• Izravne ili neizravne štete nastale korištenjem platforme\n• Gubitak podataka, prihoda ili poslovnih mogućnosti\n• Ponašanje ili propuste trećih osoba (korisnika, kurirskih službi)\n\nUkupna odgovornost operatora ograničena je na iznos koji je korisnik platio za korištenje usluge (usluga je besplatna)."}
           </Body>
         </Section>
 
-        <Section title="10. Rješavanje sporova" colors={colors}>
+        <Section title="11. Rješavanje sporova i prigovori" colors={colors}>
           <Body colors={colors}>
-            {"Za sporove između korisnika platforme preporučujemo rješavanje sporazumom.\n\nZa pritužbe na rad platforme pišite na: " + CONTACT + "\n\nNa ugovorne odnose primjenjuje se hrvatsko pravo. Nadležni sud je u Požegi.\n\nPotrošači imaju pravo koristiti platformu EU za mrežno rješavanje sporova:\nhttps://ec.europa.eu/consumers/odr"}
+            {"Za sporove između korisnika platforme preporučujemo rješavanje sporazumom.\n\nZa pritužbe na rad platforme pišite na: " + CONTACT + "\nOperator je dužan odgovoriti na svaki prigovor u pisanom obliku u roku od 15 dana od zaprimanja (čl. 10. ZZP, NN 19/22).\n\nNa ugovorne odnose primjenjuje se hrvatsko pravo. Nadležni sud je u Požegi.\n\nPotrošači imaju pravo koristiti platformu EU za mrežno rješavanje sporova:\nhttps://ec.europa.eu/consumers/odr\n\nIzvansudsko rješavanje sporova: Centar za mirenje pri HGK (www.hgk.hr/centar-za-mirenje)."}
           </Body>
         </Section>
 
-        <Section title="11. Izmjene uvjeta" colors={colors}>
+        <Section title="12. Izmjene uvjeta" colors={colors}>
           <Body colors={colors}>
             {"Uvjete možemo ažurirati. O bitnim izmjenama obavijestit ćemo vas unutar aplikacije ili e-mailom najmanje 30 dana unaprijed.\n\nAko ne prihvaćate izmjene, možete obrisati račun u postavkama profila."}
           </Body>

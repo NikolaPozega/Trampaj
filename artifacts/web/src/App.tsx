@@ -1,4 +1,124 @@
-export default function App() {
+import { Router, Switch, Route } from "wouter";
+
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+// ─── Shared legal styles ──────────────────────────────────────────────────────
+const LEGAL_CSS = `
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --navy: #08152E; --yellow: #F5C100; --text: #F0F4FF; --muted: #7A90B0; }
+  html, body { min-height: 100%; background: var(--navy); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  .legal-wrap { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+  .legal-back { display:inline-flex; align-items:center; gap:6px; color:var(--muted);
+    text-decoration:none; font-size:.85rem; margin-bottom:28px; transition:color .2s; }
+  .legal-back:hover { color:var(--text); }
+  .legal-logo { font-size:1.1rem; font-weight:900; color:var(--yellow); margin-bottom:4px; }
+  .legal-title { font-size:1.6rem; font-weight:800; margin-bottom:6px; }
+  .legal-updated { font-size:.8rem; color:var(--muted); margin-bottom:28px; }
+  .legal-badge { display:flex; align-items:flex-start; gap:10px; padding:12px 16px;
+    border-radius:10px; margin-bottom:28px; font-size:.82rem; line-height:1.6; }
+  .legal-badge.yellow { background:rgba(245,193,0,.08); border:1px solid rgba(245,193,0,.22); color:#c8a800; }
+  .legal-badge.blue { background:rgba(56,189,248,.08); border:1px solid rgba(56,189,248,.22); color:#38BDF8; }
+  .legal-section { margin-bottom:28px; }
+  .legal-section h2 { font-size:.95rem; font-weight:700; margin-bottom:10px; color:var(--text); }
+  .legal-section p { font-size:.87rem; line-height:1.75; color:var(--muted); white-space:pre-line; }
+  .legal-contact { display:flex; align-items:center; gap:14px; padding:16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    border-radius:12px; margin-top:32px; }
+  .legal-contact-title { font-size:.85rem; font-weight:600; margin-bottom:3px; }
+  .legal-contact-email { font-size:.85rem; color:var(--yellow); text-decoration:none; }
+  .legal-contact-email:hover { text-decoration:underline; }
+`;
+
+function TermsPage() {
+  return (
+    <>
+      <style>{LEGAL_CSS}</style>
+      <div className="legal-wrap">
+        <a href={BASE + "/"} className="legal-back">← Natrag na Trampaj.hr</a>
+        <div className="legal-logo">Trampaj.hr</div>
+        <h1 className="legal-title">Uvjeti korištenja</h1>
+        <p className="legal-updated">Zadnja izmjena: 3. lipnja 2026. &nbsp;·&nbsp; Operator: Diplomat d.o.o., Dr. F. Tuđmana 10, 34000 Požega | OIB: 77718954672</p>
+
+        <div className="legal-badge yellow">📄 Korištenjem Trampaj.hr platforme prihvaćate ove Uvjete korištenja u cijelosti.</div>
+
+        {[
+          ["1. Operator i opis usluge", "Operator platforme:\nDiplomat d.o.o., Dr. F. Tuđmana 10, 34000 Požega | OIB: 77718954672\n\nTrampaj.hr je platforma koja omogućuje razmjenu (trampu) predmeta između fizičkih osoba. Platforma isključivo posreduje u spajanju korisnika — ne sudjeluje u transakcijama, ne preuzima odgovornost za predmete niti jamči uspješnu zamjenu.\n\nKorištenjem platforme potvrđujete da ste punoljetna osoba (18+) s pravnom sposobnošću za sklapanje ugovora."],
+          ["2. Registracija i korisnički račun", "• Registracija je besplatna i dobrovoljna\n• Korisnik je odgovoran za točnost unesenih podataka\n• Zabranjeno je kreirati lažne profile ili se predstavljati tuđim identitetom\n• Jedan korisnik smije imati samo jedan aktivan račun\n• Korisnik je dužan čuvati povjerljivost lozinke i odmah prijaviti svaki neovlašteni pristup\n• Platforma zadržava pravo suspendiranja ili brisanja računa koji krši ove Uvjete"],
+          ["3. Pravila oglašavanja", "Oglasi moraju biti točni, potpuni i u skladu s ovim pravilima. Zabranjeno je objavljivati:\n\n• Lažne ili obmanjujuće oglase\n• Predmete koji su predmet krađe, falsifikati ili ilegalna roba\n• Oružje, eksplozivi, droge i kontrolirane supstancije\n• Živežne namirnice i lijekovi koji zahtijevaju posebne uvjete pohrane\n• Sadržaj koji vrijeđa dostojanstvo osoba ili potiče mržnju\n• Predmete koji su zakonom zabranjeni za promet\n• Živa bića (životinje)\n\nKorisnik je osobno odgovoran za točnost i zakonitost objavljenih oglasa."],
+          ["4. Zabranjena ponašanja", "Zabranjeno je:\n\n• Kontaktirati korisnike s ciljem prijevare ili izvlačenja novca\n• Manipulirati ocjenama (lažne recenzije, samooklenjivanje)\n• Koristiti automatizirane alate za masovno objavljivanje oglasa (spam)\n• Prikupljati osobne podatke ostalih korisnika bez njihovog pristanka\n• Koristiti platformu za oglašavanje komercijalnih usluga ili reklama\n• Zaobilaziti mjere sigurnosti platforme"],
+          ["5. Zamjena predmeta i odgovornost", "Trampaj.hr posreduje u spajanju korisnika, ali:\n\n• NE garantira kvalitetu, stanje ili autentičnost predmeta\n• NE sudjeluje u fizičkoj razmjeni predmeta\n• NIJE odgovorna za štete nastale uslijed zamjene\n• NE pruža usluge prijevoza niti jamči dostavu\n\nKorisnici su sami odgovorni za dogovaranje uvjeta zamjene, provjeru predmeta i odabir sigurnog načina razmjene."],
+          ["6. Dostava i plaćanje dostave", "Platforma ne naplaćuje proviziju niti posreduje u financijskim transakcijama.\n\nUkoliko korisnici dogovore kurirsku dostavu:\n• Svaki korisnik plaća dostavu paketa koji prima\n• Trošak i organizacija dostave isključivo su dogovor između korisnika\n• Platforma ne snosi odgovornost za izgubljene, oštećene ili zakasnjele pošiljke"],
+          ["7. DSA — Digitalni tržišni akti (Uredba EU 2022/2065)", "Trampaj.hr posluje sukladno Zakonu o provedbi Uredbe EU o digitalnim uslugama (NN, 28.3.2025.):\n\n• Korisnici mogu prijaviti ilegalne ili sumnjive oglase putem gumba \"Prijavi oglas\"\n• Prijave se obrađuju unutar 72 sata\n• Platforma poduzima mjere uklanjanja nezakonitog sadržaja\n• Kontakt za tijela javne vlasti: pravna@trampaj.hr"],
+          ["8. Status korisnika — privatne osobe", "Sukladno čl. 68. Zakona o zaštiti potrošača (NN 19/22, 59/23), Trampaj.hr je internetsko tržište koje isključivo spaja privatne osobe.\n\nSvi korisnici platforme su privatne osobe — nisu trgovci u smislu potrošačkog zakonodavstva EU-a. Stoga:\n\n• Zakonska jamstva i prava potrošača propisana EU direktivama ne primjenjuju se na zamjene ostvarene putem ove platforme\n• Svaki oglas na platformi automatski je označen kao ponuda privatne osobe\n\nAko korisnik u stvarnosti posluje kao trgovac, dužan je to naznačiti i preuzima punu zakonsku odgovornost prema potrošačima."],
+          ["9. Intelektualno vlasništvo", "Korisnik zadržava autorska prava na fotografije i opise koje objavljuje. Objavljivanjem sadržaja dajete Trampaj.hr neekskluzivnu, besplatnu licencu za prikaz tog sadržaja unutar platforme.\n\nLogo, dizajn i naziv \"Trampaj.hr\" vlasništvo su operatora platforme i ne smiju se koristiti bez pismenog odobrenja."],
+          ["10. Ograničenje odgovornosti", "Platforma se pruža \"kakva jest\" bez jamstava dostupnosti ili prikladnosti. Operator ne odgovara za:\n\n• Izravne ili neizravne štete nastale korištenjem platforme\n• Gubitak podataka, prihoda ili poslovnih mogućnosti\n• Ponašanje ili propuste trećih osoba (korisnika, kurirskih službi)\n\nUkupna odgovornost operatora ograničena je na iznos koji je korisnik platio za korištenje usluge (usluga je besplatna)."],
+          ["11. Rješavanje sporova i prigovori", "Za pritužbe na rad platforme pišite na: pravna@trampaj.hr\nOperator je dužan odgovoriti u roku od 15 dana od zaprimanja prigovora (čl. 10. ZZP, NN 19/22).\n\nNa ugovorne odnose primjenjuje se hrvatsko pravo. Nadležni sud je u Požegi.\n\nPotrošači imaju pravo koristiti platformu EU za mrežno rješavanje sporova:\nhttps://ec.europa.eu/consumers/odr\n\nIzvansudsko rješavanje sporova: Centar za mirenje pri HGK (www.hgk.hr/centar-za-mirenje)."],
+          ["12. Izmjene uvjeta", "Uvjete možemo ažurirati. O bitnim izmjenama obavijestit ćemo vas unutar aplikacije ili e-mailom najmanje 30 dana unaprijed."],
+        ].map(([title, body]) => (
+          <div key={title} className="legal-section">
+            <h2>{title}</h2>
+            <p>{body}</p>
+          </div>
+        ))}
+
+        <div className="legal-contact">
+          <span style={{fontSize:"1.3rem"}}>✉️</span>
+          <div>
+            <div className="legal-contact-title">Kontakt</div>
+            <a href="mailto:pravna@trampaj.hr" className="legal-contact-email">pravna@trampaj.hr</a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <>
+      <style>{LEGAL_CSS}</style>
+      <div className="legal-wrap">
+        <a href={BASE + "/"} className="legal-back">← Natrag na Trampaj.hr</a>
+        <div className="legal-logo">Trampaj.hr</div>
+        <h1 className="legal-title">Politika privatnosti</h1>
+        <p className="legal-updated">Zadnja izmjena: 3. lipnja 2026.</p>
+
+        <div className="legal-badge blue">🛡️ Sukladno Uredbi EU 2016/679 (GDPR) i Zakonu o provedbi Opće uredbe (NN 42/2018)</div>
+
+        {[
+          ["1. Voditelj obrade podataka", "Diplomat d.o.o.\nDr. F. Tuđmana 10, 34000 Požega\nOIB: 77718954672\n\nKontakt za zaštitu podataka: gdpr@trampaj.hr\n\nNadzorno tijelo: AZOP, Martićeva 14, Zagreb — www.azop.hr"],
+          ["2. Koje osobne podatke prikupljamo", "• Korisničko ime i e-mail adresa (pri registraciji)\n• Lozinka (pohranjena isključivo kriptirana — bcrypt)\n• Broj mobitela (opcionalno — vidljiv samo u oglasima gdje ga sami objavite)\n• Adresa / lokacija (opcionalno)\n• Profilna fotografija (opcionalno)\n• Slike predmeta u oglasima\n• Chat poruke između korisnika\n• Aktivnost: objavljeni oglasi, ocjene, status zamjena"],
+          ["3. Svrha i pravna osnova obrade", "• Izvršenje ugovora (čl. 6/1/b GDPR) — pružanje usluge trampe\n• Legitimni interes (čl. 6/1/f GDPR) — zaštita od prijevare i zlouporabe\n• Privola (čl. 6/1/a GDPR) — marketinške komunikacije (samo uz privolu)\n• Pravna obveza (čl. 6/1/c GDPR) — ispunjenje zakonskih zahtjeva\n\nPodaci se NE koriste za profiliranje niti izravni marketing bez vaše izričite privole."],
+          ["4. Pohrana i sigurnost", "Podaci se pohranjuju na sigurnim poslužiteljima unutar EU. Primjenjujemo:\n\n• Enkripcija lozinki (bcrypt)\n• HTTPS/TLS za svu komunikaciju\n• Ograničen pristup — samo autorizirano osoblje\n• Nadzor tehničkih grešaka (Sentry, EU datacenter)\n\nU slučaju povrede osobnih podataka obavijestit ćemo vas i AZOP u roku od 72 sata (čl. 33. GDPR)."],
+          ["5. Primatelji podataka (izvršitelji obrade)", "Radi pružanja usluge, dijelimo minimalne potrebne podatke s:\n\n• Stripe Inc. — obrada kartičnih plaćanja pri kurirskoj dostavi (EU standardne ugovorne klauzule)\n• Google Firebase / FCM — slanje push obavijesti (samo token uređaja)\n• Sentry (EU datacenter) — praćenje tehničkih grešaka; anonimizirana dijagnostika\n• Expo / EAS — distribucija mobilne aplikacije; ne prima osobne podatke korisnika\n• GLS / Box Now — kurirske službe; primaju adresu dostave samo ako odaberete kurirsku dostavu\n\nSve treće strane vezane su ugovorom o obradi podataka (DPA). Podaci se ne prodaju."],
+          ["6. Vaša prava (GDPR)", "• Pravo na pristup — zatražite uvid u sve vaše podatke\n• Pravo na ispravak — ispravite podatke u postavkama profila\n• Pravo na brisanje — \"Izbriši račun\" u profilu briše sve podatke unutar 30 dana\n• Pravo na prenosivost — zatražite izvoz podataka u JSON formatu\n• Pravo na ograničenje obrade\n• Pravo na prigovor\n• Pravo na opoziv privole — u svakom trenutku bez posljedica\n\nZa zahtjeve: gdpr@trampaj.hr (odgovaramo u roku od 30 dana, čl. 12. GDPR)."],
+          ["7. Rokovi pohrane", "• Osobni podaci čuvaju se dok je račun aktivan\n• Nakon brisanja računa — podaci se brišu unutar 30 dana\n• Objavljeni oglasi anonimiziraju se\n• Log podaci za sigurnost čuvaju se do 12 mjeseci\n• Neaktivni oglasi arhiviraju se nakon 90 dana"],
+          ["8. Maloljetnici", "Platforma nije namijenjena osobama mlađim od 18 godina. Korištenjem potvrđujete punoljetnost. Ako saznamo da je maloljetna osoba koristila platformu, odmah ćemo obrisati njene podatke."],
+          ["9. Kolačići i analitika", "Web stranica koristi samo tehničke kolačiće neophodne za rad. Mobilna aplikacija ne koristi kolačiće. Ako budemo uveli analitiku, zatražit ćemo vašu privolu unaprijed."],
+          ["10. Prigovori — AZOP", "Ako smatrate da obrađujemo vaše podatke protivno GDPR-u:\n\nAgencija za zaštitu osobnih podataka (AZOP)\nMartićeva ulica 14, 10 000 Zagreb\nwww.azop.hr | azop@azop.hr"],
+          ["11. Izmjene politike", "O značajnim izmjenama obavijestit ćemo vas unutar aplikacije ili e-mailom najmanje 30 dana unaprijed."],
+        ].map(([title, body]) => (
+          <div key={title} className="legal-section">
+            <h2>{title}</h2>
+            <p>{body}</p>
+          </div>
+        ))}
+
+        <div className="legal-contact">
+          <span style={{fontSize:"1.3rem"}}>🛡️</span>
+          <div>
+            <div className="legal-contact-title">Kontakt za zaštitu podataka</div>
+            <a href="mailto:gdpr@trampaj.hr" className="legal-contact-email">gdpr@trampaj.hr</a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function LandingPage() {
   return (
     <>
       <style>{`
@@ -268,17 +388,29 @@ export default function App() {
       <footer>
         <div className="odr-notice">
           <strong style={{color:"#c8a800"}}>Rješavanje potrošačkih sporova</strong><br />
-          Sukladno čl. 10. Zakona o zaštiti potrošača (NN 19/22) i Uredbi EU 524/2013, obavještavamo vas da sporove možete rješavati putem EU platforme za mrežno rješavanje sporova (ODR):<br />
+          Sukladno čl. 10. Zakona o zaštiti potrošača (NN 19/22, 59/23) i Uredbi EU 524/2013, obavještavamo vas da sporove možete rješavati putem EU platforme za mrežno rješavanje sporova (ODR):<br />
           <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a><br />
           Za pritužbe i prigovore: <a href="mailto:pravna@trampaj.hr">pravna@trampaj.hr</a>
         </div>
         <p>
           &copy; 2026 Diplomat d.o.o. · Trampaj.hr &nbsp;·&nbsp;
           <a href="mailto:pravna@trampaj.hr">Kontakt</a>
-          <a href="/privacy">Privatnost</a>
-          <a href="/terms">Uvjeti</a>
+          <a href={BASE + "/privacy"}>Privatnost</a>
+          <a href={BASE + "/terms"}>Uvjeti</a>
         </p>
       </footer>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router base={BASE}>
+      <Switch>
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route component={LandingPage} />
+      </Switch>
+    </Router>
   );
 }

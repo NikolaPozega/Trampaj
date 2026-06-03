@@ -79,41 +79,47 @@ export default function PrivacyScreen() {
 
         <Section title="4. Pohrana i sigurnost" colors={colors}>
           <Body colors={colors}>
-            {"Podaci se pohranjuju lokalno na vašem uređaju (AsyncStorage) i na sigurnim poslužiteljima unutar EU. Primjenjujemo sljedeće mjere zaštite:\n\n• Enkripcija lozinki (bcrypt)\n• HTTPS/TLS za svu komunikaciju\n• Ograničen pristup podacima — samo autorizirano osoblje\n• Redovite sigurnosne provjere\n\nPodaci se NE dijele s trećim stranama u komercijalne svrhe. Kurirskim službama (GLS, Box Now) dostavljaju se samo podaci za dostavu koje sami unesete."}
+            {"Podaci se pohranjuju na sigurnim poslužiteljima unutar EU. Primjenjujemo sljedeće mjere zaštite:\n\n• Enkripcija lozinki (bcrypt)\n• HTTPS/TLS za svu komunikaciju\n• Ograničen pristup podacima — samo autorizirano osoblje\n• Redovite sigurnosne provjere i nadzor (Sentry)\n\nU slučaju povrede osobnih podataka koja može ugroziti vaša prava, obavijestit ćemo vas i AZOP u roku od 72 sata sukladno čl. 33. GDPR-a."}
           </Body>
         </Section>
 
-        <Section title="5. Vaša prava (GDPR)" colors={colors}>
+        <Section title="5. Primatelji podataka (izvršitelji obrade)" colors={colors}>
           <Body colors={colors}>
-            {"• Pravo na pristup — zatražite uvid u sve vaše podatke\n• Pravo na ispravak — ispravite netočne podatke u postavkama profila\n• Pravo na brisanje — \"Izbriši račun\" u profilu briše sve podatke unutar 30 dana\n• Pravo na prenosivost — zatražite izvoz podataka u JSON formatu\n• Pravo na ograničenje obrade — možete privremeno suspendirati obradu\n• Pravo na prigovor — protivite se obradi na temelju legitimnog interesa\n• Pravo na opoziv privole — u svakom trenutku bez posljedica\n\nZa zahtjeve pišite na: " + CONTACT}
+            {"Radi pružanja usluge, dijelimo minimalne potrebne podatke s ovim pouzdanim trećim stranama:\n\n• Stripe Inc. (SAD/EU) — obrada kartičnih plaćanja pri kurirskoj dostavi; primjenjuje EU standardne ugovorne klauzule\n• Google Firebase / FCM — slanje push obavijesti (samo token uređaja, bez osobnih podataka)\n• Sentry (EU datacenter) — praćenje tehničkih grešaka aplikacije; prikuplja anonimiziranu tehničku dijagnostiku\n• Expo / EAS (SAD) — distribucija i ažuriranje mobilne aplikacije; ne prima osobne podatke korisnika\n• GLS / Box Now — kurirske službe; primaju adresu dostave samo ako sami odaberete kurirsku dostavu\n\nSve treće strane vezane su ugovorom o obradi podataka (DPA). Podaci se ne prodaju niti dijele u komercijalne svrhe."}
           </Body>
         </Section>
 
-        <Section title="6. Rokovi pohrane" colors={colors}>
+        <Section title="6. Vaša prava (GDPR)" colors={colors}>
+          <Body colors={colors}>
+            {"• Pravo na pristup — zatražite uvid u sve vaše podatke\n• Pravo na ispravak — ispravite netočne podatke u postavkama profila\n• Pravo na brisanje — \"Izbriši račun\" u profilu briše sve podatke unutar 30 dana\n• Pravo na prenosivost — zatražite izvoz podataka u JSON formatu\n• Pravo na ograničenje obrade — možete privremeno suspendirati obradu\n• Pravo na prigovor — protivite se obradi na temelju legitimnog interesa\n• Pravo na opoziv privole — u svakom trenutku bez posljedica\n\nZa zahtjeve pišite na: " + CONTACT + "\nOdgovaramo u roku od 30 dana (čl. 12. GDPR)."}
+          </Body>
+        </Section>
+
+        <Section title="7. Rokovi pohrane" colors={colors}>
           <Body colors={colors}>
             {"• Osobni podaci čuvaju se dok je račun aktivan\n• Nakon brisanja računa — podaci se brišu unutar 30 dana\n• Objavljeni oglasi anonimiziraju se (uklanja se korisničko ime i kontakt)\n• Log podaci za sigurnost čuvaju se do 12 mjeseci\n• Neaktivni oglasi arhiviraju se nakon 90 dana"}
           </Body>
         </Section>
 
-        <Section title="7. Maloljetnici" colors={colors}>
+        <Section title="8. Maloljetnici" colors={colors}>
           <Body colors={colors}>
             {"Platforma nije namijenjena osobama mlađim od 18 godina. Korištenjem platforme potvrđujete da imate najmanje 18 godina. Ako saznamo da je maloljetna osoba koristila platformu, odmah ćemo obrisati njene podatke."}
           </Body>
         </Section>
 
-        <Section title="8. Kolačići i analitika" colors={colors}>
+        <Section title="9. Kolačići i analitika" colors={colors}>
           <Body colors={colors}>
-            {"Mobilna aplikacija ne koristi kolačiće niti analitičke alate koji bi prikupljali podatke bez privole. Ako budemo uveli analitiku, zatražit ćemo vašu privolu unaprijed uz jasno objašnjenje svrhe."}
+            {"Mobilna aplikacija ne koristi kolačiće niti analitičke alate koji bi prikupljali podatke bez privole. Web stranica trampaj.hr koristi samo tehničke kolačiće neophodne za rad stranice. Ako budemo uveli analitiku, zatražit ćemo vašu privolu unaprijed uz jasno objašnjenje svrhe."}
           </Body>
         </Section>
 
-        <Section title="9. Prigovori — AZOP" colors={colors}>
+        <Section title="10. Prigovori — AZOP" colors={colors}>
           <Body colors={colors}>
             {"Ako smatrate da obrađujemo vaše podatke protivno GDPR-u, možete podnijeti pritužbu:\n\nAgencija za zaštitu osobnih podataka (AZOP)\nMartićeva ulica 14, 10 000 Zagreb\nwww.azop.hr | azop@azop.hr"}
           </Body>
         </Section>
 
-        <Section title="10. Izmjene politike" colors={colors}>
+        <Section title="11. Izmjene politike" colors={colors}>
           <Body colors={colors}>
             {"Ovu politiku možemo ažurirati. O značajnim izmjenama obavijestit ćemo vas unutar aplikacije ili e-mailom najmanje 30 dana unaprijed. Nastavak korištenja smatra se prihvaćanjem izmjena."}
           </Body>

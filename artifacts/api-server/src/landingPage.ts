@@ -304,7 +304,14 @@ export function landingPageHtml(): string {
 </div>
 
 <footer>
-  <p>&copy; 2025 Trampaj.hr &nbsp;·&nbsp;
+  <div style="margin-bottom:14px;padding:12px 20px;background:rgba(245,193,0,.07);border:1px solid rgba(245,193,0,.18);border-radius:10px;max-width:560px;margin-left:auto;margin-right:auto;font-size:.78rem;line-height:1.6;color:#9aadcc;">
+    <strong style="color:#c8a800;">Rješavanje potrošačkih sporova</strong><br>
+    Sukladno čl. 10. Zakona o zaštiti potrošača (NN 19/22, 59/23) i Uredbi EU 524/2013, obavještavamo vas da sporove možete rješavati putem EU platforme za mrežno rješavanje sporova (ODR):<br>
+    <a href="https://ec.europa.eu/consumers/odr" style="color:#F5C100;" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a><br>
+    Za pritužbe i prigovore: <a href="mailto:pravna@trampaj.hr" style="color:#F5C100;">pravna@trampaj.hr</a>
+  </div>
+  <p>&copy; 2026 Diplomat d.o.o. &nbsp;·&nbsp; Trampaj.hr &nbsp;·&nbsp;
+    <a href="mailto:pravna@trampaj.hr">Kontakt</a>
     <a href="/privacy">Privatnost</a>
     <a href="/terms">Uvjeti</a>
   </p>
