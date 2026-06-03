@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import path from "node:path";
 import fs from "node:fs";
+import https from "node:https";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
@@ -85,27 +86,40 @@ if (fs.existsSync(PUBLIC_DIR)) {
 }
 
 // ─── APK download ─────────────────────────────────────────────────────────────
-app.get("/download/app", async (_req, res) => {
+app.get("/download/app", (_req, res) => {
   const APK_URL = "https://expo.dev/artifacts/eas/edAk41KAp4AKysLhbASGie.apk";
   const token = process.env.EXPO_TOKEN;
-  try {
-    const upstream = await fetch(APK_URL, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      redirect: "follow",
-    });
-    if (!upstream.ok || !upstream.body) {
-      res.status(502).send("APK trenutno nedostupan");
-      return;
-    }
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", 'attachment; filename="Trampa.apk"');
-    const contentLength = upstream.headers.get("content-length");
-    if (contentLength) res.setHeader("Content-Length", contentLength);
-    const { Readable } = await import("node:stream");
-    Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]).pipe(res);
-  } catch {
-    res.status(502).send("Greška pri preuzimanju APK-a");
-  }
+
+  const doRequest = (url: string, redirects = 5): void => {
+    if (redirects === 0) { res.status(502).send("Previše preusmjeravanja"); return; }
+    const parsed = new URL(url);
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: token && parsed.hostname.includes("expo.dev")
+        ? { Authorization: `Bearer ${token}` }
+        : {},
+    };
+    https.get(options, (upstream) => {
+      if (upstream.statusCode && upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
+        upstream.resume();
+        doRequest(upstream.headers.location, redirects - 1);
+        return;
+      }
+      if (!upstream.statusCode || upstream.statusCode >= 400) {
+        res.status(502).send("APK trenutno nedostupan");
+        return;
+      }
+      res.setHeader("Content-Type", "application/vnd.android.package-archive");
+      res.setHeader("Content-Disposition", 'attachment; filename="Trampa.apk"');
+      if (upstream.headers["content-length"]) {
+        res.setHeader("Content-Length", upstream.headers["content-length"]);
+      }
+      upstream.pipe(res);
+    }).on("error", () => res.status(502).send("Greška pri preuzimanju APK-a"));
+  };
+
+  doRequest(APK_URL);
 });
 
 // ─── API rute ─────────────────────────────────────────────────────────────────
