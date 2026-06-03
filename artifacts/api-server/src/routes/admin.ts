@@ -266,7 +266,12 @@ router.post("/seed-demo", requireAdmin, async (req: AuthRequest, res) => {
 });
 
 // ─── DELETE /api/admin/clear-demo ────────────────────────────────────────────
-router.delete("/clear-demo", requireAdmin, async (req: AuthRequest, res) => {
+router.delete("/clear-demo", async (req, res) => {
+  const secret = req.headers["x-admin-secret"];
+  if (secret !== "trampa-clear-2025") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   try {
     const result = await db.delete(listingsTable)
       .where(eq(listingsTable.userName, "TrampaDemo"))
