@@ -265,4 +265,18 @@ router.post("/seed-demo", requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── DELETE /api/admin/clear-demo ────────────────────────────────────────────
+router.delete("/clear-demo", requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const result = await db.delete(listingsTable)
+      .where(eq(listingsTable.userName, "TrampaDemo"))
+      .returning({ id: listingsTable.id });
+    req.log.info({ deleted: result.length }, "clear-demo completed");
+    return res.json({ ok: true, deleted: result.length });
+  } catch (err) {
+    req.log.error({ err }, "clear-demo error");
+    return res.status(500).json({ error: "Greška pri brisanju" });
+  }
+});
+
 export default router;
