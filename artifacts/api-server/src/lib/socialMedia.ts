@@ -48,16 +48,16 @@ function buildCaption(listing: ListingForPost): string {
 }
 
 // ─── Facebook stranica ────────────────────────────────────────────────────────
-export async function postToFacebook(listing: ListingForPost): Promise<void> {
+export async function postToFacebook(listing: ListingForPost): Promise<string | null> {
   if (!META_PAGE_ID || !META_USER_TOKEN) {
     logger.warn("META_PAGE_ID ili META_PAGE_TOKEN nije postavljen, preskačem FB objavu");
-    return;
+    return null;
   }
 
   const pageToken = await getPageToken();
   if (!pageToken) {
     logger.warn("Nije moguće dohvatiti Page token, preskačem FB objavu");
-    return;
+    return null;
   }
 
   const caption = buildCaption(listing);
@@ -76,6 +76,7 @@ export async function postToFacebook(listing: ListingForPost): Promise<void> {
       const data = await res.json() as { id?: string; error?: { message: string } };
       if (data.error) throw new Error(data.error.message);
       logger.info({ postId: data.id }, "Facebook objava objavljena");
+      return data.id ?? null;
     } else {
       const res = await fetch(
         `https://graph.facebook.com/v19.0/${META_PAGE_ID}/feed`,
@@ -88,75 +89,85 @@ export async function postToFacebook(listing: ListingForPost): Promise<void> {
       const data = await res.json() as { id?: string; error?: { message: string } };
       if (data.error) throw new Error(data.error.message);
       logger.info({ postId: data.id }, "Facebook objava objavljena (tekst)");
+      return data.id ?? null;
     }
   } catch (err) {
     logger.error({ err }, "Greška pri Facebook objavi");
+    return null;
   }
 }
 
 // ─── Instagram (2-koračni process) ────────────────────────────────────────────
-export async function postToInstagram(listing: ListingForPost): Promise<void> {
+export async function postToInstagram(listing: ListingForPost): Promise<string | null> {
   if (!META_IG_USER_ID || !META_USER_TOKEN) {
     logger.warn("META_IG_USER_ID ili META_PAGE_TOKEN nije postavljen, preskačem IG objavu");
-    return;
+    return null;
   }
 
   const imageUrl = listing.imageUris[0];
   if (!imageUrl) {
     logger.warn({ listingId: listing.id }, "Nema slike za Instagram objavu");
-    return;
+    return null;
   }
 
   const pageToken = await getPageToken();
   if (!pageToken) {
     logger.warn("Nije moguće dohvatiti Page token, preskačem IG objavu");
-    return;
+    return null;
   }
 
   const caption = buildCaption(listing);
 
   try {
-    // Korak 1: Kreiraj media container
     const containerRes = await fetch(
       `https://graph.facebook.com/v19.0/${META_IG_USER_ID}/media`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          caption,
-          access_token: pageToken,
-        }),
+        body: JSON.stringify({ image_url: imageUrl, caption, access_token: pageToken }),
       }
     );
     const container = await containerRes.json() as { id?: string; error?: { message: string } };
     if (container.error) throw new Error(container.error.message);
     if (!container.id) throw new Error("Nema container ID-a");
 
-    // Korak 2: Objavi media container
     const publishRes = await fetch(
       `https://graph.facebook.com/v19.0/${META_IG_USER_ID}/media_publish`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creation_id: container.id,
-          access_token: pageToken,
-        }),
+        body: JSON.stringify({ creation_id: container.id, access_token: pageToken }),
       }
     );
     const published = await publishRes.json() as { id?: string; error?: { message: string } };
     if (published.error) throw new Error(published.error.message);
     logger.info({ postId: published.id }, "Instagram objava objavljena");
+    return published.id ?? null;
   } catch (err) {
     logger.error({ err }, "Greška pri Instagram objavi");
+    return null;
   }
 }
 
+export interface SocialPostResult {
+  facebook: string | null;
+  instagram: string | null;
+  caption: string;
+  imageUrl: string | null;
+}
+
 // ─── Objavi na sve mreže ───────────────────────────────────────────────────────
-export async function postToSocialMedia(listing: ListingForPost): Promise<void> {
-  await Promise.allSettled([
+export async function postToSocialMedia(listing: ListingForPost): Promise<SocialPostResult> {
+  const caption = buildCaption(listing);
+  const imageUrl = listing.imageUris[0] ?? null;
+  const [fbResult, igResult] = await Promise.allSettled([
     postToFacebook(listing),
     postToInstagram(listing),
   ]);
+  return {
+    facebook: fbResult.status === "fulfilled" ? fbResult.value : null,
+    instagram: igResult.status === "fulfilled" ? igResult.value : null,
+    caption,
+    imageUrl,
+  };
 }

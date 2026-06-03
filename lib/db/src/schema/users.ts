@@ -19,6 +19,9 @@ export const usersTable = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   isBanned: boolean("is_banned").notNull().default(false),
   pushToken: text("push_token"),
+  earlyAdopter: boolean("early_adopter").notNull().default(false),
+  deliveryDiscountUsed: boolean("delivery_discount_used").notNull().default(false),
+  gender: text("gender"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

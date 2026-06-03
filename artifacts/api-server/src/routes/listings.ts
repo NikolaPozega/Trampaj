@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "crypto";
-import { eq, and, or, ilike, desc, getTableColumns } from "drizzle-orm";
-import { db, listingsTable, usersTable, savedListingsTable } from "@workspace/db";
+import { eq, and, or, ilike, desc, getTableColumns, count } from "drizzle-orm";
+import { db, listingsTable, usersTable, savedListingsTable, socialPostsTable } from "@workspace/db";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth";
 import { moderateListing } from "../moderationService";
 import { postToSocialMedia } from "../lib/socialMedia";
@@ -192,6 +192,36 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
       moderationStatus: initialModerationStatus,
     });
 
+    // ─── Early adopter check (async, ne blokira odgovor) ─────────────────────
+    setImmediate(async () => {
+      try {
+        const EARLY_ADOPTER_LIMIT = 500;
+        const [[{ listingCount }], [{ eaCount }], [userRow]] = await Promise.all([
+          db.select({ listingCount: count() }).from(listingsTable).where(eq(listingsTable.userId, req.userId!)),
+          db.select({ eaCount: count() }).from(usersTable).where(eq(usersTable.earlyAdopter, true)),
+          db.select({ earlyAdopter: usersTable.earlyAdopter, pushToken: usersTable.pushToken }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1),
+        ]);
+        if (listingCount === 1 && eaCount < EARLY_ADOPTER_LIMIT && !userRow?.earlyAdopter) {
+          await db.update(usersTable).set({ earlyAdopter: true }).where(eq(usersTable.id, req.userId!));
+          if (userRow?.pushToken) {
+            try {
+              await fetch("https://exp.host/--/api/v2/push/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify([{
+                  to: userRow.pushToken,
+                  title: "🌟 Jedan si od prvih 500!",
+                  body: "Čestitamo! Kao early adopter, tvoja prva dostava s Trampaj.hr je jeftinija.",
+                  sound: "default",
+                  data: { type: "early_adopter" },
+                }]),
+              });
+            } catch { /* silent */ }
+          }
+        }
+      } catch { /* silent */ }
+    });
+
     // Async AI moderation — ne blokira odgovor
     if (process.env["OPENAI_API_KEY"]) {
       setImmediate(async () => {
@@ -205,7 +235,7 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
 
           // Objavi na društvene mreže samo ako oglas prođe moderaciju
           if (result.status === "active") {
-            await postToSocialMedia({
+            const socialResult = await postToSocialMedia({
               id,
               title: String(title),
               wantedFor: wantedFor ? String(wantedFor) : "",
@@ -213,6 +243,26 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
               location: location ? String(location) : "",
               imageUris: imgs,
             });
+            // Spremi u DB
+            const posts = [
+              socialResult.facebook ? { platform: "facebook", postId: socialResult.facebook } : null,
+              socialResult.instagram ? { platform: "instagram", postId: socialResult.instagram } : null,
+            ].filter(Boolean) as { platform: string; postId: string }[];
+            for (const p of posts) {
+              try {
+                const { randomUUID: rUUID } = await import("crypto");
+                await db.insert(socialPostsTable).values({
+                  id: rUUID(),
+                  platform: p.platform,
+                  postId: p.postId,
+                  listingId: id,
+                  listingTitle: String(title),
+                  caption: socialResult.caption,
+                  imageUrl: socialResult.imageUrl,
+                  status: "published",
+                });
+              } catch { /* silent */ }
+            }
           }
         } catch { /* silent */ }
       });

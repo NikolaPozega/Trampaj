@@ -121,4 +121,25 @@ router.post("/monitor/test-alert", async (req, res) => {
   }
 });
 
+// POST /api/monitor/test-telegram — šalje test Telegram poruku (zahtijeva admin token)
+router.post("/monitor/test-telegram", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({ ok: false, message: "Nema autorizacije." });
+    return;
+  }
+  try {
+    const { sendTelegramMessage } = await import("../lib/telegram");
+    const ok = await sendTelegramMessage("🔔 <b>Test Telegram notifikacija</b>\nTrampaj.hr admin panel je aktivan. ✅");
+    if (ok) {
+      res.json({ ok: true, message: "Telegram poruka poslana." });
+    } else {
+      res.status(500).json({ ok: false, message: "TELEGRAM_BOT_TOKEN ili TELEGRAM_CHAT_ID nije postavljen." });
+    }
+  } catch (err) {
+    logger.error({ err }, "test telegram error");
+    res.status(500).json({ ok: false, message: "Greška pri slanju Telegram poruke." });
+  }
+});
+
 export default router;

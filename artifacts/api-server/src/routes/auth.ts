@@ -235,6 +235,16 @@ router.post("/auth/register", async (req, res) => {
       devVerifyLink = result.devLink;
     } catch { /* email failure never blocks registration */ }
 
+    // Telegram notifikacija — fire & forget
+    setImmediate(async () => {
+      try {
+        const { sendTelegramMessage } = await import("../lib/telegram");
+        await sendTelegramMessage(
+          `👤 <b>Novi korisnik registriran!</b>\n@${username.trim()} — ${email.toLowerCase().trim()}\n<i>Trampaj.hr · ${new Date().toLocaleString("hr-HR")}</i>`
+        );
+      } catch { /* silent */ }
+    });
+
     res.status(201).json({
       message: "Registracija uspješna! Provjeri email za aktivaciju profila.",
       emailSent,
