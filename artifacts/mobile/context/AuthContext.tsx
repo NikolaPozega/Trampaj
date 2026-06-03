@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { setupNotifications, getExpoPushToken } from "@/utils/notifications";
 
 const FALLBACK_DOMAIN = "trampaj.hr";
@@ -52,10 +53,42 @@ const TOKEN_KEY = "@trampaj_token_v1";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+async function registerPushToken(authToken: string) {
+  try {
+    const ok = await setupNotifications();
+    if (!ok) return;
+    const pushToken = await getExpoPushToken();
+    if (!pushToken) return;
+    await fetch(`${API_BASE}/push/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ token: pushToken }),
+    });
+  } catch {
+    // neuspješno — ne blokira login
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const tokenRef = useRef<string | null>(null);
+
+  // Drži ref sinkroniziranim s tokenom (za AppState handler koji ne može pratiti state)
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  // Refresh push token svaki put kad app dođe u foreground (rješava race condition i expired tokene)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && tokenRef.current) {
+        void registerPushToken(tokenRef.current);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(TOKEN_KEY).then(async (stored) => {
@@ -68,16 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await res.json() as { user: AuthUser };
             setToken(stored);
             setUser(data.user);
-            // Re-register push token on app start (token may have changed)
-            setupNotifications().then(() => getExpoPushToken()).then((pushToken) => {
-              if (pushToken) {
-                fetch(`${API_BASE}/push/token`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${stored}` },
-                  body: JSON.stringify({ token: pushToken }),
-                }).catch(() => {});
-              }
-            });
+            // Registriraj push token u pozadini
+            void registerPushToken(stored);
           } else if (res.status === 401) {
             // Token genuinely expired/invalid — remove it
             await AsyncStorage.removeItem(TOKEN_KEY);
@@ -105,16 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(TOKEN_KEY, data.token!);
       setToken(data.token!);
       setUser(data.user!);
-      // Register push token in background (request permission first if needed)
-      setupNotifications().then(() => getExpoPushToken()).then((pushToken) => {
-        if (pushToken) {
-          fetch(`${API_BASE}/push/token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.token!}` },
-            body: JSON.stringify({ token: pushToken }),
-          }).catch(() => {});
-        }
-      });
+      void registerPushToken(data.token!);
       return { ok: true };
     } catch {
       return { ok: false, error: "Nema veze s poslužiteljem" };
@@ -137,14 +153,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async (keepToken?: boolean) => {
-    // Delete push token from server before clearing local token
-    const stored = await AsyncStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      fetch(`${API_BASE}/push/token`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${stored}` },
-      }).catch(() => {});
-    }
+    // NE brišemo push token sa servera — race condition: DELETE može stići NAKON
+    // novog POST-a na idućem loginu i pobrisati svježe registrirani token.
+    // Token će se prepisati pri idućoj prijavi.
     if (!keepToken) await AsyncStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
@@ -199,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem("@trampaj_saved_username_v1", data.user.username);
       setToken(jwt);
       setUser(data.user);
+      void registerPushToken(jwt);
       return { ok: true, user: data.user };
     } catch {
       return { ok: false, error: "Nema veze s poslužiteljem" };

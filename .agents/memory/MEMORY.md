@@ -6,3 +6,4 @@
 - [Expo splash screen fix](expo-splash-fix.md) — must import SplashScreen from "expo-router" not "expo-splash-screen"; never call preventAutoHideAsync() manually.
 - [Expo Go connection on Replit](expo-go-replit.md) — full solution for making Expo Go connect in Replit's proxy environment.
 - [Image upload architecture](image-upload.md) — images uploaded server-side via POST /api/uploads/image (base64→GCS); objectStorage.ts+objectAcl.ts in api-server/src/lib; public: true makes files world-readable.
+- [Push token race condition](push-token-race.md) — logout DELETE /push/token fire-and-forget races new login POST; fixed by removing DELETE from logout + AppState refresh.
