@@ -20,8 +20,6 @@ import { ListingsProvider } from "@/context/ListingsContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { setupNotifications, addNotificationResponseListener } from "@/utils/notifications";
 import { initSentry } from "@/utils/sentry";
-import { NeonFrame } from "@/components/NeonFrame";
-
 initSentry();
 
 // Use expo-router's SplashScreen — it calls internalPreventAutoHideAsync() and
@@ -106,9 +104,7 @@ export default function RootLayout() {
             <ListingsProvider>
               <ChatProvider>
                 <GestureHandlerRootView style={{ flex: 1 }}>
-                  <NeonFrame>
-                    <RootLayoutNav />
-                  </NeonFrame>
+                  <RootLayoutNav />
                 </GestureHandlerRootView>
               </ChatProvider>
             </ListingsProvider>
