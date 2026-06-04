@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Router, Switch, Route } from "wouter";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -117,6 +117,75 @@ function PrivacyPage() {
         </div>
       </div>
     </>
+  );
+}
+
+interface Listing {
+  id: string;
+  title: string;
+  description: string;
+  wantedFor: string;
+  imageUris: string[];
+  userName: string;
+  category: string;
+}
+
+function ListingsPreview() {
+  const [listings, setListings] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    fetch("/api/listings?limit=8")
+      .then((r) => r.json())
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : data.listings ?? [];
+        setListings(arr.slice(0, 8));
+      })
+      .catch(() => {});
+  }, []);
+
+  if (listings.length === 0) return null;
+
+  return (
+    <section style={{padding:"64px 24px 0"}}>
+      <div style={{maxWidth:960, margin:"0 auto"}}>
+        <div style={{fontSize:".75rem", fontWeight:700, letterSpacing:".1em", color:"#38BDF8", textTransform:"uppercase", marginBottom:14}}>Aktivni oglasi</div>
+        <h2 style={{fontSize:"clamp(1.5rem,3.5vw,2.2rem)", fontWeight:800, marginBottom:32}}>Što se trenutno nudi</h2>
+        <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:16}}>
+          {listings.map((l) => (
+            <div key={l.id} style={{
+              borderRadius:16,
+              background:"rgba(255,255,255,.04)",
+              border:"1px solid rgba(255,255,255,.08)",
+              overflow:"hidden",
+              transition:".2s",
+            }}
+            onMouseEnter={(e)=>{(e.currentTarget as HTMLDivElement).style.transform="translateY(-3px)";(e.currentTarget as HTMLDivElement).style.borderColor="rgba(245,193,0,.35)";}}
+            onMouseLeave={(e)=>{(e.currentTarget as HTMLDivElement).style.transform="";(e.currentTarget as HTMLDivElement).style.borderColor="rgba(255,255,255,.08)";}}
+            >
+              {l.imageUris?.[0] ? (
+                <div style={{width:"100%", aspectRatio:"4/3", overflow:"hidden"}}>
+                  <img src={l.imageUris[0]} alt={l.title} style={{width:"100%", height:"100%", objectFit:"cover"}} />
+                </div>
+              ) : (
+                <div style={{width:"100%", aspectRatio:"4/3", background:"rgba(255,255,255,.06)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"2rem"}}>📦</div>
+              )}
+              <div style={{padding:"12px 14px 14px"}}>
+                <div style={{fontWeight:700, fontSize:".9rem", marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{l.title}</div>
+                <div style={{fontSize:".76rem", color:"#7A90B0", marginBottom:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>Traži: {l.wantedFor}</div>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                  <span style={{fontSize:".72rem", color:"#F5C100", fontWeight:600}}>{l.category}</span>
+                  <span style={{fontSize:".72rem", color:"#7A90B0"}}>@{l.userName}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{textAlign:"center", marginTop:28, fontSize:".85rem", color:"#7A90B0"}}>
+          Još stotine oglasa čeka te u aplikaciji →{" "}
+          <a href="#preuzmi" style={{color:"#F5C100", textDecoration:"none", fontWeight:700}}>Preuzmi Trampaj</a>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -328,6 +397,8 @@ function LandingPage() {
           </a>
         </div>
       </section>
+
+      <ListingsPreview />
 
       <section className="section" id="kako">
         <div className="section-inner">
