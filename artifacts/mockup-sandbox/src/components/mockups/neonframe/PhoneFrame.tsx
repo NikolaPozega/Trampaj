@@ -136,7 +136,7 @@ function FakeAppUI() {
 function NeonFrameOverlay({ onDone }: { onDone: () => void }) {
   const W = 308; // inner screen width
   const H = 628; // inner screen height
-  const BORDER_W = 3;
+  const BORDER_W = 4;
   const LIGHT_LEN = 80;
   const perimeter = 2 * (W + H);
   const gap = perimeter - LIGHT_LEN;

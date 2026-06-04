@@ -7,7 +7,7 @@ const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
 const CYAN = "#00C8FF";
 const YELLOW = "#F5C100";
-const BORDER_W = 2.5;
+const BORDER_W = 4;
 const LIGHT_LEN = 90;
 const STORAGE_KEY = "neon_frame_v1";
 const ANIM_DURATION = 5000;
