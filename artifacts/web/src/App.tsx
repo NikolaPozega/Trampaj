@@ -16,7 +16,7 @@ const NEON_FRAME_CSS = `
   right: env(safe-area-inset-right, 0px);
   bottom: env(safe-area-inset-bottom, 0px);
   pointer-events: none;
-  z-index: 10;
+  z-index: 9998;
 }
 .neon-screen-frame.neon-static {
   border: 2px solid transparent;
