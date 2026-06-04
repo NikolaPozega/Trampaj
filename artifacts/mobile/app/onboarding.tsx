@@ -67,8 +67,8 @@ export default function OnboardingScreen() {
   function validateStep2(): boolean {
     const e: Record<string, string> = {};
     if (username.trim().length < 2) e.username = "Najmanje 2 znaka";
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "Nevažeći email";
-    if (!email.trim()) e.email = "Email je obavezan";
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "Nevažeća e-mail adresa";
+    if (!email.trim()) e.email = "E-mail je obvezan";
     if (password.length < 6) e.password = "Najmanje 6 znakova";
     else if (!/[A-Z]/.test(password)) e.password = "Mora sadržavati veliko slovo";
     else if (!/[0-9]/.test(password)) e.password = "Mora sadržavati broj";
@@ -107,7 +107,7 @@ export default function OnboardingScreen() {
         }
       }
     } catch {
-      Alert.alert("Greška", "Nije moguće dohvatiti lokaciju.");
+      Alert.alert("Pogreška", "Nije moguće dohvatiti lokaciju.");
     } finally {
       setGpsLoading(false);
     }
@@ -179,7 +179,7 @@ export default function OnboardingScreen() {
     setLoading(false);
 
     if (!result.ok) {
-      setErrors({ submit: result.error ?? "Greška pri registraciji" });
+      setErrors({ submit: result.error ?? "Pogreška pri registraciji" });
       return;
     }
 

@@ -260,7 +260,7 @@ function DeliveryModal({
           <Text style={styles.modalLabel}>DOSTAVA</Text>
           <Text style={styles.modalTitle}>Osobno preuzimanje</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
-            {"Predmet je velik pa se dogovarate direktno o terminu i načinu preuzimanja.\n\nDogovorite se u chatu gdje i kada."}
+            {"Predmet je velik pa se dogovarate izravno o terminu i načinu preuzimanja.\n\nDogovorite se u chatu gdje i kada."}
           </Text>
           <Pressable
             onPress={() => onDone({ method: "personal", escrowActive: false })}
@@ -423,7 +423,7 @@ function EscrowModal({
         if (data.code === "stripe_not_connected") {
           setErrMsg("Plaćanje karticom uskoro dostupno! Platforma je u fazi testiranja.");
         } else {
-          setErrMsg(data.error ?? "Greška pri otvaranju plaćanja.");
+          setErrMsg(data.error ?? "Pogreška pri otvaranju plaćanja.");
         }
         return;
       }
@@ -437,7 +437,7 @@ function EscrowModal({
         setErrMsg("Plaćanje otkazano.");
       }
     } catch {
-      setErrMsg("Greška. Pokušaj ponovo ili kontaktiraj podršku.");
+      setErrMsg("Pogreška. Pokušaj ponovo ili kontaktiraj podršku.");
     } finally {
       setLoading(false);
     }
@@ -451,9 +451,9 @@ function EscrowModal({
           <Text style={styles.modalLabel}>PLAĆANJE USPJEŠNO</Text>
           <Text style={styles.modalTitle}>Dostava plaćena!</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 10 }]}>
-            {"Nalepnica za dostavu putem "}
+            {"Naljepnica za dostavu putem "}
             <Text style={styles.disclaimerBold}>{paidMethodName}</Text>
-            {" bit će poslana na tvoj e-mail.\n\nUpakuj predmet i predaj ga kuriru ili odnesi na paketomat."}
+            {" bit će poslana na tvoj e-mail.\n\nZapakiraj predmet i predaj ga kuriru ili odnesi na paketomat."}
           </Text>
           <Pressable
             onPress={onDone}
@@ -475,7 +475,7 @@ function EscrowModal({
         <View style={[styles.dealCard, { padding: 28, gap: 0, maxWidth: SW - 40 }]}>
           <Text style={{ fontSize: 36, marginBottom: 8 }}>🤝</Text>
           <Text style={styles.modalLabel}>OSOBNO PREUZIMANJE</Text>
-          <Text style={styles.modalTitle}>Dogovorite se direktno</Text>
+          <Text style={styles.modalTitle}>Dogovorite se izravno</Text>
           <Text style={[styles.disclaimerBody, { marginTop: 12 }]}>
             {"Dogovorite se u chatu o terminu i mjestu preuzimanja.\n\nZa sigurniju trampu možete koristiti opciju sigurnosnog depozita."}
           </Text>
@@ -562,7 +562,7 @@ function EscrowModal({
         )}
 
         <Text style={[styles.disclaimerBody, { marginTop: 10, fontSize: 11 }]}>
-          {"Plaćanje je sigurno putem Stripe platforme. Nalepnica za dostavu stiže na tvoj e-mail. 🔒"}
+          {"Plaćanje je sigurno putem Stripe platforme. Naljepnica za dostavu stiže na tvoj e-mail. 🔒"}
         </Text>
 
         {errMsg && (
@@ -661,7 +661,7 @@ function DepositModal({
         if (data.code === "stripe_not_connected") {
           setErrMsg("Sigurnosni depozit uskoro dostupan! Platforma je u fazi testiranja.");
         } else {
-          setErrMsg(data.error ?? "Greška pri otvaranju plaćanja.");
+          setErrMsg(data.error ?? "Pogreška pri otvaranju plaćanja.");
         }
         return;
       }
@@ -687,7 +687,7 @@ function DepositModal({
         setErrMsg("Plaćanje otkazano.");
       }
     } catch {
-      setErrMsg("Greška. Pokušaj ponovo.");
+      setErrMsg("Pogreška. Pokušaj ponovo.");
     } finally {
       setLoading(false);
     }

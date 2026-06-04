@@ -957,7 +957,7 @@ export default function PostScreen() {
                   {selected && opt.key === "large" && (
                     <View style={[styles.pkgSubForm, { borderColor: colors.border }]}>
                       <Text style={[styles.pkgSubHint, { color: colors.mutedForeground }]}>
-                        🤝 Dogovorite se direktno u chatu o terminu i načinu preuzimanja. Kurirska dostava nije opcija za ovako velike predmete.
+                        🤝 Dogovorite se izravno u chatu o terminu i načinu preuzimanja. Kurirska dostava nije opcija za ovako velike predmete.
                       </Text>
                     </View>
                   )}

@@ -35,7 +35,7 @@ const SLIDES = [
   {
     emoji: "📦",
     title: "Dostava na klik",
-    body: "Plati kurirsku dostavu direktno u appu. Nalepnica stiže na mail — upakuj i predaj!",
+    body: "Plati kurirsku dostavu izravno u appu. Naljepnica stiže na e-mail — zapakiraj i predaj!",
     accent: "#22C55E",
   },
 ];

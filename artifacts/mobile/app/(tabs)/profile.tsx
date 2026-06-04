@@ -395,7 +395,7 @@ export default function ProfileScreen() {
       setShowBioPasswordModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Greška", "Provjeri vezu i pokušaj ponovo.");
+      Alert.alert("Pogreška", "Provjeri vezu i pokušaj ponovo.");
     } finally {
       setBioActivating(false);
     }
@@ -432,7 +432,7 @@ export default function ProfileScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               router.replace("/(tabs)");
             } catch {
-              Alert.alert("Greška", "Nije uspjelo brisanje. Pokušaj ponovo.");
+              Alert.alert("Pogreška", "Nije uspjelo brisanje. Pokušaj ponovo.");
             }
           },
         },
@@ -546,7 +546,7 @@ export default function ProfileScreen() {
         Alert.alert("Aplikacija je aktualna", "Koristiš najnoviju verziju.");
       }
     } catch {
-      Alert.alert("Greška", "Provjera ažuriranja nije uspjela. Provjeri vezu.");
+      Alert.alert("Pogreška", "Provjera ažuriranja nije uspjela. Provjeri vezu.");
     } finally {
       setUpdating(false);
     }
@@ -707,7 +707,7 @@ export default function ProfileScreen() {
 
   async function handleSaveProfile() {
     if (!user) return;
-    if (!profileForm.username.trim()) { setProfileError("Korisničko ime je obavezno"); return; }
+    if (!profileForm.username.trim()) { setProfileError("Korisničko ime je obvezno"); return; }
     setProfileSaving(true);
     setProfileError("");
     const data: Parameters<typeof updateProfile>[0] = {
@@ -729,7 +729,7 @@ export default function ProfileScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEditingProfile(false);
     } else {
-      setProfileError(result.error ?? "Greška pri snimanju");
+      setProfileError(result.error ?? "Pogreška pri snimanju");
     }
   }
 

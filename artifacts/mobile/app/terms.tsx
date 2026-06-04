@@ -80,19 +80,19 @@ export default function TermsScreen() {
 
         <Section title="4. Zabranjena ponašanja" colors={colors}>
           <Body colors={colors}>
-            {"Zabranjeno je:\n\n• Kontaktirati korisnike s ciljem prijevare ili izvlačenja novca\n• Manipulirati ocjenama (lažne recenzije, samooklenjivanje)\n• Koristiti automatizirane alate za masovno objavljivanje oglasa (spam)\n• Prikupljati osobne podatke ostalih korisnika bez njihovog pristanka\n• Koristiti platformu za oglašavanje komercijalnih usluga ili reklama\n• Zaobilaziti mjere sigurnosti platforme"}
+            {"Zabranjeno je:\n\n• Kontaktirati korisnike s ciljem prijevare ili izvlačenja novca\n• Manipulirati ocjenama (lažne recenzije, samoocjenjivanje)\n• Koristiti automatizirane alate za masovno objavljivanje oglasa (spam)\n• Prikupljati osobne podatke ostalih korisnika bez njihovog pristanka\n• Koristiti platformu za oglašavanje komercijalnih usluga ili reklama\n• Zaobilaziti mjere sigurnosti platforme"}
           </Body>
         </Section>
 
         <Section title="5. Zamjena predmeta i odgovornost" colors={colors}>
           <Body colors={colors}>
-            {"Trampaj.hr posreduje u spajanju korisnika, ali:\n\n• NE garantira kvalitetu, stanje ili autentičnost predmeta\n• NE sudjeluje u fizičkoj razmjeni predmeta\n• NIJE odgovorna za štete nastale uslijed zamjene\n• NE pruža usluge prijevoza niti jamči dostavu\n\nKorisnici su sami odgovorni za dogovaranje uvjeta zamjene, provjeru predmeta i odabir sigurnog načina razmjene. Preporučujemo osobnu predaju ili korištenje provjerenih kurirskih službi."}
+            {"Trampaj.hr posreduje u spajanju korisnika, ali:\n\n• NE jamči kvalitetu, stanje ili autentičnost predmeta\n• NE sudjeluje u fizičkoj razmjeni predmeta\n• NIJE odgovorna za štete nastale uslijed zamjene\n• NE pruža usluge prijevoza niti jamči dostavu\n\nKorisnici su sami odgovorni za dogovaranje uvjeta zamjene, provjeru predmeta i odabir sigurnog načina razmjene. Preporučujemo osobnu predaju ili korištenje provjerenih kurirskih službi."}
           </Body>
         </Section>
 
         <Section title="6. Dostava i plaćanje dostave" colors={colors}>
           <Body colors={colors}>
-            {"Platforma ne naplaćuje proviziju niti posreduje u financijskim transakcijama.\n\nUkoliko korisnici dogovore kurirsku dostavu:\n• Svaki korisnik plaća dostavu paketa koji prima\n• Trošak i organizacija dostave isključivo su dogovor između korisnika\n• Platforma ne snosi odgovornost za izgubljene, oštećene ili zakasnjele pošiljke\n\nZa predmete koji se ne mogu poslati kurirskom službom, korisnici se sami dogovaraju o osobnom preuzimanju."}
+            {"Platforma ne naplaćuje proviziju niti posreduje u financijskim transakcijama.\n\nAko korisnici dogovore kurirsku dostavu:\n• Svaki korisnik plaća dostavu paketa koji prima\n• Trošak i organizacija dostave isključivo su dogovor između korisnika\n• Platforma ne snosi odgovornost za izgubljene, oštećene ili zakasnjele pošiljke\n\nZa predmete koji se ne mogu poslati kurirskom službom, korisnici se sami dogovaraju o osobnom preuzimanju."}
           </Body>
         </Section>
 

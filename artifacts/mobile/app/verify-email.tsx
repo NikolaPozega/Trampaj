@@ -100,7 +100,7 @@ export default function VerifyEmailScreen() {
           setTimeout(() => router.replace("/(tabs)"), 1400);
         } else {
           setStatus("error");
-          setMessage(result.error ?? "Greška pri prijavi.");
+          setMessage(result.error ?? "Pogreška pri prijavi.");
         }
       });
       return;
@@ -139,7 +139,7 @@ export default function VerifyEmailScreen() {
       })
       .catch(() => {
         setStatus("error");
-        setMessage("Greška pri verifikaciji. Pokušaj ponovo.");
+        setMessage("Pogreška pri verifikaciji. Pokušaj ponovo.");
       });
   }, [token, jwt]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -189,7 +189,7 @@ export default function VerifyEmailScreen() {
             <View style={[styles.iconCircle, { backgroundColor: "#3A1A1A" }]}>
               <Feather name="x-circle" size={48} color="#F87171" />
             </View>
-            <Text style={[styles.title, { color: colors.foreground }]}>Greška</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Pogreška</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{message}</Text>
             <Pressable
               onPress={() => router.replace("/login")}
