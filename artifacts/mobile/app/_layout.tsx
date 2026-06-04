@@ -20,6 +20,7 @@ import { ListingsProvider } from "@/context/ListingsContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { setupNotifications, addNotificationResponseListener } from "@/utils/notifications";
 import { initSentry } from "@/utils/sentry";
+import { NeonFrame } from "@/components/NeonFrame";
 
 initSentry();
 
@@ -105,7 +106,9 @@ export default function RootLayout() {
             <ListingsProvider>
               <ChatProvider>
                 <GestureHandlerRootView style={{ flex: 1 }}>
-                  <RootLayoutNav />
+                  <NeonFrame>
+                    <RootLayoutNav />
+                  </NeonFrame>
                 </GestureHandlerRootView>
               </ChatProvider>
             </ListingsProvider>

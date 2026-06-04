@@ -1,6 +1,78 @@
+import React from "react";
 import { Router, Switch, Route } from "wouter";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+const NEON_FRAME_CSS = `
+@property --neon-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.neon-screen-frame {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+}
+.neon-screen-frame.neon-static {
+  border: 2px solid transparent;
+  border-image: linear-gradient(135deg,
+    rgba(0,200,255,0.85) 0%,
+    rgba(0,200,255,0.28) 30%,
+    rgba(20,40,80,0.05) 50%,
+    rgba(245,193,0,0.28) 70%,
+    rgba(245,193,0,0.85) 100%
+  ) 1;
+  box-shadow:
+    inset 6px 6px 40px -15px rgba(0,200,255,0.22),
+    inset -6px -6px 40px -15px rgba(245,193,0,0.18);
+}
+.neon-screen-frame.neon-spin {
+  border: 3px solid transparent;
+  border-image: conic-gradient(from var(--neon-angle),
+    #00C8FF 0deg,
+    #88EEFF 8deg,
+    #ffffff 14deg,
+    #FFE566 20deg,
+    #F5C100 30deg,
+    #F5C100 170deg,
+    #00C8FF 180deg,
+    #88EEFF 188deg,
+    #ffffff 194deg,
+    #FFE566 200deg,
+    #F5C100 210deg,
+    #F5C100 350deg,
+    #00C8FF 360deg
+  ) 1;
+  animation: neon-frame-spin 2.5s linear 2;
+}
+@keyframes neon-frame-spin {
+  to { --neon-angle: 360deg; }
+}
+`;
+
+function NeonScreenFrame() {
+  const [phase, setPhase] = React.useState<"spin" | "static" | "">("");
+
+  React.useEffect(() => {
+    const shown = localStorage.getItem("neon_frame_v1");
+    setPhase(shown ? "static" : "spin");
+  }, []);
+
+  return (
+    <>
+      <style>{NEON_FRAME_CSS}</style>
+      <div
+        className={`neon-screen-frame${phase ? ` neon-${phase}` : ""}`}
+        onAnimationEnd={() => {
+          localStorage.setItem("neon_frame_v1", "1");
+          setPhase("static");
+        }}
+      />
+    </>
+  );
+}
 
 // ─── Shared legal styles ──────────────────────────────────────────────────────
 const LEGAL_CSS = `
@@ -405,12 +477,15 @@ function LandingPage() {
 
 export default function App() {
   return (
-    <Router base={BASE}>
-      <Switch>
-        <Route path="/terms" component={TermsPage} />
-        <Route path="/privacy" component={PrivacyPage} />
-        <Route component={LandingPage} />
-      </Switch>
-    </Router>
+    <>
+      <NeonScreenFrame />
+      <Router base={BASE}>
+        <Switch>
+          <Route path="/terms" component={TermsPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route component={LandingPage} />
+        </Switch>
+      </Router>
+    </>
   );
 }
