@@ -49,61 +49,59 @@ export function ListingCard({ listing, onPress }: Props) {
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
-        styles.pressable,
+        styles.card,
         {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
           opacity: pressed ? 0.88 : listing.status === "traded" ? 0.5 : 1,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
       ]}
     >
-      <View style={styles.borderWrap}>
-        <View style={styles.card}>
-          <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
-            {(listing.imageUris?.[0] ?? listing.imageUri) ? (
-              <Image
-                source={{ uri: listing.imageUris?.[0] ?? listing.imageUri! }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-              />
-            ) : (
-              <Feather name={iconName} size={22} color={colors.secondary} />
-            )}
-            {listing.status === "traded" && (
-              <View style={styles.tradedOverlay}>
-                <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
-              </View>
-            )}
-            {listing.condition && listing.status !== "traded" && (
-              <View style={[styles.conditionBadge, { backgroundColor: "rgba(8,21,46,0.72)", borderColor: conditionColor + "99" }]}>
-                <View style={[styles.conditionDot, { backgroundColor: conditionColor! }]} />
-                <Text style={[styles.conditionText, { color: "#fff" }]}>{listing.condition}</Text>
-              </View>
-            )}
+      <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
+        {(listing.imageUris?.[0] ?? listing.imageUri) ? (
+          <Image
+            source={{ uri: listing.imageUris?.[0] ?? listing.imageUri! }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+        ) : (
+          <Feather name={iconName} size={22} color={colors.secondary} />
+        )}
+        {listing.status === "traded" && (
+          <View style={styles.tradedOverlay}>
+            <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
           </View>
-
-          <View style={styles.body}>
-            <View style={styles.titleRow}>
-              <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
-                {listing.title}
-              </Text>
-              <Text style={[styles.price, { color: hasPrice ? colors.primary : colors.mutedForeground }]}>
-                {hasPrice ? `${listing.price} €` : "Dogovor"}
-              </Text>
-            </View>
-
-            <View style={styles.tradeRow}>
-              <Feather name="refresh-cw" size={11} color={colors.primary} />
-              <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
-                {listing.wantedFor}
-              </Text>
-            </View>
-            <View style={styles.meta}>
-              <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
-              <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
-            </View>
+        )}
+        {listing.condition && listing.status !== "traded" && (
+          <View style={[styles.conditionBadge, { backgroundColor: "rgba(8,21,46,0.72)", borderColor: conditionColor + "99" }]}>
+            <View style={[styles.conditionDot, { backgroundColor: conditionColor! }]} />
+            <Text style={[styles.conditionText, { color: "#fff" }]}>{listing.condition}</Text>
           </View>
+        )}
+      </View>
+
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+            {listing.title}
+          </Text>
+          <Text style={[styles.price, { color: hasPrice ? colors.primary : colors.mutedForeground }]}>
+            {hasPrice ? `${listing.price} €` : "Dogovor"}
+          </Text>
+        </View>
+
+        <View style={styles.tradeRow}>
+          <Feather name="refresh-cw" size={11} color={colors.primary} />
+          <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
+            {listing.wantedFor}
+          </Text>
+        </View>
+        <View style={styles.meta}>
+          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
+          <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
+          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
         </View>
       </View>
     </Pressable>
@@ -111,25 +109,12 @@ export function ListingCard({ listing, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  pressable: {
-    flex: 1,
-    marginBottom: 8,
-    shadowColor: "#00c8ff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  borderWrap: {
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(0,200,255,0.85)",
-    backgroundColor: "#0a1628",
-  },
   card: {
     borderRadius: 12,
+    borderWidth: 1,
     overflow: "hidden",
-    backgroundColor: "#0a1628",
+    flex: 1,
+    marginBottom: 8,
   },
   imageArea: {
     height: 90,
@@ -158,8 +143,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
   },
   conditionText: {
     fontSize: 9,
