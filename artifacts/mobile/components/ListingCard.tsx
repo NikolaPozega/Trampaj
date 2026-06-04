@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -29,6 +30,14 @@ const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Ostalo: "package",
 };
 
+const BORDER_COLORS = [
+  "rgba(0,200,255,0.95)",
+  "rgba(0,180,240,0.4)",
+  "rgba(30,55,110,0.2)",
+  "rgba(245,193,0,0.4)",
+  "rgba(245,193,0,0.95)",
+] as const;
+
 interface Props {
   listing: Listing;
   onPress?: () => void;
@@ -49,72 +58,90 @@ export function ListingCard({ listing, onPress }: Props) {
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
-        styles.card,
+        styles.pressable,
         {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
           opacity: pressed ? 0.88 : listing.status === "traded" ? 0.5 : 1,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
       ]}
     >
-      <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
-        {(listing.imageUris?.[0] ?? listing.imageUri) ? (
-          <Image
-            source={{ uri: listing.imageUris?.[0] ?? listing.imageUri! }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-        ) : (
-          <Feather name={iconName} size={22} color={colors.secondary} />
-        )}
-        {listing.status === "traded" && (
-          <View style={styles.tradedOverlay}>
-            <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
+      <LinearGradient
+        colors={BORDER_COLORS}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        <View style={styles.card}>
+          <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
+            {(listing.imageUris?.[0] ?? listing.imageUri) ? (
+              <Image
+                source={{ uri: listing.imageUris?.[0] ?? listing.imageUri! }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            ) : (
+              <Feather name={iconName} size={22} color={colors.secondary} />
+            )}
+            {listing.status === "traded" && (
+              <View style={styles.tradedOverlay}>
+                <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
+              </View>
+            )}
+            {listing.condition && listing.status !== "traded" && (
+              <View style={[styles.conditionBadge, { backgroundColor: "rgba(8,21,46,0.72)", borderColor: conditionColor + "99" }]}>
+                <View style={[styles.conditionDot, { backgroundColor: conditionColor! }]} />
+                <Text style={[styles.conditionText, { color: "#fff" }]}>{listing.condition}</Text>
+              </View>
+            )}
           </View>
-        )}
-        {listing.condition && listing.status !== "traded" && (
-          <View style={[styles.conditionBadge, { backgroundColor: "rgba(8,21,46,0.72)", borderColor: conditionColor + "99" }]}>
-            <View style={[styles.conditionDot, { backgroundColor: conditionColor! }]} />
-            <Text style={[styles.conditionText, { color: "#fff" }]}>{listing.condition}</Text>
+
+          <View style={styles.body}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+                {listing.title}
+              </Text>
+              <Text style={[styles.price, { color: hasPrice ? colors.primary : colors.mutedForeground }]}>
+                {hasPrice ? `${listing.price} €` : "Dogovor"}
+              </Text>
+            </View>
+
+            <View style={styles.tradeRow}>
+              <Feather name="refresh-cw" size={11} color={colors.primary} />
+              <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
+                {listing.wantedFor}
+              </Text>
+            </View>
+            <View style={styles.meta}>
+              <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
+              <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
+            </View>
           </View>
-        )}
-      </View>
-
-      <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
-            {listing.title}
-          </Text>
-          <Text style={[styles.price, { color: hasPrice ? colors.primary : colors.mutedForeground }]}>
-            {hasPrice ? `${listing.price} €` : "Dogovor"}
-          </Text>
         </View>
-
-        <View style={styles.tradeRow}>
-          <Feather name="refresh-cw" size={11} color={colors.primary} />
-          <Text style={[styles.tradeText, { color: colors.primary }]} numberOfLines={1}>
-            {listing.wantedFor}
-          </Text>
-        </View>
-        <View style={styles.meta}>
-          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{listing.location}</Text>
-          <Text style={[styles.dot, { color: colors.mutedForeground }]}>·</Text>
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(listing.createdAt)}</Text>
-        </View>
-      </View>
+      </LinearGradient>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
+  pressable: {
     flex: 1,
     marginBottom: 8,
+    shadowColor: "#00c8ff",
+    shadowOffset: { width: -3, height: -3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  gradient: {
+    borderRadius: 14,
+    padding: 1.5,
+  },
+  card: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#0a1628",
   },
   imageArea: {
     height: 90,
@@ -143,6 +170,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   conditionText: {
     fontSize: 9,
