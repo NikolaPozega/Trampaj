@@ -51,3 +51,25 @@ EAS creates `.git/index.lock` during publishing, which Replit sandbox blocks. Tw
    chmod +x /tmp/fake-git-bin/git
    PATH="/tmp/fake-git-bin:$PATH" EAS_SKIP_AUTO_FINGERPRINT=1 npx eas-cli update ...
    ```
+
+## Updated git wrapper (blocks status too)
+EAS cli calls `git status -s -uall` which creates index.lock — block it too.
+The `rev-parse` responses need to return valid values (see wrapper below):
+```bash
+cat > /tmp/fake-git-bin/git << 'GITEOF'
+#!/bin/bash
+case "$1" in
+  add|commit|tag|push|merge|rebase|reset|rm|mv|clean|update-index|write-tree|update-ref|notes|stash|cherry-pick|apply|status)
+    exit 0 ;;
+  rev-parse)
+    case "$2" in
+      --show-toplevel) echo "/home/runner/workspace" ;;
+      --git-dir) echo ".git" ;;
+      HEAD) echo "0000000000000000000000000000000000000000" ;;
+      *) exec /usr/bin/git "$@" ;;
+    esac ;;
+  *) exec /usr/bin/git "$@" ;;
+esac
+GITEOF
+chmod +x /tmp/fake-git-bin/git
+```

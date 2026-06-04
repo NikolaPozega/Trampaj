@@ -30,13 +30,13 @@ const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Ostalo: "package",
 };
 
-const BORDER_COLORS = [
+const BORDER_COLORS: [string, string, string, string, string] = [
   "rgba(0,200,255,0.95)",
   "rgba(0,180,240,0.4)",
   "rgba(30,55,110,0.2)",
   "rgba(245,193,0,0.4)",
   "rgba(245,193,0,0.95)",
-] as const;
+];
 
 interface Props {
   listing: Listing;
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     borderRadius: 14,
-    padding: 1.5,
+    padding: 2,
   },
   card: {
     borderRadius: 12,
