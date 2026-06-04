@@ -518,26 +518,19 @@ export default function PostScreen() {
               // privremenog file:// URI-ja koji možda više nije čitljiv
               const storedBase64 = imageBase64s[idx] ?? "";
               const base64ToUpload = storedBase64 || (await compressImage(uri, 1200, 0.85)).base64;
-              if (!base64ToUpload) return uri;
+              if (!base64ToUpload) return null;
               const mimeType = uri.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
               const url = await uploadImage(base64ToUpload, mimeType, token);
               return url;
             } catch {
-              return uri;
+              return null; // ne čuvaj lokalni file:// koji ne radi na drugim uređajima
             }
           })
         );
-        uploadedUris = uploaded;
-        // Upozori korisnika ako su neke slike ostale lokalne (upload nije uspio)
-        const failedCount = uploadedUris.filter(u => u.startsWith("file://")).length;
-        if (failedCount > 0) {
-          Alert.alert(
-            "Slike nisu uploadane",
-            `${failedCount} slika nije moglo biti prenijeto na server. Oglas je objavljen, ali slike neće biti vidljive drugima.`
-          );
-        }
+        // Filtriraj null-ove — samo server URLovi idu u oglas
+        uploadedUris = (uploaded.filter(Boolean) as string[]).filter(u => !u.startsWith("file://"));
       } catch {
-        // nastavi s lokalnim URI-jima
+        uploadedUris = []; // upload pao potpuno — oglas bez slike
       } finally {
         setUploading(false);
       }

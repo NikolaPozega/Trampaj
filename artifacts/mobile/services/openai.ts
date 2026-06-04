@@ -118,13 +118,15 @@ export async function generateListingTags(
     };
   }
 
-  const userPromptText = `Korisnik je tipkao brzo na mobitelu i napravio tipfelere. Tvoj zadatak:
+  const userPromptText = `Korisnik je tipkao brzo na mobitelu. Tvoj zadatak:
 
-1. ISPRAVI TIPFELERE u naslovu i opisu — zamijeni pogrešno upisana slova ispravnom hrvatskom riječju (npr. "Dtolica"→"Stolica", "Volica"→"Stolica", "Modevna"→"Moderna", "apecirana"→"tapecirana"). Ako je riječ besmislena, zaključi što je korisnik htio napisati.
+1. ISPRAVI SAMO OČITE TIPFELERE u naslovu i opisu — JEDINO ako je slovo zamijenio susjednim tipkom (npr. "Dtolica"→"Stolica", "apecirana"→"tapecirana"). 
+   NIKADA ne mijenjaj: brendove, modele, nazive proizvoda, vlastita imena, kratice, strani pojmovi, ništa što bi moglo biti naziv predmeta ili modela (npr. "Samsung S22", "iPhone 13", "IKEA Kallax"). 
+   Ako nisi 100% siguran što je korisnik htio napisati — zadrži ORIGINALNI tekst bez promjene.
 
-2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI.${base64Image ? " OBAVEZNO analiziraj sliku i dodaj vizualne opise: boju (npr. 'smeđa', 'bijela'), materijal ('drvo', 'metal', 'plastika', 'tkanina'), stil ('moderna', 'skandinavska', 'industrijska'), stanje i sve vidljive detalje." : ""} Max 20 riječi na hrvatskom.
+2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI.${base64Image ? " Analiziraj sliku i dodaj vizualne detalje: boju, materijal, stil, stanje." : ""} Max 20 kratkih hrvatskih pojmova.
 
-3. GENERIRAJ trazimTags — ključne riječi što osoba TRAŽI. Uključi i brendove/modele KAO SLOŽENE FRAZE s tipom predmeta (npr. "torbica za samsung", "punjač za macbook", "maska za iphone"). Max 8 kratkih fraza.
+3. GENERIRAJ trazimTags — ključne riječi što osoba TRAŽI. Max 8 kratkih fraza.
 
 Naslov: "${title}"
 Opis: "${description}"
@@ -156,7 +158,7 @@ Odgovori SAMO ovim JSON-om (bez ikakvog teksta oko njega):
         messages: [
           {
             role: "system",
-            content: `Ti si asistent za oglase trampe na Trampaj.hr. Uvijek ispravljaš tipfelere s mobitela (besmislene riječi zamijeni logičnom hrvatskom riječju) i generiraš bogate ključne riječi. KRITIČNO PRAVILO: correctedTitle i correctedDescription moraju biti ISKLJUČIVO na standardnom hrvatskom jeziku — nikad engleski, srpski ni bosanski. Nazivi stranih brendova su dopušteni (npr. Nike, iPhone, IKEA), ali svi opisi i atributi moraju biti na hrvatskom. Vrati SAMO validan JSON, bez ikakvog teksta oko njega.`,
+            content: `Ti si asistent za oglase trampe na Trampaj.hr. Generiraš ključne riječi i ispravljaš SAMO očite tipfelere (zamjena jednog pogrešnog slova). APSOLUTNO ZABRANJEN je izmišljanje, domišljanje ili zamjena bilo koje riječi za koju nisi 100% siguran da je tipfelera. Brendovi, modeli i nazivi proizvoda se NIKAD ne mijenjaju. Vrati SAMO validan JSON.`,
           },
           {
             role: "user",

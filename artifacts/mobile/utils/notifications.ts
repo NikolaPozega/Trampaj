@@ -21,19 +21,30 @@ export function setActiveConversationId(id: string | null) {
 }
 
 if (Notifications) {
-  // Poruke (chat) ne prikazujemo kao banner dok je app otvoren — korisnik već vidi bedževe.
-  // Za ostale tipove (oglas aktivan, ponuda, itd.) — prikaži banner.
+  // Chat poruke su tihe dok je app otvoren — korisnik već vidi bedževe na ikonama.
+  // Sve ostale notifikacije (oglas odobren, ponuda, itd.) prikazuju banner.
   Notifications.setNotificationHandler({
-    handleNotification: async (notification: { request: { content: { data?: Record<string, unknown> } } }) => {
-      const type = notification?.request?.content?.data?.["type"] as string | undefined;
-      const isChat = type === "message" || type === "chat";
-      return {
-        shouldShowAlert: !isChat,
-        shouldPlaySound: !isChat,
-        shouldSetBadge: true,
-        shouldShowBanner: !isChat,
-        shouldShowList: true,
-      };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handleNotification: async (notification: any) => {
+      try {
+        const type = notification?.request?.content?.data?.type as string | undefined;
+        const isChat = type === "message" || type === "chat";
+        return {
+          shouldShowAlert: !isChat,
+          shouldPlaySound: !isChat,
+          shouldSetBadge: false,
+          shouldShowBanner: !isChat,
+          shouldShowList: !isChat,
+        };
+      } catch {
+        return {
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+          shouldShowBanner: false,
+          shouldShowList: false,
+        };
+      }
     },
   });
 }
