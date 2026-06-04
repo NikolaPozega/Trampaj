@@ -17,6 +17,7 @@ import { landingPageHtml } from "./landingPage";
 const app: Express = express();
 
 app.set("trust proxy", 1);
+app.set("etag", false);
 
 app.use(
   pinoHttp({
@@ -123,6 +124,12 @@ app.get("/download/app", (_req, res) => {
   };
 
   doRequest(APK_URL);
+});
+
+// ─── Svi API odgovori: bez cachea (sprječava 304 bug na Androidu) ─────────────
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
 });
 
 // ─── API rute ─────────────────────────────────────────────────────────────────
