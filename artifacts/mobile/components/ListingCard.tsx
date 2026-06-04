@@ -94,6 +94,16 @@ export function ListingCard({ listing, onPress }: Props) {
                 <Text style={styles.tradedOverlayText}>Zamijenjeno</Text>
               </View>
             )}
+            {listing.moderationStatus === "pending" && listing.isMine && (
+              <View style={[styles.tradedOverlay, { backgroundColor: "rgba(0,0,0,0.55)" }]}>
+                <Text style={[styles.tradedOverlayText, { color: "#F5C100", fontSize: 10 }]}>⏳ Provjerava se...</Text>
+              </View>
+            )}
+            {listing.moderationStatus === "rejected" && listing.isMine && (
+              <View style={[styles.tradedOverlay, { backgroundColor: "rgba(180,0,0,0.55)" }]}>
+                <Text style={[styles.tradedOverlayText, { color: "#ffaaaa", fontSize: 10 }]}>❌ Odbijen</Text>
+              </View>
+            )}
             {listing.condition && listing.status !== "traded" && (
               <View
                 style={[

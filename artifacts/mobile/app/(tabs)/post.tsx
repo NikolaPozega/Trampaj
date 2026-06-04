@@ -581,6 +581,11 @@ export default function PostScreen() {
       submittingRef.current = false;
       return;
     }
+    Alert.alert(
+      "Oglas je poslan! ✅",
+      "Tvoj oglas se provjerava i bit će vidljiv u feedu za nekoliko sekundi.",
+      [{ text: "OK" }]
+    );
     setSubmitted(true);
     setTimeout(() => {
       const defaultLoc = user
@@ -631,6 +636,11 @@ export default function PostScreen() {
       submittingRef.current = false;
       return;
     }
+    Alert.alert(
+      "Oglas je poslan! ✅",
+      "Tvoj oglas se provjerava i bit će vidljiv u feedu za nekoliko sekundi.",
+      [{ text: "OK" }]
+    );
     setSubmitted(true);
     setTimeout(() => {
       const defaultLoc = user ? [user.address, user.city].filter(Boolean).join(", ") : "";

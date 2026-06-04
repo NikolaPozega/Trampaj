@@ -233,6 +233,50 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
             .set({ moderationStatus: result.status, moderationNote: result.note })
             .where(eq(listingsTable.id, id));
 
+          // Notifikacija vlasniku oglasa kad prođe moderaciju
+          if (result.status === "active") {
+            try {
+              const [ownerRow] = await db
+                .select({ pushToken: usersTable.pushToken })
+                .from(usersTable)
+                .where(eq(usersTable.id, req.userId!))
+                .limit(1);
+              if (ownerRow?.pushToken) {
+                const adminMod = await import("firebase-admin");
+                await adminMod.default.messaging().send({
+                  token: ownerRow.pushToken,
+                  notification: {
+                    title: "✅ Oglas je aktivan!",
+                    body: `"${String(title)}" je prošao provjeru i sada je vidljiv svima.`,
+                  },
+                  data: { type: "listing_approved", listingId: id },
+                  android: { priority: "high" },
+                });
+              }
+            } catch { /* silent */ }
+          }
+          if (result.status === "rejected") {
+            try {
+              const [ownerRow] = await db
+                .select({ pushToken: usersTable.pushToken })
+                .from(usersTable)
+                .where(eq(usersTable.id, req.userId!))
+                .limit(1);
+              if (ownerRow?.pushToken) {
+                const adminMod = await import("firebase-admin");
+                await adminMod.default.messaging().send({
+                  token: ownerRow.pushToken,
+                  notification: {
+                    title: "❌ Oglas nije prihvaćen",
+                    body: `"${String(title)}" nije prošao provjeru. Uredi oglas i objavi ponovo.`,
+                  },
+                  data: { type: "listing_rejected", listingId: id },
+                  android: { priority: "high" },
+                });
+              }
+            } catch { /* silent */ }
+          }
+
           // Objavi na društvene mreže samo ako oglas prođe moderaciju
           if (result.status === "active") {
             const socialResult = await postToSocialMedia({
