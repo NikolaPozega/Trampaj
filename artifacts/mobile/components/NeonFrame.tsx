@@ -99,7 +99,7 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
             strokeWidth={BORDER_W}
           />
 
-          {/* Outer glow — first open only */}
+          {/* Wide gradient glow chasing around — first open only */}
           {animating && (
             <AnimatedRect
               x={bx}
@@ -107,16 +107,16 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
               width={rectW}
               height={rectH}
               fill="none"
-              stroke="url(#nfGlowGrad)"
-              strokeWidth={BORDER_W + 8}
-              strokeDasharray={`${LIGHT_LEN * 2.5} ${gapOuter}`}
+              stroke="url(#nfBorderGrad)"
+              strokeWidth={BORDER_W + 10}
+              strokeDasharray={`${LIGHT_LEN * 2} ${gapOuter}`}
               strokeDashoffset={dashOffset}
               strokeLinecap="round"
-              strokeOpacity="0.35"
+              strokeOpacity="0.55"
             />
           )}
 
-          {/* Bright core — first open only */}
+          {/* Sharp gradient core chasing around — first open only */}
           {animating && (
             <AnimatedRect
               x={bx}
@@ -124,12 +124,12 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
               width={rectW}
               height={rectH}
               fill="none"
-              stroke="#ffffff"
-              strokeWidth={BORDER_W + 1.5}
+              stroke="url(#nfBorderGrad)"
+              strokeWidth={BORDER_W + 2}
               strokeDasharray={`${LIGHT_LEN} ${gap}`}
               strokeDashoffset={dashOffset}
               strokeLinecap="round"
-              strokeOpacity="0.95"
+              strokeOpacity="1"
             />
           )}
         </Svg>
