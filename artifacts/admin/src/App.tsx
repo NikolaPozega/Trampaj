@@ -67,7 +67,7 @@ function LoginPage({ onLogin }: { onLogin: (token: string) => void }) {
       <div className="bokeh-blob w-96 h-96 bg-cyan-500/10 bottom-[-80px] right-[-60px]" />
       <div className="bokeh-blob w-64 h-64 bg-yellow-500/8 top-1/2 left-1/3" />
 
-      <form onSubmit={handleSubmit} className="neon-card-cyan w-full max-w-sm mx-4 p-8 flex flex-col gap-4 relative">
+      <form onSubmit={handleSubmit} className="neon-card-duo w-full max-w-sm mx-4 p-8 flex flex-col gap-4 relative">
         <div className="flex flex-col items-center gap-3 mb-2">
           <ArrowsLogo size={60} />
           <div>
