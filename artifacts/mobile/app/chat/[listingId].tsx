@@ -962,10 +962,11 @@ function DealOverlay({ onDismiss }: { onDismiss: () => void }) {
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function ChatScreen() {
-  const { listingId, listingTitle, otherUser } = useLocalSearchParams<{
+  const { listingId, listingTitle, otherUser, conversationId: convIdParam } = useLocalSearchParams<{
     listingId: string;
     listingTitle: string;
     otherUser: string;
+    conversationId?: string;
   }>();
   const insets = useSafeAreaInsets();
   const { user, token } = useAuth();
@@ -992,11 +993,13 @@ export default function ChatScreen() {
   const mismatchSentRef = useRef(false);
 
   // Create conversation — ponovi kad token postane dostupan (race: ChatProvider čita token iz AsyncStorage async)
+  // Ako je conversationId proslijeđen (iz inboxa), konverzacija već postoji — ne treba je kreirati
   useEffect(() => {
+    if (convIdParam) return; // inbox je već proslijedio conversationId — konverzacija postoji
     if (listingId && token && !conversations.find((c) => c.listingId === listingId)) {
       void getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
     }
-  }, [listingId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [listingId, token, convIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Odmah refreshaj poruke kad se chat screen otvori/fokusira — eliminira "nema poruka" flash
   useFocusEffect(
@@ -1008,13 +1011,18 @@ export default function ChatScreen() {
   // Priguši push notifikacije dok je ovaj razgovor aktivan
   useFocusEffect(
     useCallback(() => {
-      const convId = conversations.find((c) => c.listingId === listingId)?.id ?? null;
+      const convId = (convIdParam
+        ? conversations.find((c) => c.id === convIdParam)
+        : conversations.find((c) => c.listingId === listingId))?.id ?? null;
       setActiveConversationId(convId);
       return () => setActiveConversationId(null);
-    }, [conversations, listingId])
+    }, [conversations, listingId, convIdParam])
   );
 
-  const liveConv = conversations.find((c) => c.listingId === listingId);
+  // Nađi točnu konverzaciju: ako je otvoren iz inboxa koristi conversationId, inače listingId
+  const liveConv = convIdParam
+    ? (conversations.find((c) => c.id === convIdParam) ?? conversations.find((c) => c.listingId === listingId))
+    : conversations.find((c) => c.listingId === listingId);
   const hsStatus = liveConv ? getHsStatus(liveConv.messages) : "idle";
 
   // Timeout za loading state — nakon 8s pokaži grešku umjesto vječnog "Učitavanje..."

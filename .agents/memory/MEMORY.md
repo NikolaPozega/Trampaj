@@ -10,7 +10,7 @@
 - [Firebase FCM setup](firebase-fcm.md) — google-services.json required for Android push; project trampaj-8faed, package hr.trampaj.app; must rebuild APK (OTA not enough).
 - [Firebase Admin SDK init](firebase-init.md) — MUST be Replit secret only (not shared env var); key is multi-line JSON; if lost, re-read from git commit 8aeb133e and use requestEnvVar.
 - [Admin panel design preferences](admin-design-prefs.md) — futuristic neon borders, small font, dense data, dark theme; wait until full redesign, do all at once.
-- [OTA update from Replit](ota-update-replit.md) — hermesc linux64 broken; use expo export --no-bytecode + eas update --skip-bundler --input-dir + EAS_SKIP_AUTO_FINGERPRINT=1; latest: dist14.
+- [OTA update from Replit](ota-update-replit.md) — hermesc linux64 broken; use expo export --no-bytecode + eas update --skip-bundler --input-dir + EAS_SKIP_AUTO_FINGERPRINT=1; latest: dist15.
 - [Chat state merge pattern](chat-state-merge.md) — fetchConversations must MERGE not replace; full replace causes race where stale GET wipes newly-created conv or temp_ messages.
 - [OTA crashes on Hermes APK](ota-hermes-crash.md) — root causes: (1) baseUrl:/mobile baked into bundle mismatches APK routes; (2) hermesc linux64 broken; always remove baseUrl + use --no-bytecode.
 - [Listing moderation UX](listing-moderation-ux.md) — new listings go to pending (hidden from public feed); ListingCard shows pending/rejected badge for owner; post screen alerts user about review; server sends FCM when approved/rejected.

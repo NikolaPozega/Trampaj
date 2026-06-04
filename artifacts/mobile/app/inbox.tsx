@@ -79,7 +79,7 @@ export default function InboxScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   router.push({
                     pathname: "/chat/[listingId]",
-                    params: { listingId: conv.listingId, listingTitle: conv.listingTitle, otherUser: conv.otherUserName },
+                    params: { listingId: conv.listingId, listingTitle: conv.listingTitle, otherUser: conv.otherUserName, conversationId: conv.id },
                   });
                 }}
                 onLongPress={() => confirmDelete(conv)}
