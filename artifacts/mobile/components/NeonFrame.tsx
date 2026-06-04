@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Rect, Defs, LinearGradient, Stop } from "react-native-svg";
 
@@ -13,15 +13,14 @@ const STORAGE_KEY = "neon_frame_v1";
 const ANIM_DURATION = 5000;
 
 export function NeonFrame({ children }: { children: React.ReactNode }) {
-  const dims = Dimensions.get("window");
-  const W = dims.width;
-  const H = dims.height;
+  const { width: W, height: H } = useWindowDimensions();
   const perimeter = 2 * (W + H);
 
   const [animating, setAnimating] = useState(false);
   const dashOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!W || !H) return;
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
       if (!val) {
         setAnimating(true);
@@ -30,25 +29,38 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
           toValue: -(perimeter * 2),
           duration: ANIM_DURATION,
           useNativeDriver: false,
-        }).start(() => {
-          AsyncStorage.setItem(STORAGE_KEY, "1");
-          setAnimating(false);
+        }).start(({ finished }) => {
+          if (finished) {
+            AsyncStorage.setItem(STORAGE_KEY, "1");
+            setAnimating(false);
+          }
         });
       }
     });
-  }, []);
+  }, [W, H]);
 
-  const gap = perimeter - LIGHT_LEN;
-  const gapOuter = perimeter - LIGHT_LEN * 2.5;
+  if (!W || !H) {
+    return <View style={styles.container}>{children}</View>;
+  }
+
+  const gap = Math.max(1, perimeter - LIGHT_LEN);
+  const gapOuter = Math.max(1, perimeter - LIGHT_LEN * 2.5);
+  const bx = BORDER_W / 2;
+  const rectW = W - BORDER_W;
+  const rectH = H - BORDER_W;
 
   return (
     <View style={styles.container}>
       {children}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <Svg width={W} height={H}>
+        <Svg
+          width={W}
+          height={H}
+          style={StyleSheet.absoluteFillObject}
+        >
           <Defs>
             <LinearGradient
-              id="borderGrad"
+              id="nfBorderGrad"
               x1="0"
               y1="0"
               x2={W}
@@ -62,7 +74,7 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
             </LinearGradient>
 
             <LinearGradient
-              id="glowGrad"
+              id="nfGlowGrad"
               x1="0"
               y1="0"
               x2={W}
@@ -78,24 +90,24 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
 
           {/* Static gradient border — always visible */}
           <Rect
-            x={BORDER_W / 2}
-            y={BORDER_W / 2}
-            width={W - BORDER_W}
-            height={H - BORDER_W}
+            x={bx}
+            y={bx}
+            width={rectW}
+            height={rectH}
             fill="none"
-            stroke="url(#borderGrad)"
+            stroke="url(#nfBorderGrad)"
             strokeWidth={BORDER_W}
           />
 
-          {/* Outer wide glow that travels around (first open only) */}
+          {/* Outer glow — first open only */}
           {animating && (
             <AnimatedRect
-              x={BORDER_W / 2}
-              y={BORDER_W / 2}
-              width={W - BORDER_W}
-              height={H - BORDER_W}
+              x={bx}
+              y={bx}
+              width={rectW}
+              height={rectH}
               fill="none"
-              stroke="url(#glowGrad)"
+              stroke="url(#nfGlowGrad)"
               strokeWidth={BORDER_W + 8}
               strokeDasharray={`${LIGHT_LEN * 2.5} ${gapOuter}`}
               strokeDashoffset={dashOffset}
@@ -104,13 +116,13 @@ export function NeonFrame({ children }: { children: React.ReactNode }) {
             />
           )}
 
-          {/* Bright core light that travels around (first open only) */}
+          {/* Bright core — first open only */}
           {animating && (
             <AnimatedRect
-              x={BORDER_W / 2}
-              y={BORDER_W / 2}
-              width={W - BORDER_W}
-              height={H - BORDER_W}
+              x={bx}
+              y={bx}
+              width={rectW}
+              height={rectH}
               fill="none"
               stroke="#ffffff"
               strokeWidth={BORDER_W + 1.5}

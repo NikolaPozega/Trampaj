@@ -19,7 +19,8 @@
     "android": {
       "backgroundColor": "#08152E",
       "package": "hr.trampaj.app",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "edgeToEdge": true
     },
     "web": {
       "favicon": "./assets/images/icon.png",
