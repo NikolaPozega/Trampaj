@@ -86,30 +86,42 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(`${API_BASE}/conversations`, { headers: authHeaders() });
       if (!res.ok) return;
-      const data = await res.json() as { conversations: Conversation[] };
+      const data = await res.json() as { conversations?: Conversation[] };
+      const incoming = Array.isArray(data?.conversations) ? data.conversations : [];
+
+      // ── Izračunaj nove poruke za notifikacije IZVAN updatera (updater mora biti čist) ──
+      const toNotify: { otherUserName: string; text: string; listingId: string; conversationId: string }[] = [];
+
       setConversations((prev) => {
-        return data.conversations.map((incoming) => {
-          const existing = prev.find((c) => c.id === incoming.id);
-          if (!existing) return incoming;
-          const prevCount = existing.messages.filter((m) => !m.fromMe).length;
-          const newCount = incoming.messages.filter((m) => !m.fromMe).length;
+        return incoming.map((conv) => {
+          const msgs = Array.isArray(conv.messages) ? conv.messages : [];
+          const normalized = { ...conv, messages: msgs };
+          const existing = prev.find((c) => c.id === conv.id);
+          if (!existing) return normalized;
+
+          const prevCount = (Array.isArray(existing.messages) ? existing.messages : []).filter((m) => !m.fromMe).length;
+          const newCount = msgs.filter((m) => !m.fromMe).length;
           if (newCount > prevCount && AppState.currentState !== "active") {
-            const newMsgs = incoming.messages.filter((m) => !m.fromMe).slice(prevCount);
-            newMsgs.forEach((m) => {
-              sendLocalNotification(
-                incoming.otherUserName,
-                m.type === "text" ? m.text : "Poslao/la je zahtjev za dogovor",
-                { listingId: incoming.listingId, conversationId: incoming.id }
-              );
+            msgs.filter((m) => !m.fromMe).slice(prevCount).forEach((m) => {
+              toNotify.push({
+                otherUserName: conv.otherUserName,
+                text: m.type === "text" ? m.text : "Poslao/la je zahtjev za dogovor",
+                listingId: conv.listingId,
+                conversationId: conv.id,
+              });
             });
           }
           return {
-            ...incoming,
-            dealShown: incoming.dealShown || existing.dealShown,
-            // Preserve escrow status from local state until next explicit refresh
-            escrowStatus: existing.escrowStatus ?? incoming.escrowStatus,
+            ...normalized,
+            dealShown: conv.dealShown || existing.dealShown,
+            escrowStatus: existing.escrowStatus ?? conv.escrowStatus,
           };
         });
+      });
+
+      // Šalji lokalne notifikacije NAKON što je state ažuriran
+      toNotify.forEach(({ otherUserName, text, listingId, conversationId }) => {
+        sendLocalNotification(otherUserName, text, { listingId, conversationId });
       });
     } catch { /* offline */ }
   }, [authHeaders]);
