@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, listingsTable, usersTable } from "@workspace/db";
 import { count } from "drizzle-orm";
 import { sendAlertEmail } from "../lib/alertEmail";
+import { sendTelegramMessage } from "../lib/telegram";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -37,16 +38,17 @@ async function runChecks(): Promise<CheckResult[]> {
     results.push({ name: "Oglasi tablica", status: "error", latencyMs: Date.now() - listStart, detail: String(err) });
   }
 
-  // Memory check
+  // Memory check — use RSS vs ~512MB realistic limit, not heap% (heap% always looks high on startup)
   const mem = process.memoryUsage();
   const heapMb = Math.round(mem.heapUsed / 1024 / 1024);
   const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
+  const rssMb = Math.round(mem.rss / 1024 / 1024);
   const heapPct = Math.round((mem.heapUsed / mem.heapTotal) * 100);
   results.push({
     name: "Memorija",
-    status: heapPct > 90 ? "error" : "ok",
+    status: rssMb > 400 ? "error" : heapPct > 97 ? "error" : "ok",
     latencyMs: 0,
-    detail: `${heapMb}MB / ${heapTotalMb}MB (${heapPct}%)`,
+    detail: `${heapMb}MB / ${heapTotalMb}MB heap (${heapPct}%), RSS ${rssMb}MB`,
   });
 
   // Uptime
@@ -93,6 +95,8 @@ router.post("/monitor/check", async (req, res) => {
         lastAlertAt = now;
         const body = failed.map(c => `❌ ${c.name}: ${c.detail ?? "greška"}`).join("\n");
         await sendAlertEmail(`${failed.length} servisa nije dostupno`, body);
+        const tgMsg = `🚨 <b>Trampaj.hr — Server greška</b>\n\n${failed.map(c => `❌ <b>${c.name}</b>${c.detail ? `\n<code>${c.detail}</code>` : ""}`).join("\n\n")}`;
+        await sendTelegramMessage(tgMsg).catch(() => {});
       }
     }
 
