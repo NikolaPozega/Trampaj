@@ -93,13 +93,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const toNotify: { otherUserName: string; text: string; listingId: string; conversationId: string }[] = [];
 
       setConversations((prev) => {
-        return incoming.map((conv) => {
-          const msgs = Array.isArray(conv.messages) ? conv.messages : [];
-          const normalized = { ...conv, messages: msgs };
-          const existing = prev.find((c) => c.id === conv.id);
-          if (!existing) return normalized;
+        const incomingIds = new Set(incoming.map((c) => c.id));
 
-          const prevCount = (Array.isArray(existing.messages) ? existing.messages : []).filter((m) => !m.fromMe).length;
+        const merged = incoming.map((conv) => {
+          const msgs = Array.isArray(conv.messages) ? conv.messages : [];
+          const existing = prev.find((c) => c.id === conv.id);
+          if (!existing) return { ...conv, messages: msgs };
+
+          const prevMsgs = Array.isArray(existing.messages) ? existing.messages : [];
+          const prevCount = prevMsgs.filter((m) => !m.fromMe).length;
           const newCount = msgs.filter((m) => !m.fromMe).length;
           if (newCount > prevCount && AppState.currentState !== "active") {
             msgs.filter((m) => !m.fromMe).slice(prevCount).forEach((m) => {
@@ -111,12 +113,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               });
             });
           }
+
+          // Spoji: server poruke + lokalni temp_ koje server još ne zna
+          const serverIds = new Set(msgs.map((m) => m.id));
+          const pendingLocal = prevMsgs.filter((m) => m.id.startsWith("temp_") && !serverIds.has(m.id));
+          const mergedMsgs = pendingLocal.length > 0 ? [...msgs, ...pendingLocal] : msgs;
+
           return {
-            ...normalized,
+            ...conv,
+            messages: mergedMsgs,
             dealShown: conv.dealShown || existing.dealShown,
             escrowStatus: existing.escrowStatus ?? conv.escrowStatus,
           };
         });
+
+        // Zadrži lokalne konverzacije koje server još ne poznaje (race condition pri kreiranju)
+        const localOnly = prev.filter((p) => !incomingIds.has(p.id));
+        return localOnly.length > 0 ? [...localOnly, ...merged] : merged;
       });
 
       // Šalji lokalne notifikacije NAKON što je state ažuriran

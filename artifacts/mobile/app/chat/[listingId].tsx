@@ -986,16 +986,17 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [showDeal, setShowDeal] = useState(false);
   const [postDealStep, setPostDealStep] = useState<null | "disclaimer" | "escrow" | "deposit">(null);
+  const [loadTimeout, setLoadTimeout] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const prevHsRef = useRef<HsStatus | null>(null);
   const mismatchSentRef = useRef(false);
 
-  // Create conversation in effect (not during render) to avoid ChatProvider update-during-render warning
+  // Create conversation — ponovi kad token postane dostupan (race: ChatProvider čita token iz AsyncStorage async)
   useEffect(() => {
-    if (listingId && !conversations.find((c) => c.listingId === listingId)) {
-      getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
+    if (listingId && token && !conversations.find((c) => c.listingId === listingId)) {
+      void getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
     }
-  }, [listingId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [listingId, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Odmah refreshaj poruke kad se chat screen otvori/fokusira — eliminira "nema poruka" flash
   useFocusEffect(
@@ -1015,6 +1016,13 @@ export default function ChatScreen() {
 
   const liveConv = conversations.find((c) => c.listingId === listingId);
   const hsStatus = liveConv ? getHsStatus(liveConv.messages) : "idle";
+
+  // Timeout za loading state — nakon 8s pokaži grešku umjesto vječnog "Učitavanje..."
+  useEffect(() => {
+    if (liveConv) { setLoadTimeout(false); return; }
+    const t = setTimeout(() => setLoadTimeout(true), 8000);
+    return () => clearTimeout(t);
+  }, [liveConv]);
 
   // Mark as read
   useEffect(() => {
@@ -1206,8 +1214,31 @@ export default function ChatScreen() {
 
   if (!liveConv) {
     return (
-      <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
-        <Text style={{ color: C.muted, fontSize: 13 }}>Učitavanje...</Text>
+      <View style={[styles.root, { justifyContent: "center", alignItems: "center", gap: 16 }]}>
+        {loadTimeout ? (
+          <>
+            <Feather name="wifi-off" size={32} color={C.muted} />
+            <Text style={{ color: C.muted, fontSize: 14, textAlign: "center", paddingHorizontal: 32 }}>
+              Nije moguće učitati razgovor.{"\n"}Provjeri internetsku vezu.
+            </Text>
+            <Pressable
+              onPress={() => {
+                setLoadTimeout(false);
+                void refreshConversations();
+                if (listingId && token) {
+                  void getOrCreateConversation(listingId, listingTitle ?? "", otherUser ?? "");
+                }
+              }}
+              style={({ pressed }) => [
+                { backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8, opacity: pressed ? 0.8 : 1 }
+              ]}
+            >
+              <Text style={{ color: C.bg, fontSize: 14, fontWeight: "600" }}>Pokušaj ponovo</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={{ color: C.muted, fontSize: 13 }}>Učitavanje...</Text>
+        )}
       </View>
     );
   }
