@@ -68,6 +68,10 @@ catalog:
 
 autoInstallPeers: false
 
+peerDependencyRules:
+  ignoreMissing:
+    - '@opentelemetry/api'
+
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
