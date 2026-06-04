@@ -13,6 +13,13 @@ const STORAGE_KEY = "neon_frame_v1";
 const ANIM_DURATION = 5000;
 
 export function NeonFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS === "web") {
+    return <View style={styles.container}>{children}</View>;
+  }
+  return <NeonFrameNative>{children}</NeonFrameNative>;
+}
+
+function NeonFrameNative({ children }: { children: React.ReactNode }) {
   const { width: W, height: H } = useWindowDimensions();
   const perimeter = 2 * (W + H);
 
