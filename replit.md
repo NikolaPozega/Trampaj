@@ -1,58 +1,95 @@
-# Trampa
+# Trampaj.hr
 
-Mobilna aplikacija za trampu — korisnici postavljaju predmete koje nude i traže što žele u zamjenu.
+Platforma za trampu predmeta — mobilna app + web + admin.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-server run dev` — pokreni API server (port 8080)
+- `pnpm run typecheck` — typecheck svih paketa
+- `pnpm run build` — typecheck + build svih paketa
+- `pnpm --filter @workspace/api-spec run codegen` — regeneriraj API hookove i Zod sheme iz OpenAPI spec-a
+- `pnpm --filter @workspace/db run push` — push DB schema promjena (samo dev)
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Mobile: Expo + React Native (Expo Router)
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM (not yet used)
+- Web: React + Vite + Wouter
+- Admin: React + Vite
+- API: Express 5 (port 8080)
+- DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
-## Where things live
+## Design tokens
 
-- `artifacts/mobile/` — Expo mobile app
-- `artifacts/mobile/app/(tabs)/` — Browse, Post, Profile tabs
-- `artifacts/mobile/app/listing/[id].tsx` — Listing detail screen
-- `artifacts/mobile/context/ListingsContext.tsx` — state management (AsyncStorage)
-- `artifacts/mobile/components/` — ListingCard, CategoryPill, EmptyState
-- `artifacts/mobile/constants/colors.ts` — design tokens (terracotta #E85D25)
+- Pozadina: `#08152E` (tamno navy)
+- Akcent: `#F5C100` (žuta)
+- Sekundarni akcent: `#38BDF8` (plava)
+- Tekst: `#F0F4FF`
+- Mutni tekst: `#7A90B0`
+- Neon obrub na karticama oglasa (cijanova/žuta gradijent) — namjerno, ne dirать
 
-## Architecture decisions
+## Gdje je što
 
-- Frontend-only: uses AsyncStorage for persistence, no backend needed for first build
-- Sample listings pre-loaded on first run to show the UI populated
-- CI=1 + NODE_OPTIONS=--dns-result-order=ipv4first in dev script to fix Replit workflow port detection
-- 3-tab navigation: Oglasi (browse), Objavi (post), Profil (my listings)
+- `artifacts/mobile/` — Expo mobilna app (Android + iOS + web preview)
+- `artifacts/mobile/app/(tabs)/` — tabovi: Oglasi, Objavi, Profil
+- `artifacts/mobile/app/inbox.tsx` — inbox poruka
+- `artifacts/mobile/app/chat/[listingId].tsx` — chat ekran
+- `artifacts/mobile/context/` — ListingsContext, ChatContext, AuthContext
+- `artifacts/web/` — trampaj.hr web stranica
+- `artifacts/admin/` — admin panel (moderacija, statistike, push)
+- `artifacts/api-server/` — Express API
 
-## Product
+## Web stranica (artifacts/web) — PLAN
 
-- Browse all active barter listings with category filters and search
-- Post new items with description and what you want in return
-- View listing detail and send a trade offer
-- Manage your own listings (mark as traded, delete)
+**Trenutno:** Landing "zastor" stranica — prikazuje se dok se gradi puna web stranica.
+
+**Kad se makne zastor (finalna web stranica treba biti):**
+- Vizualno identično appu: navy/žuta paleta, isti stil kartica, isti fontovi
+- Browse svih aktivnih oglasa (grid prikaz, isti kao app feed)
+- Detalj oglasa — prikaz svih info + telefonski broj vlasnika
+- Klikom na "Pošalji poruku" / chat → redirect na skidanje app (App Store / Google Play)
+- BEZ mogućnosti prijave / registracije
+- BEZ chata na webu
+- Pravne stranice: `/terms` i `/privacy` (već postoje, ostaju)
+- Pretraživanje i filtriranje po kategorijama (kao u appu)
+
+## Admin panel (artifacts/admin)
+
+- Dizajn: futuristic neon borders, tamna tema, gust prikaz podataka — **ne mijenjati dizajn dok ne dođe puni redesign**
+- Funkcije: moderacija oglasa (approve/reject), korisnici, statistike, push notifikacije, early adopters, social posting, monitoring
+
+## Mobilna app — arhitektura
+
+- PostgreSQL + Drizzle ORM za sve podatke
+- Svi oglasi prolaze kroz moderaciju (pending → approved/rejected)
+- Firebase FCM za push notifikacije (Android)
+- Stripe za escrow plaćanja dostave
+- AI (OpenAI) za analizu slika, generiranje tagova, moderaciju sadržaja
+- Semantički matching oglasa (server-side + local)
+- Chat s "handshake" mehanizmom za dogovor trampe
+- OTA update via EAS (expo-updates)
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Minimalne promjene — ne dodavati ništa što nije traženo
+- NeonFrame animacija na KARTICAMA je OK, na layoutu (cijeli ekran) — uklonjena
+- Web landing = zastor, ne dodavati sadržaj dok se eksplicitno ne kaže
+- Greške priznavati direktno bez izlike
+- Hrvatski jezik u komunikaciji
 
 ## Gotchas
 
-- Always use `NODE_OPTIONS=--dns-result-order=ipv4first` in the mobile dev script — Metro defaults to IPv6 binding on NixOS, which breaks the Replit port health check
-- CI=1 is required to keep Metro alive in non-interactive mode in the Replit workflow runner
+- Uvijek koristiti `NODE_OPTIONS=--dns-result-order=ipv4first` u mobile dev skripti
+- CI=1 je obavezno za Metro u non-interactive modu
+- API server je na portu 8080 (ne 5000!)
+- Drizzle join spread koristi `getTableColumns()`, ne direktno table spread
+- Firebase Admin SDK init MORA biti iz Replit secreta (multi-line JSON private key)
+- OTA update: koristiti `expo export --no-bytecode` + `eas update --skip-bundler`; hermesc linux64 je broken
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Vidi `pnpm-workspace` skill za workspace strukturu i TypeScript setup
