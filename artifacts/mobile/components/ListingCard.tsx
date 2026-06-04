@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -30,14 +29,6 @@ const CATEGORY_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Ostalo: "package",
 };
 
-const BORDER_COLORS: [string, string, string, string, string] = [
-  "rgba(0,200,255,0.95)",
-  "rgba(0,180,240,0.4)",
-  "rgba(30,55,110,0.2)",
-  "rgba(245,193,0,0.4)",
-  "rgba(245,193,0,0.95)",
-];
-
 interface Props {
   listing: Listing;
   onPress?: () => void;
@@ -65,12 +56,7 @@ export function ListingCard({ listing, onPress }: Props) {
         },
       ]}
     >
-      <LinearGradient
-        colors={BORDER_COLORS}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
+      <View style={styles.borderWrap}>
         <View style={styles.card}>
           <View style={[styles.imageArea, { backgroundColor: colors.muted }]}>
             {(listing.imageUris?.[0] ?? listing.imageUri) ? (
@@ -119,7 +105,7 @@ export function ListingCard({ listing, onPress }: Props) {
             </View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
@@ -129,14 +115,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 8,
     shadowColor: "#00c8ff",
-    shadowOffset: { width: -3, height: -3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 6,
   },
-  gradient: {
+  borderWrap: {
     borderRadius: 14,
-    padding: 2,
+    borderWidth: 2,
+    borderColor: "rgba(0,200,255,0.85)",
+    backgroundColor: "#0a1628",
   },
   card: {
     borderRadius: 12,
