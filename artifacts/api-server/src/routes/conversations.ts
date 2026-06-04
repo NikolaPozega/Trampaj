@@ -103,6 +103,7 @@ async function buildConversationPayload(
 
 // GET /api/conversations
 router.get("/conversations", requireAuth, async (req: AuthRequest, res) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     const rows = await db
       .select()
