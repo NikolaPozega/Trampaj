@@ -329,7 +329,11 @@ router.post("/listings", requireAuth, async (req: AuthRequest, res) => {
 // PUT /api/listings/:id
 router.put("/listings/:id", requireAuth, async (req: AuthRequest, res) => {
   const { id } = req.params as { id: string };
-  const { title, description, wantedFor, price, category, location, condition } = req.body as Record<string, unknown>;
+  const {
+    title, description, wantedFor, price, category, location, condition,
+    topup, flexibility, cashFallback, deadline,
+    nudimTags, trazimTags,
+  } = req.body as Record<string, unknown>;
 
   try {
     const [listing] = await db.select().from(listingsTable).where(eq(listingsTable.id, id)).limit(1);
@@ -344,6 +348,12 @@ router.put("/listings/:id", requireAuth, async (req: AuthRequest, res) => {
     if (category !== undefined) updates.category = String(category);
     if (location !== undefined) updates.location = String(location);
     if (condition !== undefined) updates.condition = condition ? String(condition) : null;
+    if (topup !== undefined) updates.topup = topup ? String(topup) : null;
+    if (flexibility !== undefined) updates.flexibility = flexibility ? String(flexibility) : null;
+    if (cashFallback !== undefined) updates.cashFallback = typeof cashFallback === "boolean" ? cashFallback : null;
+    if (deadline !== undefined) updates.deadline = deadline ? String(deadline) : null;
+    if (nudimTags !== undefined) updates.nudimTags = Array.isArray(nudimTags) ? JSON.stringify(nudimTags) : undefined;
+    if (trazimTags !== undefined) updates.trazimTags = Array.isArray(trazimTags) ? JSON.stringify(trazimTags) : undefined;
 
     await db.update(listingsTable).set(updates).where(eq(listingsTable.id, id));
 

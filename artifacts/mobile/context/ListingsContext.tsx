@@ -79,7 +79,7 @@ interface ListingsContextType {
   myName: string;
   setMyName: (name: string) => void;
   addListing: (listing: Omit<Listing, "id" | "createdAt" | "status" | "isMine" | "userName">) => Promise<{ ok: boolean; error?: string }>;
-  updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition">>) => void;
+  updateListing: (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition" | "topup" | "flexibility" | "cashFallback" | "deadline" | "nudimTags" | "trazimTags">>) => void;
   markAsTraded: (id: string) => void;
   markAsActive: (id: string) => void;
   deleteListing: (id: string) => void;
@@ -235,7 +235,7 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateListing = useCallback(
-    (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition">>) => {
+    (id: string, updates: Partial<Pick<Listing, "title" | "description" | "wantedFor" | "price" | "category" | "location" | "condition" | "topup" | "flexibility" | "cashFallback" | "deadline" | "nudimTags" | "trazimTags">>) => {
       if (!tokenRef.current) return;
       // Optimistic update
       setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));

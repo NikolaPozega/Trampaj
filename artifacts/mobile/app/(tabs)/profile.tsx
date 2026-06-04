@@ -31,7 +31,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { WebDownloadScreen } from "@/components/WebDownloadScreen";
 import { ListingCard } from "@/components/ListingCard";
 
-import { CATEGORIES, type Listing, useListings } from "@/context/ListingsContext";
+import { CATEGORIES, type Listing, type Topup, type Flexibility, type Deadline, useListings } from "@/context/ListingsContext";
+import { generateListingTags } from "@/services/openai";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { findTradeMatches, type TradeMatch } from "@/services/tradeMatches";
@@ -49,6 +50,10 @@ interface EditState {
   category: string;
   location: string;
   condition: import("@/context/ListingsContext").Condition | null;
+  topup: Topup | null;
+  flexibility: Flexibility | null;
+  cashFallback: boolean | null;
+  deadline: Deadline | null;
 }
 
 const LOCATION_OPTIONS = [
@@ -758,6 +763,10 @@ export default function ProfileScreen() {
       category: item.category,
       location: item.location,
       condition: item.condition ?? null,
+      topup: item.topup ?? null,
+      flexibility: item.flexibility ?? null,
+      cashFallback: item.cashFallback ?? null,
+      deadline: item.deadline ?? null,
     });
   }
 
@@ -766,17 +775,30 @@ export default function ProfileScreen() {
     const price = editState.priceText.trim()
       ? parseFloat(editState.priceText.replace(",", "."))
       : null;
-    updateListing(editState.id, {
-      title: editState.title.trim(),
-      description: editState.description.trim(),
-      wantedFor: editState.wantedFor.trim(),
+    const savedId = editState.id;
+    const savedTitle = editState.title.trim();
+    const savedDescription = editState.description.trim();
+    const savedWantedFor = editState.wantedFor.trim();
+    updateListing(savedId, {
+      title: savedTitle,
+      description: savedDescription,
+      wantedFor: savedWantedFor,
       price: price && !isNaN(price) ? price : null,
       category: editState.category,
       location: editState.location,
       condition: editState.condition,
+      topup: editState.topup,
+      flexibility: editState.flexibility,
+      cashFallback: editState.cashFallback,
+      deadline: editState.deadline,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setEditState(null);
+    generateListingTags(savedTitle, savedDescription, savedWantedFor)
+      .then((tags) => {
+        updateListing(savedId, { nudimTags: tags.nudimTags, trazimTags: tags.trazimTags });
+      })
+      .catch(() => {});
   }
 
   const handleDismiss = useCallback((theirId: string) => {
@@ -1703,6 +1725,75 @@ export default function ProfileScreen() {
                     );
                   })}
                 </View>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Fleksibilnost</Text>
+                <View style={styles.chips}>
+                  {(["tocno", "otvoren"] as const).map((key) => {
+                    const label = key === "tocno" ? "Znam točno što hoću" : "Otvoren sam ponudama";
+                    const selected = editState.flexibility === key;
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setEditState((s) => s ? { ...s, flexibility: selected ? null : key } : s)}
+                        style={[styles.chip, { backgroundColor: selected ? colors.primary : colors.muted, borderColor: selected ? colors.primary : colors.border }]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Nadoplata</Text>
+                <View style={styles.chips}>
+                  {(["primam", "dajem", "oboje", "ne"] as const).map((key) => {
+                    const label = { primam: "Primam nadoplatu", dajem: "Dajem nadoplatu", oboje: "Oboje", ne: "Bez nadoplate" }[key];
+                    const selected = editState.topup === key;
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setEditState((s) => s ? { ...s, topup: selected ? null : key } : s)}
+                        style={[styles.chip, { backgroundColor: selected ? colors.primary : colors.muted, borderColor: selected ? colors.primary : colors.border }]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Prihvaćaš novac ako nema trampe?</Text>
+                <View style={styles.chips}>
+                  {([true, false] as const).map((val) => {
+                    const key = val ? "da" : "ne";
+                    const label = val ? "Da, prihvaćam" : "Ne, samo trampa";
+                    const selected = editState.cashFallback === val;
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setEditState((s) => s ? { ...s, cashFallback: selected ? null : val } : s)}
+                        style={[styles.chip, { backgroundColor: selected ? colors.primary : colors.muted, borderColor: selected ? colors.primary : colors.border }]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Rok trampe</Text>
+                <View style={styles.chips}>
+                  {(["hitno", "ovaj-mjesec", "bez-roka"] as const).map((key) => {
+                    const label = { hitno: "Hitno (ovaj tjedan)", "ovaj-mjesec": "Ovaj mjesec", "bez-roka": "Bez roka" }[key];
+                    const selected = editState.deadline === key;
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setEditState((s) => s ? { ...s, deadline: selected ? null : key } : s)}
+                        style={[styles.chip, { backgroundColor: selected ? colors.primary : colors.muted, borderColor: selected ? colors.primary : colors.border }]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
                 <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Lokacija</Text>
                 <View style={styles.locationGrid}>
                   {LOCATION_OPTIONS.map((loc) => (
