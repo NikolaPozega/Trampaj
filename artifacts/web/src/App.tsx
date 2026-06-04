@@ -35,17 +35,9 @@ const NEON_FRAME_CSS = `
   border: 3px solid transparent;
   border-image: conic-gradient(from var(--neon-angle),
     #00C8FF 0deg,
-    #88EEFF 8deg,
-    #ffffff 14deg,
-    #FFE566 20deg,
-    #F5C100 30deg,
-    #F5C100 170deg,
-    #00C8FF 180deg,
-    #88EEFF 188deg,
-    #ffffff 194deg,
-    #FFE566 200deg,
-    #F5C100 210deg,
-    #F5C100 350deg,
+    #00C8FF 60deg,
+    #F5C100 180deg,
+    #F5C100 240deg,
     #00C8FF 360deg
   ) 1;
   animation: neon-frame-spin 2.5s linear 2;
