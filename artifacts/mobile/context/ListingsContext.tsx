@@ -143,11 +143,12 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       });
       clearTimeout(tid);
       if (res.ok) {
-        const data = await res.json() as { listings: Listing[] };
-        setMyListings(data.listings.map((l) => ({
+        const data = await res.json() as { listings?: Listing[] };
+        const rows = Array.isArray(data.listings) ? data.listings : [];
+        setMyListings(rows.map((l) => ({
           ...l,
           isMine: true,
-          imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
+          imageUris: Array.isArray(l.imageUris) ? l.imageUris.filter((u) => typeof u === "string" && u.startsWith("http")) : [],
           nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
           trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
         })));
@@ -163,10 +164,11 @@ export function ListingsProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`${API_BASE}/listings`, { headers: authHeaders(), signal: controller.signal });
       clearTimeout(tid);
       if (res.ok) {
-        const data = await res.json() as { listings: Listing[] };
-        setListings(data.listings.map((l) => ({
+        const data = await res.json() as { listings?: Listing[] };
+        const rows = Array.isArray(data.listings) ? data.listings : [];
+        setListings(rows.map((l) => ({
           ...l,
-          imageUris: Array.isArray(l.imageUris) ? l.imageUris : [],
+          imageUris: Array.isArray(l.imageUris) ? l.imageUris.filter((u) => typeof u === "string" && u.startsWith("http")) : [],
           nudimTags: Array.isArray(l.nudimTags) ? l.nudimTags : [],
           trazimTags: Array.isArray(l.trazimTags) ? l.trazimTags : [],
         })));

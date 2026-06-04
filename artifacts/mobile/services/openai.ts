@@ -124,7 +124,7 @@ export async function generateListingTags(
    NIKADA ne mijenjaj: brendove, modele, nazive proizvoda, vlastita imena, kratice, strani pojmovi, ništa što bi moglo biti naziv predmeta ili modela (npr. "Samsung S22", "iPhone 13", "IKEA Kallax"). 
    Ako nisi 100% siguran što je korisnik htio napisati — zadrži ORIGINALNI tekst bez promjene.
 
-2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI.${base64Image ? " Analiziraj sliku i dodaj vizualne detalje: boju, materijal, stil, stanje." : ""} Max 20 kratkih hrvatskih pojmova.
+2. GENERIRAJ nudimTags — ključne riječi što osoba NUDI. Primarno se osloni na NASLOV i OPIS za tip predmeta.${base64Image ? " Slika je DODATNI kontekst — dodaj vizualne detalje (boja, materijal, stanje) SAMO ako su konzistentni s naslovom. NIKAD ne generiraj tagove koji proturječe naslovu (npr. ako naslov kaže 'Samsung Galaxy', ne generiraj 'torbica' ili 'maska' samo zbog slike)." : ""} Max 20 kratkih hrvatskih pojmova.
 
 3. GENERIRAJ trazimTags — ključne riječi što osoba TRAŽI. Max 8 kratkih fraza.
 

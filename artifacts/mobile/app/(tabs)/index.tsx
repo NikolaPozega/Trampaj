@@ -345,9 +345,11 @@ export default function BrowseScreen() {
     });
   }, [listings, blockedUserNames, searchTrazim, searchNudim]);
 
-  // Personalizirani ranking (samo za prijavljene korisnike)
+  // Personalizirani ranking (samo za prijavljene korisnike, isključen dok traje search)
   const ranked = useMemo(() => {
     if (!user) return filtered;
+    // Dok korisnik pretražuje — prikaži filtrirane rezultate sortiranjem po datumu, bez personalizacije
+    if (searchTrazim.trim() || searchNudim.trim()) return filtered;
     const myListings = listings.filter((l) => l.isMine);
     const myNudim = new Set(
       myListings.flatMap((l) => l.nudimTags ?? []).map((t) => t.toLowerCase().trim()),
