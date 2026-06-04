@@ -14,8 +14,13 @@ interface CheckResult {
   detail?: string;
 }
 
-let lastAlertAt: number | null = null;
-const ALERT_COOLDOWN_MS = 15 * 60 * 1000; // 15 min između alertova
+let lastEmailAlertAt: number | null = null;
+let lastTgAlertAt: number | null = null;
+const EMAIL_COOLDOWN_MS = 15 * 60 * 1000; // email max 1× / 15 min
+const TG_CRITICAL_COOLDOWN_MS = 2 * 60 * 1000;  // kritično: Telegram max 1× / 2 min
+const TG_WARN_COOLDOWN_MS = 15 * 60 * 1000;     // upozorenje: Telegram max 1× / 15 min
+
+const CRITICAL_CHECKS = ["Baza podataka", "Oglasi tablica"];
 
 async function runChecks(): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -89,14 +94,26 @@ router.post("/monitor/check", async (req, res) => {
 
     if (failed.length > 0) {
       const now = Date.now();
-      const canAlert = !lastAlertAt || (now - lastAlertAt) > ALERT_COOLDOWN_MS;
+      const criticalFailed = failed.filter(c => CRITICAL_CHECKS.includes(c.name));
+      const isCritical = criticalFailed.length > 0;
 
-      if (canAlert) {
-        lastAlertAt = now;
+      // Telegram: odmah za kritično (cooldown 2 min), 15 min za ostalo
+      const tgCooldown = isCritical ? TG_CRITICAL_COOLDOWN_MS : TG_WARN_COOLDOWN_MS;
+      const canTg = !lastTgAlertAt || (now - lastTgAlertAt) > tgCooldown;
+      if (canTg) {
+        lastTgAlertAt = now;
+        const icon = isCritical ? "🔴" : "🟡";
+        const tgMsg = `${icon} <b>Trampaj.hr — ${isCritical ? "KRITIČNA greška" : "Upozorenje"}</b>\n\n`
+          + failed.map(c => `❌ <b>${c.name}</b>${c.detail ? `\n<code>${c.detail}</code>` : ""}`).join("\n\n");
+        await sendTelegramMessage(tgMsg).catch(() => {});
+      }
+
+      // Email: cooldown 15 min
+      const canEmail = !lastEmailAlertAt || (now - lastEmailAlertAt) > EMAIL_COOLDOWN_MS;
+      if (canEmail) {
+        lastEmailAlertAt = now;
         const body = failed.map(c => `❌ ${c.name}: ${c.detail ?? "greška"}`).join("\n");
         await sendAlertEmail(`${failed.length} servisa nije dostupno`, body);
-        const tgMsg = `🚨 <b>Trampaj.hr — Server greška</b>\n\n${failed.map(c => `❌ <b>${c.name}</b>${c.detail ? `\n<code>${c.detail}</code>` : ""}`).join("\n\n")}`;
-        await sendTelegramMessage(tgMsg).catch(() => {});
       }
     }
 
