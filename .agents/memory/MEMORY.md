@@ -8,7 +8,7 @@
 - [Image upload architecture](image-upload.md) — images uploaded server-side via POST /api/uploads/image (base64→GCS); objectStorage.ts+objectAcl.ts in api-server/src/lib; public: true makes files world-readable.
 - [Push token race condition](push-token-race.md) — logout DELETE /push/token fire-and-forget races new login POST; fixed by removing DELETE from logout + AppState refresh.
 - [Firebase FCM setup](firebase-fcm.md) — google-services.json required for Android push; project trampaj-8faed, package hr.trampaj.app; must rebuild APK (OTA not enough).
-- [Firebase Admin SDK init](firebase-init.md) — store as shared env var (not secret) via setEnvVars; Replit secret UI truncates multi-line JSON; recover by re-reading attached JSON → setEnvVars.
+- [Firebase Admin SDK init](firebase-init.md) — MUST be Replit secret only (not shared env var); key is multi-line JSON; if lost, re-read from git commit 8aeb133e and use requestEnvVar.
 - [Admin panel design preferences](admin-design-prefs.md) — futuristic neon borders, small font, dense data, dark theme; wait until full redesign, do all at once.
 - [OTA update from Replit](ota-update-replit.md) — hermesc linux64 broken; use expo export --no-bytecode + eas update --skip-bundler --input-dir + EAS_SKIP_AUTO_FINGERPRINT=1.
 - [OTA crashes on Hermes APK](ota-hermes-crash.md) — root causes: (1) baseUrl:/mobile baked into bundle mismatches APK routes; (2) hermesc linux64 broken; always remove baseUrl + use --no-bytecode.
