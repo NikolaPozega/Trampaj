@@ -20,7 +20,8 @@
       "backgroundColor": "#08152E",
       "package": "hr.trampaj.app",
       "googleServicesFile": "./google-services.json",
-      "edgeToEdge": true
+      "edgeToEdge": true,
+      "hermesEnabled": false
     },
     "web": {
       "favicon": "./assets/images/icon.png",
