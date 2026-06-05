@@ -67,8 +67,8 @@ export default function RootLayout() {
       }
     });
 
-    // Auto-check for OTA updates on startup (native only) — auto-restart silently
-    if (Platform.OS !== "web") {
+    // Auto-check for OTA updates on startup (native only, release builds only) — auto-restart silently
+    if (Platform.OS !== "web" && !__DEV__) {
       Updates.checkForUpdateAsync()
         .then((check) => {
           if (check.isAvailable) {
