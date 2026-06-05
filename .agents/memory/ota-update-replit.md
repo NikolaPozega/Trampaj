@@ -6,7 +6,19 @@ description: Full workflow for pushing Expo OTA updates (EAS Update) from the Re
 ## The rule
 Never use plain `eas update` or `npx eas-cli` — they hang. Never run `pnpm exec eas` — also hangs. Use `node .../global/eas-cli/bin/run` directly, wrapped in background process with explicit timeout.
 
-**Why hermesc:** hermesc linux64 binary in react-native@0.81.5 is too old; always use `--no-bytecode`.
+**Why hermesc:** hermesc linux64 binary in react-native@0.81.5 cannot compile ES2022 private class fields (`#x`) from @sentry/react-native@8.x.
+
+**Fix: Babel plugins in babel.config.js** (NOT hermesEnabled:false — see below):
+```js
+plugins: [
+  ["@babel/plugin-transform-class-properties", { loose: true }],
+  ["@babel/plugin-transform-private-methods", { loose: true }],
+  ["@babel/plugin-transform-private-property-in-object", { loose: true }],
+]
+```
+These plugins are available as transitive pnpm deps without explicit install.
+
+**Why NOT hermesEnabled:false:** When `newArchEnabled: true`, Hermes is mandatory and `hermesEnabled: false` is silently ignored. Always fix hermesc errors via Babel transform, not by disabling Hermes.
 **Why vcs patch:** EAS CLI v20 `getCommitHashAsync()` base class returns `undefined`, then the GraphQL mutation sends literal `"$"` as gitCommitHash — EAS API rejects it. Must patch BOTH global and monorepo-local copies every session (patches don't persist).
 **Why background:** bash tool silently kills processes that produce no output for ~30s; pipe to `head` + use `& wait` pattern.
 
