@@ -135,7 +135,7 @@ FE=$(get "/api/listings?category=elektronika" | j . "len(d.get('listings', d if 
 FS=$(get "/api/listings?category=sport" | j . "len(d.get('listings', d if isinstance(d,list) else []))")
 [ "${FS:-0}" -gt 0 ] && ok "Filter sport: $FS" || warn "Filter sport: 0"
 # Search
-FSRCH=$(get "/api/listings?q=bicikl" | j . "len(d.get('listings', d if isinstance(d,list) else []))")
+FSRCH=$(get "/api/listings?search=bicikl" | j . "len(d.get('listings', d if isinstance(d,list) else []))")
 [ "${FSRCH:-0}" -gt 0 ] && ok "Pretraga 'bicikl': $FSRCH" || warn "Pretraga: 0"
 # Oglas detalj
 if [ ${#LIDS[@]} -gt 0 ]; then
@@ -406,7 +406,8 @@ echo ""
 echo "  📊 TOP RAZGOVORI (po broju poruka):"
 psql "$DATABASE_URL" -c "
   SELECT COALESCE((SELECT title FROM listings WHERE id=c.listing_id LIMIT 1),'?') as oglas,
-    COUNT(m.id) as poruke, c.status
+    COUNT(m.id) as poruke,
+    CASE WHEN c.escrow_active THEN 'escrow' ELSE 'aktivan' END as status
   FROM conversations c LEFT JOIN messages m ON m.conversation_id=c.id
   GROUP BY c.id ORDER BY poruke DESC LIMIT 8;" 2>/dev/null
 
