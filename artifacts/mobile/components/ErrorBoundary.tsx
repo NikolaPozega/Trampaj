@@ -30,6 +30,8 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }): void {
+    // eslint-disable-next-line no-console
+    console.error(`CRITICAL MOBILE RUNTIME ERROR: ${error.message}\n${error.stack ?? ""}${info.componentStack}`);
     if (typeof this.props.onError === "function") {
       this.props.onError(error, info.componentStack);
     }
