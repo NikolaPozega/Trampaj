@@ -103,3 +103,4 @@ wait $PID 2>/dev/null
 ## Latest OTA
 - dist12 pushed 2026-06-04: crash null guard + image http filter + AI tag prompt + search ranking bypass during search
 - dist13 pushed 2026-06-04: edit modal - all fields (topup/flexibility/cashFallback/deadline) + AI tag regeneration on save
+- dist16 pushed 2026-06-05: APK v1.1.0 initial OTA baseline (runtimeVersion 1.1.0, branch preview, update group 0e63b1e9-c929-4ba6-b0fd-93b13d44d878)
