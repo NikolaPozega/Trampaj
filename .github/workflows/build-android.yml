@@ -52,18 +52,22 @@ jobs:
         run: |
           npx expo prebuild --platform android --clean --no-install
 
-      - name: Build debug APK
+      - name: Build release APK (signed with debug keystore)
         working-directory: artifacts/mobile/android
         env:
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_DOMAIN: ${{ secrets.EXPO_PUBLIC_DOMAIN }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=androiddebugkey \
+            -Pandroid.injected.signing.key.password=android
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: trampaj-v1.1.0-debug
-          path: artifacts/mobile/android/app/build/outputs/apk/debug/*.apk
+          name: trampaj-v1.1.0-release
+          path: artifacts/mobile/android/app/build/outputs/apk/release/*.apk
           retention-days: 7
