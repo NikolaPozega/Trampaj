@@ -13,7 +13,7 @@ export interface AuthUser {
   phone: string | null;
   address: string | null;
   city: string | null;
-  avatarBase64: string | null;
+  avatarUrl: string | null;
   isVerified: boolean;
   createdAt: string;
 }
@@ -46,7 +46,7 @@ export interface ProfileUpdateData {
   phone: string;
   address: string;
   city: string;
-  avatarBase64: string;
+  avatarBase64?: string;
 }
 
 const TOKEN_KEY = "@trampaj_token_v1";

@@ -7,6 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
 import { db, usersTable, type PublicUser } from "@workspace/db";
+import { objectStorageClient } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -95,6 +96,26 @@ function toPublicUser(u: typeof usersTable.$inferSelect): PublicUser {
   return pub;
 }
 
+async function uploadAvatarToGcs(base64Input: string, reqHost: string, isHttps: boolean): Promise<string | null> {
+  const bucketId = process.env["DEFAULT_OBJECT_STORAGE_BUCKET_ID"];
+  if (!bucketId) return null;
+  try {
+    const dataMatch = base64Input.match(/^data:(image\/\w+);base64,(.+)$/);
+    const mimeType = dataMatch?.[1] ?? "image/jpeg";
+    const rawBase64 = dataMatch?.[2] ?? base64Input;
+    const ext = mimeType.includes("png") ? "png" : "jpg";
+    const filename = `avatars/${randomUUID()}.${ext}`;
+    const buffer = Buffer.from(rawBase64, "base64");
+    const bucket = objectStorageClient.bucket(bucketId);
+    await bucket.file(filename).save(buffer, { metadata: { contentType: mimeType } });
+    const proto = isHttps ? "https" : "http";
+    const host = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0].trim() || reqHost || "localhost";
+    return `${proto}://${host}/api/uploads/serve/${filename}`;
+  } catch {
+    return null;
+  }
+}
+
 async function sendPasswordResetEmail(
   email: string,
   username: string,
@@ -156,6 +177,8 @@ router.post("/auth/register", async (req, res) => {
     city?: string;
     avatarBase64?: string;
   };
+  const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
+  const reqHost = req.get("host") ?? "";
 
   if (!username?.trim() || !email?.trim() || !password) {
     res.status(400).json({ error: "Korisničko ime, email i lozinka su obavezni" });
@@ -212,6 +235,11 @@ router.post("/auth/register", async (req, res) => {
     const verifyToken = randomUUID();
     const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    let avatarUrl: string | null = null;
+    if (avatarBase64) {
+      avatarUrl = await uploadAvatarToGcs(avatarBase64, reqHost, isHttps);
+    }
+
     await db.insert(usersTable).values({
       id,
       username: username.trim(),
@@ -220,7 +248,7 @@ router.post("/auth/register", async (req, res) => {
       phone: phone?.trim() || null,
       address: address?.trim() || null,
       city: city?.trim() || null,
-      avatarBase64: avatarBase64 || null,
+      avatarUrl,
       verificationToken: verifyToken,
       verificationExpiry: verifyExpiry,
       isVerified: false,
@@ -441,7 +469,15 @@ router.put("/auth/profile", async (req, res) => {
     if (phone !== undefined) updates.phone = phone?.trim() || null;
     if (address !== undefined) updates.address = address?.trim() || null;
     if (city !== undefined) updates.city = city?.trim() || null;
-    if (avatarBase64 !== undefined) updates.avatarBase64 = avatarBase64 || null;
+    if (avatarBase64 !== undefined) {
+      if (avatarBase64) {
+        const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
+        const reqHost = req.get("host") ?? "";
+        updates.avatarUrl = await uploadAvatarToGcs(avatarBase64, reqHost, isHttps) ?? null;
+      } else {
+        updates.avatarUrl = null;
+      }
+    }
 
     await db.update(usersTable).set(updates).where(eq(usersTable.id, payload.userId));
 

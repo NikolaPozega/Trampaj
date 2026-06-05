@@ -659,7 +659,7 @@ export default function ProfileScreen() {
       phone: user.phone ?? "",
       address: user.address ?? "",
     });
-    setProfileAvatarUri(user.avatarBase64 ?? null);
+    setProfileAvatarUri(user.avatarUrl ?? null);
     setProfileAvatarBase64(null);
     setProfileError("");
     setEditingProfile(true);
@@ -722,7 +722,7 @@ export default function ProfileScreen() {
     };
     if (profileAvatarBase64) {
       data.avatarBase64 = profileAvatarBase64;
-    } else if (profileAvatarUri === null && user.avatarBase64) {
+    } else if (profileAvatarUri === null && user.avatarUrl) {
       // Removed avatar
       data.avatarBase64 = "";
     }
@@ -836,8 +836,8 @@ export default function ProfileScreen() {
         </Pressable>
 
         <View style={[styles.avatarRing, { borderColor: colors.secondary }]}>
-          {user?.avatarBase64 ? (
-            <Image source={{ uri: user.avatarBase64 }} style={styles.avatarImg} contentFit="cover" />
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} contentFit="cover" />
           ) : (
             <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
               <Text style={[styles.avatarText, { color: colors.primary }]}>
