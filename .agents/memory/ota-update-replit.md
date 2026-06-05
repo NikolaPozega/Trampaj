@@ -11,20 +11,17 @@ Never use plain `eas update` or `npx eas-cli` — they hang. Never run `pnpm exe
 **Why background:** bash tool silently kills processes that produce no output for ~30s; pipe to `head` + use `& wait` pattern.
 
 ## EAS Build submission from main agent
-Use `EAS_NO_VCS=1` to bypass all git checks — this is the ONLY working method from main agent.
-- Fake-git scripts fail at upload stage with "spawn git ENOENT" (EAS CLI spawns git directly, not via PATH)
-- Running from /tmp fails because node_modules aren't there
-- `EAS_NO_VCS=1` makes EAS CLI use direct file listing (ignores VCS entirely)
-- Also set `EAS_SKIP_AUTO_FINGERPRINT=1` to skip slow fingerprint step if needed
+Use `EAS_NO_VCS=1` — the ONLY working method from main agent (git write ops are sandbox-blocked).
+**Why:** Fake-git scripts fail with "spawn git ENOENT" (EAS CLI spawns git directly). Running from /tmp fails — no node_modules. `EAS_NO_VCS=1` bypasses VCS entirely, uses direct file listing.
 
 ```bash
-cd artifacts/mobile && EAS_NO_VCS=1 EAS_SKIP_AUTO_FINGERPRINT=1 EXPO_TOKEN="$EXPO_TOKEN" CI=1 \
+cd artifacts/mobile && EAS_NO_VCS=1 EXPO_TOKEN="$EXPO_TOKEN" CI=1 \
   node /home/runner/workspace/.config/npm/node_global/lib/node_modules/eas-cli/bin/run \
   build --profile preview --platform android --non-interactive --no-wait 2>&1 | head -80 &
 PID=$!; sleep 90; wait $PID 2>/dev/null
 ```
 
-Note: `EAS_NO_VCS=1` uploads ~324 MB (node_modules still included despite .easignore — may be .easignore not applied in NO_VCS mode). If upload size is a problem, investigate .easignore compatibility with EAS_NO_VCS.
+**How to apply:** Always remove `baseUrl` from app.json before submit, restore after. Save build URL to `replit.md` (tracked) since `.local/` is gitignored.
 
 ## Full workflow
 

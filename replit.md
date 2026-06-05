@@ -93,3 +93,8 @@ Platforma za trampu predmeta — mobilna app + web + admin.
 ## Pointers
 
 - Vidi `pnpm-workspace` skill za workspace strukturu i TypeScript setup
+
+## Latest APK Build
+
+- **v1.1.0** (preview/Android): https://expo.dev/accounts/nikola1987/projects/mobile/builds/aefb0805-c501-4164-bd76-82b348e843d2
+  - Submitted 2026-06-05 with `EAS_NO_VCS=1`, `hermesEnabled: false` (bypass hermesc linux64 private-field bug from @sentry/react-native@8.x)
