@@ -469,18 +469,4 @@ router.patch("/social-posts/:id", requireAdmin, async (req: AuthRequest, res) =>
 
 
 
-// ─── PRIVREMENI RESET ENDPOINT — obrisati nakon korištenja ───────────────────
-router.post("/nuke-5743e93f", async (req: Request, res: Response) => {
-  const key = req.headers["x-reset-key"];
-  if (key !== "5743e93f1588175b38ca7d6789da49b8ea425a3720299f1c329188800f86eae3") {
-    res.status(403).json({ error: "Forbidden" }); return;
-  }
-  try {
-    await db.execute(sql`TRUNCATE TABLE messages, escrow_deposits, reviews, saved_listings, blocked_users, social_posts, conversations, listings, users RESTART IDENTITY CASCADE`);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
-  }
-});
-
 export default router;
