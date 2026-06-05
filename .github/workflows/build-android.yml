@@ -47,6 +47,10 @@ jobs:
           console.log('baseUrl removed');
           "
 
+      - name: Install mobile dependencies (ensure devDeps for Metro)
+        working-directory: artifacts/mobile
+        run: pnpm install --no-frozen-lockfile
+
       - name: Expo prebuild (generate android/)
         working-directory: artifacts/mobile
         run: |
