@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;27.1.12297006"
+
+      - name: Remove baseUrl for build
+        run: |
+          node -e "
+          const fs = require('fs');
+          const d = JSON.parse(fs.readFileSync('artifacts/mobile/app.json'));
+          if (d.expo && d.expo.experiments) delete d.expo.experiments.baseUrl;
+          fs.writeFileSync('artifacts/mobile/app.json', JSON.stringify(d, null, 2));
+          console.log('baseUrl removed');
+          "
+
+      - name: Expo prebuild (generate android/)
+        working-directory: artifacts/mobile
+        run: |
+          npx expo prebuild --platform android --clean --no-install
+
+      - name: Build debug APK
+        working-directory: artifacts/mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: trampaj-v1.1.0-debug
+          path: artifacts/mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
