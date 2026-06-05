@@ -33,6 +33,7 @@ router.post("/uploads/image", requireAuth, async (req: AuthRequest, res) => {
 
     await file.save(buffer, {
       metadata: { contentType },
+      resumable: false,
     });
 
     const proto = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";

@@ -50,13 +50,13 @@ function buildCaption(listing: ListingForPost): string {
 // ─── Facebook stranica ────────────────────────────────────────────────────────
 export async function postToFacebook(listing: ListingForPost): Promise<string | null> {
   if (!META_PAGE_ID || !META_USER_TOKEN) {
-    logger.warn("META_PAGE_ID ili META_PAGE_TOKEN nije postavljen, preskačem FB objavu");
+    logger.debug("META_PAGE_ID ili META_PAGE_TOKEN nije postavljen, preskačem FB objavu");
     return null;
   }
 
   const pageToken = await getPageToken();
   if (!pageToken) {
-    logger.warn("Nije moguće dohvatiti Page token, preskačem FB objavu");
+    logger.info("Nije moguće dohvatiti Page token, preskačem FB objavu");
     return null;
   }
 
@@ -100,19 +100,19 @@ export async function postToFacebook(listing: ListingForPost): Promise<string | 
 // ─── Instagram (2-koračni process) ────────────────────────────────────────────
 export async function postToInstagram(listing: ListingForPost): Promise<string | null> {
   if (!META_IG_USER_ID || !META_USER_TOKEN) {
-    logger.warn("META_IG_USER_ID ili META_PAGE_TOKEN nije postavljen, preskačem IG objavu");
+    logger.debug("META_IG_USER_ID ili META_PAGE_TOKEN nije postavljen, preskačem IG objavu");
     return null;
   }
 
   const imageUrl = listing.imageUris[0];
   if (!imageUrl) {
-    logger.warn({ listingId: listing.id }, "Nema slike za Instagram objavu");
+    logger.debug({ listingId: listing.id }, "Nema slike za Instagram objavu");
     return null;
   }
 
   const pageToken = await getPageToken();
   if (!pageToken) {
-    logger.warn("Nije moguće dohvatiti Page token, preskačem IG objavu");
+    logger.info("Nije moguće dohvatiti Page token, preskačem IG objavu");
     return null;
   }
 

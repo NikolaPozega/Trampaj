@@ -107,7 +107,7 @@ async function uploadAvatarToGcs(base64Input: string, reqHost: string, isHttps: 
     const filename = `avatars/${randomUUID()}.${ext}`;
     const buffer = Buffer.from(rawBase64, "base64");
     const bucket = objectStorageClient.bucket(bucketId);
-    await bucket.file(filename).save(buffer, { metadata: { contentType: mimeType } });
+    await bucket.file(filename).save(buffer, { metadata: { contentType: mimeType }, resumable: false });
     const proto = isHttps ? "https" : "http";
     const host = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0].trim() || reqHost || "localhost";
     return `${proto}://${host}/api/uploads/serve/${filename}`;
