@@ -1,6 +1,7 @@
 - [Feed ordering & ad logic](feed-ordering.md) — newest-first feed; logged-in users get personalized ranking by own-listing keywords + search history.
 - [Ad injection pattern](ad-injection.md) — ads at row3col3, row6col1, row9col3, row12col1... (every 3 rows, alternating col); must be infinite (dynamic, not fixed count).
 - [Backend architecture](backend-arch.md) — PostgreSQL + Drizzle ORM; all new tables use text UUID PKs; Drizzle join spread uses getTableColumns(), not table spread directly.
+- [Dev vs prod databases](dev-prod-db.md) — dev and prod are SEPARATE databases; dev DB wiped clean on 2026-06-04; ETag disabled + Cache-Control: no-store on all /api routes.
 - [Mobile context API pattern](mobile-context-api.md) — ListingsContext/ChatContext use API_BASE from EXPO_PUBLIC_DOMAIN; token from useAuth(); SAMPLE_LISTINGS shown when DB empty or offline.
 - [Web guest tab bar](web-guest-tabbar.md) — tab bar intentionally hidden for guests (display:none); AdBannerSlot size="bottom" serves as guest footer; no tab bar offset needed for the ad.
 - [Expo splash screen fix](expo-splash-fix.md) — must import SplashScreen from "expo-router" not "expo-splash-screen"; never call preventAutoHideAsync() manually.
