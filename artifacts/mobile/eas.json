@@ -20,6 +20,9 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "trampaj.hr"
       }
     }
   },
