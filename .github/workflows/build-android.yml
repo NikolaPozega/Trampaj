@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -22,7 +22,7 @@ jobs:
         with:
           version: 9
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: pnpm install --no-frozen-lockfile
 
       - name: Setup Java
@@ -37,7 +37,7 @@ jobs:
       - name: Install NDK
         run: sdkmanager "ndk;27.1.12297006"
 
-      - name: Remove baseUrl for build
+      - name: Remove baseUrl from app.json
         run: |
           node -e "
           const fs = require('fs');
@@ -47,16 +47,27 @@ jobs:
           console.log('baseUrl removed');
           "
 
-      - name: Install mobile dependencies (ensure devDeps for Metro)
+      - name: Install mobile dependencies
         working-directory: artifacts/mobile
         run: pnpm install --no-frozen-lockfile
 
-      - name: Expo prebuild (generate android/)
+      - name: Expo prebuild (generate android/ directory)
         working-directory: artifacts/mobile
-        run: |
-          npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+        run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Build release APK (signed with debug keystore)
+      - name: Disable hermesc AOT (linux64 hermesc is broken)
+        working-directory: artifacts/mobile/android
+        run: |
+          echo "" >> gradle.properties
+          echo "# Disable hermesc AOT - linux64 binary is broken, Hermes runs JS in JIT mode on device" >> gradle.properties
+          echo "hermesFlags=" >> gradle.properties
+          echo "hermesFlagsRelease=" >> gradle.properties
+          echo "hermesFlagsDebug=" >> gradle.properties
+          echo "hermesc AOT disabled"
+
+      - name: Build release APK
         working-directory: artifacts/mobile/android
         env:
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
@@ -69,9 +80,9 @@ jobs:
             -Pandroid.injected.signing.key.alias=androiddebugkey \
             -Pandroid.injected.signing.key.password=android
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: trampaj-v1.1.0-release
           path: artifacts/mobile/android/app/build/outputs/apk/release/*.apk
-          retention-days: 7
+          retention-days: 14
