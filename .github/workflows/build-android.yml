@@ -57,17 +57,24 @@ jobs:
           EXPO_PUBLIC_DOMAIN: trampaj.hr
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Disable hermesc AOT (linux64 hermesc is broken)
-        working-directory: artifacts/mobile/android
+      - name: Pre-bundle JS with Metro (no hermesc - Hermes JIT on device)
+        working-directory: artifacts/mobile
+        env:
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          NODE_OPTIONS: --dns-result-order=ipv4first
         run: |
-          echo "" >> gradle.properties
-          echo "# Disable hermesc AOT - linux64 binary is broken, Hermes runs JS in JIT mode on device" >> gradle.properties
-          echo "hermesFlags=" >> gradle.properties
-          echo "hermesFlagsRelease=" >> gradle.properties
-          echo "hermesFlagsDebug=" >> gradle.properties
-          echo "hermesc AOT disabled"
+          mkdir -p android/app/src/main/assets
+          node_modules/.bin/react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res \
+            --reset-cache
+          echo "Bundle size: $(du -sh android/app/src/main/assets/index.android.bundle)"
 
-      - name: Build release APK
+      - name: Build release APK (JS already bundled, skipping hermesc task)
         working-directory: artifacts/mobile/android
         env:
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
@@ -75,6 +82,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon \
+            -x createBundleReleaseJsAndAssets \
             -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androiddebugkey \
