@@ -57,14 +57,6 @@ jobs:
           EXPO_PUBLIC_DOMAIN: trampaj.hr
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Disable hermesc (use JSC engine - avoids linux64 hermesc crash)
-        working-directory: artifacts/mobile/android
-        run: |
-          sed -i 's/hermesEnabled=true/hermesEnabled=false/' gradle.properties
-          echo "--- gradle.properties hermesEnabled line ---"
-          grep hermesEnabled gradle.properties || echo "not found, appending"
-          grep -q "hermesEnabled" gradle.properties || echo "hermesEnabled=false" >> gradle.properties
-
       - name: Build release APK
         working-directory: artifacts/mobile/android
         env:
