@@ -81,6 +81,7 @@ jobs:
             i=$((i+1))
           done
           [ -n "$INPUT" ] && [ -n "$OUTPUT" ] && cp "$INPUT" "$OUTPUT"
+          [ -n "$OUTPUT" ] && printf '{"version":3,"sources":[],"mappings":""}' > "${OUTPUT}.map"
           exit 0
           HERMESC_WRAPPER
           chmod +x "$HERMESC"
