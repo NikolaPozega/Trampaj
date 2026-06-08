@@ -57,19 +57,34 @@ jobs:
           EXPO_PUBLIC_DOMAIN: trampaj.hr
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Pre-bundle JS (bypass hermesc)
-        working-directory: artifacts/mobile
-        env:
-          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
-          EXPO_PUBLIC_DOMAIN: trampaj.hr
+      - name: Replace hermesc with bypass wrapper (hermesc linux64 broken)
         run: |
-          mkdir -p android/app/src/main/assets
-          npx expo export:embed \
-            --platform android \
-            --entry-file "$PWD/index.js" \
-            --bundle-output "$PWD/android/app/src/main/assets/index.android.bundle" \
-            --assets-dest "$PWD/android/app/src/main/res" \
-            --dev false
+          HERMESC=$(find node_modules -path "*/hermesc/linux64-bin/hermesc" -type f 2>/dev/null | head -1)
+          if [ -z "$HERMESC" ]; then
+            echo "hermesc not found in workspace node_modules, trying artifacts/mobile..."
+            HERMESC=$(find artifacts/mobile/node_modules -path "*/hermesc/linux64-bin/hermesc" -type f 2>/dev/null | head -1)
+          fi
+          echo "Found hermesc: $HERMESC"
+          mv "$HERMESC" "${HERMESC}.orig"
+          cat > "$HERMESC" << 'HERMESC_WRAPPER'
+          #!/bin/bash
+          OUTPUT=""
+          INPUT=""
+          i=1
+          while [ $i -le $# ]; do
+            ARG="${!i}"
+            if [ "$ARG" = "-out" ]; then
+              i=$((i+1)); OUTPUT="${!i}"
+            elif [[ "$ARG" != "-"* ]] && [ -n "$ARG" ] && [ -z "$INPUT" ]; then
+              INPUT="$ARG"
+            fi
+            i=$((i+1))
+          done
+          [ -n "$INPUT" ] && [ -n "$OUTPUT" ] && cp "$INPUT" "$OUTPUT"
+          exit 0
+          HERMESC_WRAPPER
+          chmod +x "$HERMESC"
+          echo "hermesc replaced with no-op wrapper"
 
       - name: Build release APK
         working-directory: artifacts/mobile/android
@@ -79,7 +94,6 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon \
-            -x createBundleReleaseJsAndAssets \
             -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androiddebugkey \
