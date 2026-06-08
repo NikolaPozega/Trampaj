@@ -87,6 +87,16 @@ jobs:
           chmod +x "$HERMESC"
           echo "hermesc replaced with no-op wrapper"
 
+      - name: Create debug keystore
+        run: |
+          mkdir -p $HOME/.android
+          keytool -genkey -v \
+            -keystore $HOME/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build release APK
         working-directory: artifacts/mobile/android
         env:
