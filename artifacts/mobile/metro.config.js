@@ -27,4 +27,20 @@ config.server = {
   },
 };
 
+const existingGetModules =
+  config.serializer && config.serializer.getModulesRunBeforeMainModule
+    ? config.serializer.getModulesRunBeforeMainModule
+    : () => [require.resolve("react-native/Libraries/Core/InitializeCore")];
+
+config.serializer = {
+  ...config.serializer,
+  getModulesRunBeforeMainModule: (entryFilePath) => {
+    const existing = existingGetModules(entryFilePath);
+    return [
+      require.resolve("./src/polyfills/domException.js"),
+      ...existing,
+    ];
+  },
+};
+
 module.exports = config;
