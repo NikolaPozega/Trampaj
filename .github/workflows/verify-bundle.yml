@@ -1,0 +1,188 @@
+name: Verify Bundle (no APK build)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install root dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Remove baseUrl from app.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const d = JSON.parse(fs.readFileSync('artifacts/mobile/app.json'));
+          if (d.expo && d.expo.experiments) delete d.expo.experiments.baseUrl;
+          fs.writeFileSync('artifacts/mobile/app.json', JSON.stringify(d, null, 2));
+          "
+
+      - name: Install mobile dependencies
+        working-directory: artifacts/mobile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Expo prebuild (generate android/)
+        working-directory: artifacts/mobile
+        env:
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Replace hermesc with bypass wrapper
+        run: |
+          HERMESC=$(find node_modules artifacts/mobile/node_modules \
+            -path "*/hermesc/linux64-bin/hermesc" -type f 2>/dev/null | head -1)
+          echo "Found hermesc: $HERMESC"
+          mv "$HERMESC" "${HERMESC}.orig"
+          cat > "$HERMESC" << 'HERMESC_WRAPPER'
+          #!/bin/bash
+          OUTPUT=""; INPUT=""
+          i=1
+          while [ $i -le $# ]; do
+            ARG="${!i}"
+            if [ "$ARG" = "-out" ]; then i=$((i+1)); OUTPUT="${!i}"
+            elif [[ "$ARG" != "-"* ]] && [ -n "$ARG" ] && [ -z "$INPUT" ]; then INPUT="$ARG"
+            fi
+            i=$((i+1))
+          done
+          [ -n "$INPUT" ] && [ -n "$OUTPUT" ] && cp "$INPUT" "$OUTPUT"
+          [ -n "$OUTPUT" ] && printf '{"version":3,"sources":[],"mappings":""}' > "${OUTPUT}.map"
+          exit 0
+          HERMESC_WRAPPER
+          chmod +x "$HERMESC"
+          echo "hermesc replaced"
+
+      - name: Generate expo export bundle (correct pipeline)
+        working-directory: artifacts/mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+        run: |
+          node_modules/.bin/expo export \
+            --platform android \
+            --output-dir /tmp/expo-bundle \
+            --no-bytecode
+
+          BUNDLE=$(ls /tmp/expo-bundle/_expo/static/js/android/*.js | head -1)
+          cp "$BUNDLE" /tmp/expo-bundle-correct.js
+
+          echo "=== expo-bundle-correct.js ==="
+          echo "Veličina : $(wc -c < /tmp/expo-bundle-correct.js) bytes"
+          echo "SHA256   : $(sha256sum /tmp/expo-bundle-correct.js | cut -d' ' -f1)"
+
+      - name: Create Gradle init script (no changes to build.gradle)
+        run: |
+          cat > /tmp/replace-bundle.init.gradle << 'INIT_EOF'
+          allprojects {
+              afterEvaluate { project ->
+                  def bundleTask = project.tasks.findByName("createBundleReleaseJsAndAssets")
+                  if (bundleTask != null) {
+                      bundleTask.doLast {
+                          def correct = new File("/tmp/expo-bundle-correct.js")
+                          def outDir  = new File(project.buildDir,
+                              "generated/assets/createBundleReleaseJsAndAssets")
+                          def out     = new File(outDir, "index.android.bundle")
+                          if (!correct.exists())
+                              throw new GradleException("Pre-built bundle not found: /tmp/expo-bundle-correct.js")
+                          if (!out.exists())
+                              throw new GradleException("Gradle bundle output not found: ${out.absolutePath}")
+                          out.bytes = correct.bytes
+                          println("doLast: bundle replaced (${out.length()} bytes)")
+                      }
+                  }
+              }
+          }
+          INIT_EOF
+
+          echo "Init script created: /tmp/replace-bundle.init.gradle"
+          echo "android/app/build.gradle MD5 BEFORE:"
+          md5sum artifacts/mobile/android/app/build.gradle
+
+      - name: Run ONLY createBundleReleaseJsAndAssets (no assembleRelease)
+        working-directory: artifacts/mobile/android
+        env:
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:createBundleReleaseJsAndAssets --no-daemon \
+            --init-script /tmp/replace-bundle.init.gradle
+
+      - name: Verify android/app/build.gradle nije mijenjan
+        run: |
+          echo "android/app/build.gradle MD5 AFTER:"
+          md5sum artifacts/mobile/android/app/build.gradle
+          echo "(usporedi s MD5 BEFORE iz prethodnog stepa — mora biti identičan)"
+
+      - name: SHA256 usporedba i grep provjere (fail-fast)
+        run: |
+          CORRECT="/tmp/expo-bundle-correct.js"
+          GRADLE="artifacts/mobile/android/app/build/generated/assets/createBundleReleaseJsAndAssets/index.android.bundle"
+
+          echo "=== SHA256 usporedba ==="
+          SHA_CORRECT=$(sha256sum "$CORRECT" | cut -d' ' -f1)
+          SHA_GRADLE=$(sha256sum "$GRADLE"   | cut -d' ' -f1)
+          echo "expo-bundle-correct.js : $SHA_CORRECT"
+          echo "Gradle output bundle   : $SHA_GRADLE"
+
+          if [ "$SHA_CORRECT" != "$SHA_GRADLE" ]; then
+            echo "FAIL: SHA ne poklapa — doLast hook nije zamijenio bundle!"
+            exit 1
+          fi
+          echo "OK: SHA identičan — hook je ispravno zamijenio bundle"
+
+          echo ""
+          echo "=== grep provjere na Gradle output bundleu ==="
+
+          C=$(grep -c "class MessageQueue {" "$GRADLE" || true)
+          echo "class MessageQueue { : $C"
+          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+
+          C=$(grep -c "_default = MessageQueue" "$GRADLE" || true)
+          echo "_default = MessageQueue : $C"
+          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+
+          C=$(grep -cP '(?<![a-zA-Z0-9_])#name(?![a-zA-Z0-9_])' "$GRADLE" || true)
+          echo "#name raw : $C"
+          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+
+          C=$(grep -cP '(?<![a-zA-Z0-9_])#code(?![a-zA-Z0-9_])' "$GRADLE" || true)
+          echo "#code raw : $C"
+          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+
+          if ! head -20 "$GRADLE" | grep -q "DOMException"; then
+            echo "FAIL: DOMException nije u headeru"
+            exit 1
+          fi
+          echo "DOMException u headeru : OK"
+
+          echo ""
+          echo "=== SVE PROVJERE PROŠLE ==="
+          echo "Bundle je čist — spreman za assembleRelease (uz odobrenje)"
