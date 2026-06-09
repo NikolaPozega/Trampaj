@@ -35,7 +35,7 @@ const existingGetPolyfills =
 config.serializer = {
   ...config.serializer,
   getPolyfills: (ctx) => [
-    require.resolve("./src/polyfills/domException.js"),
+    require.resolve("./src/polyfills/startupRuntime.js"),
     ...existingGetPolyfills(ctx),
   ],
 };
