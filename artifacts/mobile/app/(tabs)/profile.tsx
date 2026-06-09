@@ -533,28 +533,30 @@ export default function ProfileScreen() {
 
   async function handleCheckUpdate() {
     if (IS_WEB) return;
-    setUpdating(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      const check = await Updates.checkForUpdateAsync();
-      if (check.isAvailable) {
-        await Updates.fetchUpdateAsync();
-        Alert.alert(
-          "Nova verzija dostupna",
-          "Nadogradnja je preuzeta. Restartaj aplikaciju.",
-          [
-            { text: "Restartaj sada", onPress: () => Updates.reloadAsync() },
-            { text: "Kasnije", style: "cancel" },
-          ]
-        );
-      } else {
-        Alert.alert("Aplikacija je aktualna", "Koristiš najnoviju verziju.");
-      }
-    } catch {
-      Alert.alert("Pogreška", "Provjera ažuriranja nije uspjela. Provjeri vezu.");
-    } finally {
-      setUpdating(false);
-    }
+    // OTA check disabled — re-enable after stable build confirmed
+    // setUpdating(true);
+    // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // try {
+    //   const check = await Updates.checkForUpdateAsync();
+    //   if (check.isAvailable) {
+    //     await Updates.fetchUpdateAsync();
+    //     Alert.alert(
+    //       "Nova verzija dostupna",
+    //       "Nadogradnja je preuzeta. Restartaj aplikaciju.",
+    //       [
+    //         { text: "Restartaj sada", onPress: () => Updates.reloadAsync() },
+    //         { text: "Kasnije", style: "cancel" },
+    //       ]
+    //     );
+    //   } else {
+    //     Alert.alert("Aplikacija je aktualna", "Koristiš najnoviju verziju.");
+    //   }
+    // } catch {
+    //   Alert.alert("Pogreška", "Provjera ažuriranja nije uspjela. Provjeri vezu.");
+    // } finally {
+    //   setUpdating(false);
+    // }
+    Alert.alert("Ažuriranje", "Automatska provjera privremeno isključena.");
   }
 
   async function onRefresh() {
