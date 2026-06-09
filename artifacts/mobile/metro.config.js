@@ -27,20 +27,17 @@ config.server = {
   },
 };
 
-const existingGetModules =
-  config.serializer && config.serializer.getModulesRunBeforeMainModule
-    ? config.serializer.getModulesRunBeforeMainModule
-    : () => [require.resolve("react-native/Libraries/Core/InitializeCore")];
+const existingGetPolyfills =
+  config.serializer && config.serializer.getPolyfills
+    ? config.serializer.getPolyfills
+    : () => [];
 
 config.serializer = {
   ...config.serializer,
-  getModulesRunBeforeMainModule: (entryFilePath) => {
-    const existing = existingGetModules(entryFilePath);
-    return [
-      require.resolve("./src/polyfills/domException.js"),
-      ...existing,
-    ];
-  },
+  getPolyfills: (ctx) => [
+    require.resolve("./src/polyfills/domException.js"),
+    ...existingGetPolyfills(ctx),
+  ],
 };
 
 module.exports = config;
