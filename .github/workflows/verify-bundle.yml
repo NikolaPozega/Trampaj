@@ -53,7 +53,7 @@ jobs:
           EXPO_PUBLIC_DOMAIN: trampaj.hr
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Generate expo export bundle (fixed Babel/Metro pipeline)
+      - name: Generate expo export bundle
         working-directory: artifacts/mobile
         env:
           NODE_ENV: production
@@ -69,102 +69,139 @@ jobs:
           cp "$BUNDLE" /tmp/expo-bundle-correct.js
 
           echo "=== expo-bundle-correct.js ==="
-          echo "Veličina : $(wc -c < /tmp/expo-bundle-correct.js) bytes"
+          echo "Velicina : $(wc -c < /tmp/expo-bundle-correct.js) bytes"
           echo "SHA256   : $(sha256sum /tmp/expo-bundle-correct.js | cut -d' ' -f1)"
 
-      - name: Hermesc compile test (realni hermesc iz projekta)
+      - name: Hermesc pronalazak i smoke test
         run: |
           HERMESC=$(find node_modules artifacts/mobile/node_modules \
             -path "*/hermesc/linux64-bin/hermesc" -type f 2>/dev/null | head -1)
-          echo "=== hermesc compile test ==="
-          echo "hermesc binarni: $HERMESC"
+
+          echo "=== hermesc binary ==="
+          echo "Lokacija: $HERMESC"
 
           if [ -z "$HERMESC" ]; then
             echo "FAIL: hermesc nije pronađen"
             exit 1
           fi
 
-          echo "hermesc --version output:"
+          echo ""
+          echo "hermesc --version:"
           timeout 10 "$HERMESC" --version 2>&1 || true
 
           echo ""
-          echo "Pokretanje hermesc na bundle-u..."
-          HERMESC_OUT=$(timeout 60 "$HERMESC" \
+          echo "=== Smoke test (var x = 1 + 1;) ==="
+          echo 'var x = 1 + 1;' > /tmp/hermes-smoke.js
+          set +e
+          SMOKE_OUT=$(timeout 10 "$HERMESC" -O -emit-binary \
+            -out=/tmp/hermes-smoke.hbc \
+            /tmp/hermes-smoke.js 2>&1)
+          SMOKE_EXIT=$?
+          set -e
+          echo "smoke output:"
+          echo "$SMOKE_OUT"
+          echo "smoke exit code: $SMOKE_EXIT"
+
+          if [ $SMOKE_EXIT -ne 0 ]; then
+            echo "WARN: hermesc binary ne radi na ovom CI runneru"
+            echo "Problem je u linux64 binary kompatiblnosti, ne u app bundleu"
+            echo "HERMESC_BROKEN=true" >> "$GITHUB_ENV"
+          else
+            echo "OK: hermesc smoke test prosao — binary radi"
+            echo "HERMESC_BROKEN=false" >> "$GITHUB_ENV"
+          fi
+
+          echo "HERMESC_PATH=$HERMESC" >> "$GITHUB_ENV"
+
+      - name: Hermesc bundle compile test
+        run: |
+          if [ "$HERMESC_BROKEN" = "true" ]; then
+            echo "SKIP: hermesc binary broken na ovom runneru — prelazimo na grep provjere"
+            exit 0
+          fi
+
+          echo "=== Hermesc bundle compile ==="
+          set +e
+          HERMESC_OUT=$(timeout 120 "$HERMESC_PATH" \
             -O -emit-binary \
             -output-source-map \
             -out=/tmp/bundle.hbc \
             /tmp/expo-bundle-correct.js 2>&1)
           HERMESC_EXIT=$?
+          set -e
+
           echo "hermesc stdout/stderr:"
           echo "$HERMESC_OUT"
+          echo ""
           echo "hermesc exit code: $HERMESC_EXIT"
 
           if [ $HERMESC_EXIT -eq 0 ]; then
-            echo "OK: hermesc je uspješno kompajlirao bundle — Hermes-compatible"
-          elif echo "$HERMESC_OUT" | grep -q "invalid statement\|SyntaxError\|unexpected token\|parse error"; then
-            echo "FAIL: hermesc JS parse error (bundle nije Hermes-compatible)"
-            exit 1
+            echo "OK: hermesc uspjesno kompajlirao bundle — Hermes-compatible"
           else
-            echo "WARN: hermesc pao s binarnom greškom (poznati linux64 issue, nije JS greška)"
-            echo "Nastavlja se s grep provjerama kao alternativnim dokazom..."
+            echo "FAIL: hermesc bundle compile pao (exit $HERMESC_EXIT)"
+            exit 1
           fi
 
-      - name: Class syntax provjere — PrivateValueStore i ostale class deklaracije
+      - name: Class syntax provjere u bundleu
         run: |
           BUNDLE="/tmp/expo-bundle-correct.js"
 
-          echo "=== Provjera class sintakse u bundleu ==="
+          echo "=== ES6 class deklaracije ==="
 
           echo "--- PrivateValueStore kontekst ---"
-          grep -n "PrivateValueStore" "$BUNDLE" || echo "(nije pronađen)"
+          grep -n "PrivateValueStore" "$BUNDLE" | head -5 || echo "(nije pronađen)"
 
           echo ""
-          echo "--- ES6 class deklaracije (class <name> {) ---"
+          echo "--- Sve class deklaracije (class Ime {) ---"
           CLASS_COUNT=$(grep -cP '\bclass\s+\w+\s*\{' "$BUNDLE" || true)
-          echo "Pronađeno class deklaracija: $CLASS_COUNT"
-          grep -nP '\bclass\s+\w+\s*\{' "$BUNDLE" | head -20 || echo "(nema)"
+          echo "Ukupno: $CLASS_COUNT"
+          grep -nP '\bclass\s+\w+\s*\{' "$BUNDLE" | head -30 || echo "(nema)"
 
           echo ""
-          echo "--- Prazne class deklaracije (class t{}, class n{} itd.) ---"
-          EMPTY_CLASS=$(grep -cP '\bclass\s+\w+\s*\{\s*\}' "$BUNDLE" || true)
-          echo "Praznih class deklaracija: $EMPTY_CLASS"
+          echo "--- Prazne class deklaracije (class t{}, class n{}) ---"
+          EMPTY_COUNT=$(grep -cP '\bclass\s+\w+\s*\{\s*\}' "$BUNDLE" || true)
+          echo "Praznih: $EMPTY_COUNT"
           grep -nP '\bclass\s+\w+\s*\{\s*\}' "$BUNDLE" | head -10 || echo "(nema)"
 
           echo ""
           if [ "$CLASS_COUNT" -gt 0 ]; then
-            echo "FAIL: Bundle još uvijek sadrži ES6 class deklaracije ($CLASS_COUNT kom)"
-            echo "Fix nije primjenjen ili nije ispravan"
+            echo "FAIL: Bundle sadrzi ES6 class deklaracije ($CLASS_COUNT kom)"
             exit 1
           fi
           echo "OK: Nema ES6 class deklaracija u bundleu"
 
-      - name: Fail-fast grep provjere (Hermes crash pattern)
+      - name: Grep provjere — Hermes crash patterne
         run: |
           BUNDLE="/tmp/expo-bundle-correct.js"
-          echo "=== grep provjere na bundleu ==="
+          echo "=== Hermes crash pattern provjere ==="
+          FAIL=0
 
           C=$(grep -c "class MessageQueue {" "$BUNDLE" || true)
           echo "class MessageQueue { : $C"
-          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+          [ "$C" -gt 0 ] && FAIL=1
 
           C=$(grep -c "_default = MessageQueue" "$BUNDLE" || true)
           echo "_default = MessageQueue : $C"
-          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+          [ "$C" -gt 0 ] && FAIL=1
 
-          C=$(grep -cP '(?<![a-zA-Z0-9_])#name(?![a-zA-Z0-9_])' "$BUNDLE" || true)
+          C=$(grep -cP '(?<![a-zA-Z0-9_$])#name(?![a-zA-Z0-9_$])' "$BUNDLE" || true)
           echo "#name raw : $C"
-          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+          [ "$C" -gt 0 ] && FAIL=1
 
-          C=$(grep -cP '(?<![a-zA-Z0-9_])#code(?![a-zA-Z0-9_])' "$BUNDLE" || true)
+          C=$(grep -cP '(?<![a-zA-Z0-9_$])#code(?![a-zA-Z0-9_$])' "$BUNDLE" || true)
           echo "#code raw : $C"
-          [ "$C" -gt 0 ] && echo "FAIL" && exit 1
+          [ "$C" -gt 0 ] && FAIL=1
 
-          if ! head -20 "$BUNDLE" | grep -q "DOMException"; then
-            echo "FAIL: DOMException nije u headeru"
-            exit 1
+          if head -20 "$BUNDLE" | grep -q "DOMException"; then
+            echo "DOMException u headeru : OK"
+          else
+            echo "DOMException u headeru : MISSING"
+            FAIL=1
           fi
-          echo "DOMException u headeru : OK"
 
           echo ""
-          echo "=== SVE PROVJERE PROŠLE ==="
-          echo "Bundle spreman za assembleRelease (uz odobrenje)"
+          if [ "$FAIL" -eq 1 ]; then
+            echo "FAIL: jedan ili vise crash patterna pronadeni"
+            exit 1
+          fi
+          echo "=== SVE PROVJERE PROSLE — bundle izgleda Hermes-compatible ==="
