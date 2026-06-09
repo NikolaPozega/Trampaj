@@ -40,31 +40,4 @@ config.serializer = {
   ],
 };
 
-// Paketi koji MORAJU proći kroz Babel (sadrže ES6+ sintaksu koju Hermes ne podržava)
-// @react-navigation šalje class sintaksu koja pada na Hermes JIT-kompajleru
-const PACKAGES_TO_TRANSFORM = [
-  "react-native",
-  "@react-native",
-  "@react-navigation",
-  "expo",
-  "@expo",
-  "expo-router",
-  "@unimodules",
-  "unimodules",
-  "@sentry/react-native",
-  "native-base",
-  "react-native-reanimated",
-  "react-native-screens",
-  "react-native-gesture-handler",
-  "react-native-safe-area-context",
-  "react-native-svg",
-].join("|");
-
-config.transformer = {
-  ...config.transformer,
-  transformIgnorePatterns: [
-    `/node_modules/(?!(${PACKAGES_TO_TRANSFORM})/)`,
-  ],
-};
-
 module.exports = config;
