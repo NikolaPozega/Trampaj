@@ -87,6 +87,31 @@ jobs:
           chmod +x "$HERMESC"
           echo "hermesc replaced with no-op wrapper"
 
+      - name: Pre-bundle JS with expo export:embed
+        working-directory: artifacts/mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_DOMAIN: trampaj.hr
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+        run: |
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/app/src/main/res
+
+          # expo export:embed koristi isti Babel/Metro pipeline kao expo export
+          # (koji lokalno ispravno primjenjuje class/private transforms)
+          # --reset-cache osigurava da nema stale Metro cache-a
+          npx expo export:embed \
+            --platform android \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res \
+            --dev false \
+            --reset-cache
+
+          echo "Bundle size: $(wc -c < android/app/src/main/assets/index.android.bundle) bytes"
+          echo "class MessageQueue check (should be 0):"
+          grep -c "class MessageQueue" android/app/src/main/assets/index.android.bundle || true
+
       - name: Create debug keystore
         run: |
           mkdir -p $HOME/.android
@@ -105,7 +130,10 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError"
         run: |
           chmod +x gradlew
+          # -x createBundleReleaseJsAndAssets: preskači Gradleov Metro bundling
+          # Naš pre-bundle iz src/main/assets/ ide direktno u APK
           ./gradlew assembleRelease --no-daemon \
+            -x createBundleReleaseJsAndAssets \
             -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androiddebugkey \
