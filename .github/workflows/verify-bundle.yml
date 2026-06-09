@@ -100,12 +100,11 @@ jobs:
         run: |
           cat > /tmp/replace-bundle.init.gradle << 'INIT_EOF'
           allprojects {
-              afterEvaluate { project ->
-                  def bundleTask = project.tasks.findByName("createBundleReleaseJsAndAssets")
-                  if (bundleTask != null) {
-                      bundleTask.doLast {
+              tasks.configureEach { task ->
+                  if (task.name == "createBundleReleaseJsAndAssets") {
+                      task.doLast {
                           def correct = new File("/tmp/expo-bundle-correct.js")
-                          def outDir  = new File(project.buildDir,
+                          def outDir  = new File(task.project.buildDir,
                               "generated/assets/createBundleReleaseJsAndAssets")
                           def out     = new File(outDir, "index.android.bundle")
                           if (!correct.exists())
