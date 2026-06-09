@@ -87,30 +87,76 @@ jobs:
           chmod +x "$HERMESC"
           echo "hermesc replaced with no-op wrapper"
 
-      - name: Pre-bundle JS with expo export:embed
+      - name: Pre-bundle JS with expo export
         working-directory: artifacts/mobile
         env:
           NODE_ENV: production
           EXPO_PUBLIC_DOMAIN: trampaj.hr
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
         run: |
-          mkdir -p android/app/src/main/assets
-          mkdir -p android/app/src/main/res
-
-          # expo export:embed koristi isti Babel/Metro pipeline kao expo export
-          # (koji lokalno ispravno primjenjuje class/private transforms)
-          # --reset-cache osigurava da nema stale Metro cache-a
-          npx expo export:embed \
+          mkdir -p /tmp/expo-bundle
+          node_modules/.bin/expo export \
             --platform android \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res \
-            --dev false \
-            --reset-cache
+            --output-dir /tmp/expo-bundle \
+            --no-bytecode
 
-          echo "Bundle size: $(wc -c < android/app/src/main/assets/index.android.bundle) bytes"
-          echo "class MessageQueue check (should be 0):"
-          grep -c "class MessageQueue" android/app/src/main/assets/index.android.bundle || true
+          BUNDLE=$(ls /tmp/expo-bundle/_expo/static/js/android/*.js 2>/dev/null | head -1)
+          echo "Generated bundle: $BUNDLE"
+
+          mkdir -p android/app/src/main/assets
+          cp "$BUNDLE" android/app/src/main/assets/index.android.bundle
+
+      - name: Verify pre-built bundle (fail-fast)
+        run: |
+          BUNDLE="artifacts/mobile/android/app/src/main/assets/index.android.bundle"
+
+          # 1. File postoji i nije prazan
+          if [ ! -s "$BUNDLE" ]; then
+            echo "ERROR: Bundle ne postoji ili je prazan!"
+            exit 1
+          fi
+          echo "OK: Bundle postoji, veličina: $(wc -c < "$BUNDLE") bytes"
+
+          # 2. class MessageQueue { mora biti 0
+          COUNT=$(grep -c "class MessageQueue {" "$BUNDLE" || true)
+          echo "class MessageQueue { : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: Bundle sadrži 'class MessageQueue {' — Hermes će pasti!"
+            exit 1
+          fi
+
+          # 3. _default = MessageQueue mora biti 0
+          COUNT=$(grep -c "_default = MessageQueue" "$BUNDLE" || true)
+          echo "_default = MessageQueue : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: Bundle sadrži '_default = MessageQueue'"
+            exit 1
+          fi
+
+          # 4. raw #name mora biti 0
+          COUNT=$(grep -cP '(?<![a-zA-Z0-9_])#name(?![a-zA-Z0-9_])' "$BUNDLE" || true)
+          echo "#name raw field : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: Bundle sadrži raw '#name' private field"
+            exit 1
+          fi
+
+          # 5. raw #code mora biti 0
+          COUNT=$(grep -cP '(?<![a-zA-Z0-9_])#code(?![a-zA-Z0-9_])' "$BUNDLE" || true)
+          echo "#code raw field : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: Bundle sadrži raw '#code' private field"
+            exit 1
+          fi
+
+          # 6. DOMException mora biti u prvih 20 linija
+          if ! head -20 "$BUNDLE" | grep -q "DOMException"; then
+            echo "FAIL: DOMException polyfill nije u prvih 20 linija bundlea!"
+            exit 1
+          fi
+          echo "OK: DOMException polyfill je u headeru"
+
+          echo "=== SVE PROVJERE PROŠLE ==="
 
       - name: Create debug keystore
         run: |
@@ -130,14 +176,64 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError"
         run: |
           chmod +x gradlew
-          # -x createBundleReleaseJsAndAssets: preskači Gradleov Metro bundling
-          # Naš pre-bundle iz src/main/assets/ ide direktno u APK
           ./gradlew assembleRelease --no-daemon \
             -x createBundleReleaseJsAndAssets \
             -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androiddebugkey \
             -Pandroid.injected.signing.key.password=android
+
+      - name: Verify bundle inside APK (fail-fast)
+        run: |
+          APK=$(ls artifacts/mobile/android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+          echo "APK: $APK"
+
+          # Izvuci index.android.bundle iz APK-a
+          mkdir -p /tmp/apk-verify
+          cd /tmp/apk-verify
+          unzip -p "$APK" assets/index.android.bundle > apk-bundle.js
+          echo "Bundle iz APK-a, veličina: $(wc -c < apk-bundle.js) bytes"
+
+          # 1. class MessageQueue {
+          COUNT=$(grep -c "class MessageQueue {" apk-bundle.js || true)
+          echo "class MessageQueue { : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: APK bundle sadrži 'class MessageQueue {' — app će pasti!"
+            exit 1
+          fi
+
+          # 2. _default = MessageQueue
+          COUNT=$(grep -c "_default = MessageQueue" apk-bundle.js || true)
+          echo "_default = MessageQueue : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: APK bundle sadrži '_default = MessageQueue'"
+            exit 1
+          fi
+
+          # 3. raw #name
+          COUNT=$(grep -cP '(?<![a-zA-Z0-9_])#name(?![a-zA-Z0-9_])' apk-bundle.js || true)
+          echo "#name raw field : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: APK bundle sadrži raw '#name'"
+            exit 1
+          fi
+
+          # 4. raw #code
+          COUNT=$(grep -cP '(?<![a-zA-Z0-9_])#code(?![a-zA-Z0-9_])' apk-bundle.js || true)
+          echo "#code raw field : $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "FAIL: APK bundle sadrži raw '#code'"
+            exit 1
+          fi
+
+          # 5. DOMException u prvih 20 linija
+          if ! head -20 apk-bundle.js | grep -q "DOMException"; then
+            echo "FAIL: DOMException polyfill nije u headeru APK bundlea!"
+            exit 1
+          fi
+          echo "OK: DOMException polyfill je u APK bundle headeru"
+
+          echo "=== APK BUNDLE PROVJERE PROŠLE — APK je čist ==="
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
