@@ -1,1 +1,2 @@
-import 'expo-router/entry';
+import "./src/polyfills/domException";
+import "expo-router/entry";
