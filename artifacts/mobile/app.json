@@ -30,7 +30,8 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/203bae0a-78da-4e29-b5cc-9836e0ae481e"
+      "url": "https://u.expo.dev/203bae0a-78da-4e29-b5cc-9836e0ae481e",
+      "checkAutomatically": "NEVER"
     },
     "plugins": [
       "expo-router",
