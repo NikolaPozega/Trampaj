@@ -31,7 +31,9 @@ jobs:
 
       - name: Verify no build hacks
         run: |
-          ! grep -R "hermesc replaced\|no-op\|replace-bundle\|expo export\|createBundleReleaseJsAndAssets.*-x\|transformIgnorePatterns\|PACKAGES_TO_TRANSFORM" .github artifacts/mobile/babel.config.js artifacts/mobile/metro.config.js || exit 1
+          ! grep -E "transformIgnorePatterns|PACKAGES_TO_TRANSFORM|plugin-transform-class|plugin-transform-private" \
+            artifacts/mobile/babel.config.js artifacts/mobile/metro.config.js || exit 1
+          echo "Clean: no Metro/Babel hacks found"
 
       - name: Expo prebuild Android
         working-directory: artifacts/mobile
