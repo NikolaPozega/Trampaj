@@ -13,6 +13,12 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "trampaj.hr"
+      },
+      "cache": {
+        "key": "hermesc-rn081-v1",
+        "paths": [
+          "/tmp/hermesc-cache"
+        ]
       }
     },
     "production": {
@@ -24,6 +30,12 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "trampaj.hr"
+      },
+      "cache": {
+        "key": "hermesc-rn081-v1",
+        "paths": [
+          "/tmp/hermesc-cache"
+        ]
       }
     }
   },
