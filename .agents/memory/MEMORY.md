@@ -10,6 +10,7 @@
 - [Push token race condition](push-token-race.md) — logout DELETE /push/token fire-and-forget races new login POST; fixed by removing DELETE from logout + AppState refresh.
 - [Firebase FCM setup](firebase-fcm.md) — google-services.json required for Android push; project trampaj-8faed, package hr.trampaj.app; must rebuild APK (OTA not enough).
 - [Firebase Admin SDK init](firebase-init.md) — MUST be Replit secret only (not shared env var); key is multi-line JSON; if lost, re-read from git commit 8aeb133e and use requestEnvVar.
+- [hermesc fix — jsEngine jsc](hermesc-jsc-fix.md) — hermesc linux64 broken on EAS AND GitHub Actions; fix: android.jsEngine="jsc" in app.json so prebuild sets hermesEnabled=false; confirmed working.
 - [Admin panel design preferences](admin-design-prefs.md) — futuristic neon borders, small font, dense data, dark theme; wait until full redesign, do all at once.
 - [OTA update from Replit](ota-update-replit.md) — hermesc linux64 broken; use expo export --no-bytecode + eas update --skip-bundler --input-dir + EAS_SKIP_AUTO_FINGERPRINT=1; latest: dist15.
 - [Chat state merge pattern](chat-state-merge.md) — fetchConversations must MERGE not replace; full replace causes race where stale GET wipes newly-created conv or temp_ messages.
