@@ -1,0 +1,139 @@
+ZADATAK: Napraviti simulaciju 500 korisnika i izvještaj performansi + kvalitete match/AI logike
+
+Ne programirati promjene u app logici prije izvještaja. Ovo je test i dijagnostika.
+
+Cilj:
+Provjeriti može li sustav podnijeti 500 korisnika i kako se ponaša logika objave oglasa, pretrage, podudaranja, AI tagova i prijedloga zamjene.
+
+VAŽNO:
+Ne raditi test nad pravim korisnicima bez izolacije.
+Koristiti test bazu, staging bazu ili jasno označene test korisnike/oglase koji se mogu obrisati.
+Ne dirati dizajn appa, weba ni admina.
+
+1. Simulacija korisnika
+Napraviti skriptu koja kreira ili koristi 500 test korisnika:
+- test_user_001 do test_user_500
+- različiti profili: HR gradovi, telefoni, adrese, spol, avatar optional
+- dio korisnika ima potpune profile
+- dio ima skrivene osobne podatke
+
+2. Simulacija oglasa
+Svaki korisnik neka objavi 1-5 oglasa.
+Ukupno minimalno 1000 oglasa.
+
+Oglasi moraju imati mješavinu:
+- normalni predmeti: sat, bicikl, mobitel, torbica, laptop, zdjela, olovka
+- pravopisne greške: satt, bicikll, vecu boce, zdjeluu, mobitel bez punjaca
+- besmisleni unosi: asdf, test glupost, plavo brzo, xyz
+- oglasi otvoreni za prijedloge
+- oglasi s konkretnim “tražim”
+- oglasi s praznim ili slabim opisom
+- oglasi s realnim opisom
+
+3. Test endpointa i performansi
+Mjeriti:
+- registracija/login
+- objava oglasa
+- AI obrada oglasa
+- dohvat feeda
+- search Tražim/Nudim
+- semantic matches
+- spremanje favorita
+- spremanje prijedloga
+- otvaranje oglasa
+- slanje poruke
+- handshake request/accepted
+- recenzija nakon završene trampe
+
+Za svaki endpoint dati:
+- broj zahtjeva
+- prosječno vrijeme
+- p95 vrijeme
+- najsporiji request
+- broj grešaka
+- status kodove
+- CPU/memorija ako je dostupno
+
+4. Test match logike
+Za svaki predloženi match zapisati:
+- korisnik A
+- njegov oglas
+- što nudi
+- što traži
+- openToOffers true/false
+- korisnik B
+- njegov oglas
+- što nudi
+- što traži
+- razlog matcha
+- je li AI match ili fallback match
+- score ako postoji
+- klasifikacija: točan match / prijedlog / false positive / false negative
+
+Posebno provjeriti slučajeve:
+- “Banane u zdjeli” ne smije biti tretirano kao da korisnik nudi zdjelu
+- ako korisnik traži “zdjelu”, match ne smije samo zato što naslov sadrži “u zdjeli”
+- ako je oglas openToOffers, label treba biti “Prijedlog”, ne “oni traže što ti imaš”
+- korisnikov “Predmet na slici” mora imati veću težinu od AI opisa slike
+- ručno ispravljeni naslov/opis mora utjecati na tagove/match
+
+5. Test AI logike
+Za AI zapisati:
+- originalni AI prijedlog predmeta
+- korisnikov finalni “Predmet na slici”
+- AI tagove
+- finalne tagove nakon korisničkih izmjena
+- slučajeve gdje je AI pogriješio
+- slučajeve gdje korisnik namjerno krivo piše
+- koliko se dobro prepoznaju pravopisne greške
+
+6. Test app ponašanja pod opterećenjem
+Simulirati:
+- 500 korisnika otvara feed
+- 100 korisnika istovremeno pretražuje
+- 50 korisnika istovremeno objavljuje oglas
+- 50 korisnika šalje poruke
+- 20 korisnika završava handshake
+
+Mjeriti:
+- usporenje feeda
+- usporenje searcha
+- usporenje AI/match procesa
+- greške
+- timeouti
+- duplikati
+- pogrešni match prijedlozi
+
+7. Izvještaj
+Na kraju ne mijenjati ništa u logici, nego dati izvještaj:
+
+A) Performanse
+- može li sustav podnijeti 500 korisnika
+- gdje se usporava
+- koji endpoint je najsporiji
+- što treba optimizirati prije javnog puštanja
+
+B) Match kvaliteta
+- koliko je match prijedloga točno
+- koliko je slabih prijedloga
+- koliko false positive
+- najčešći razlog pogrešnog matcha
+- prijedlog bolje logike
+
+C) AI kvaliteta
+- gdje AI dobro radi
+- gdje griješi
+- kako uključiti korisnikove izmjene u finalne tagove
+- treba li mijenjati prompt ili scoring
+
+D) Rizici
+- što može puknuti na 500 korisnika
+- što može stvarati krive prijedloge
+- što može zbuniti korisnika
+
+E) Preporuka
+- što popraviti odmah
+- što može čekati
+- što ne dirati jer radi dobro
+
+Bez promjena u produkcijskoj logici dok ne pregledamo izvještaj.
