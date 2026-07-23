@@ -15,3 +15,4 @@
 - [Chat state merge pattern](chat-state-merge.md) — fetchConversations must MERGE not replace; full replace causes race where stale GET wipes newly-created conv or temp_ messages.
 - [OTA crashes on Hermes APK](ota-hermes-crash.md) — root causes: (1) baseUrl:/mobile baked into bundle mismatches APK routes; (2) hermesc linux64 broken; always remove baseUrl + use --no-bytecode.
 - [Listing moderation UX](listing-moderation-ux.md) — new listings go to pending (hidden from public feed); ListingCard shows pending/rejected badge for owner; post screen alerts user about review; server sends FCM when approved/rejected.
+- [Simulacija 500 korisnika](simulation-500-results.md) — load test rezultati: feed OK serijski (p95=1.2s), ali 8.1s pri 500 concurrent → treba Redis caching; search/favoriti/profil odlični; match ~17s/poziv bez cachinga.
