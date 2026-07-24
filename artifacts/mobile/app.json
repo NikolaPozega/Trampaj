@@ -48,8 +48,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "baseUrl": "/mobile"
+      "typedRoutes": true
     },
     "extra": {
       "eas": {

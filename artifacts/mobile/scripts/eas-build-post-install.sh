@@ -29,10 +29,14 @@ fi
 
 echo "[TRAMPAJ-HERMES-HOOK] cache miss — building from source"
 
-# Ensure cmake is available
+# Ensure cmake is available — apt-get requires root so download static binary instead
 if ! command -v cmake &>/dev/null; then
-    echo "[TRAMPAJ-HERMES-HOOK] installing cmake via apt"
-    apt-get update -qq && apt-get install -y --no-install-recommends cmake
+    echo "[TRAMPAJ-HERMES-HOOK] downloading cmake static binary (no sudo needed)"
+    mkdir -p /tmp/cmake-dl
+    curl -L --retry 3 \
+        "https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-linux-x86_64.tar.gz" \
+        | tar xz -C /tmp/cmake-dl --strip-components=1
+    export PATH="/tmp/cmake-dl/bin:$PATH"
 fi
 cmake --version | head -1
 
