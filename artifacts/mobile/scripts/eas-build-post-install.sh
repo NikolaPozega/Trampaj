@@ -62,7 +62,7 @@ cmake "$SRC" \
     -DHERMES_IS_ANDROID=False \
     -DHERMES_ENABLE_DEBUGGER=False \
     -DHERMES_BUILD_SHARED_JSI=False \
-    -DHERMES_ENABLE_TOOLS=False \
+    -DLLVM_INCLUDE_TESTS=OFF \
     -DCMAKE_BUILD_TYPE=Release
 
 echo "[TRAMPAJ-HERMES-HOOK] cmake build ($(nproc) cores)"
