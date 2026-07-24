@@ -10,6 +10,11 @@ module.exports = function (api) {
 
   return {
     presets: [["babel-preset-expo", { unstable_transformImportMeta: true }]],
+    plugins: [
+      // hermesc does not support async/await natively; Babel must lower them
+      // to generator functions before the bundle is handed to hermesc.
+      "@babel/plugin-transform-async-to-generator",
+    ],
     overrides: [
       {
         test: /\.[cm]?tsx?$/,
