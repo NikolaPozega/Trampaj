@@ -6,7 +6,7 @@
  * hermesCommand is priority #1 in PathUtils.kt — it overrides all fallbacks
  * including the broken 0.12.0 placeholder in sdks/hermesc/linux64-bin/.
  */
-const { withAppBuildGradle } = require('@expo/config-plugins');
+const { withAppBuildGradle } = require('expo/config-plugins');
 const path = require('path');
 
 module.exports = function withHermescCommand(config) {
