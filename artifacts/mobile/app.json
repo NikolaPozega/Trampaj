@@ -34,6 +34,7 @@
       "checkAutomatically": "NEVER"
     },
     "plugins": [
+      "./plugins/withHermescCommand",
       "expo-router",
       "expo-font",
       "expo-updates",
@@ -48,8 +49,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "baseUrl": "/mobile"
+      "typedRoutes": true
     },
     "extra": {
       "eas": {
